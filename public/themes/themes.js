@@ -173,7 +173,7 @@ function saveHiddenThemeIds(hiddenIds) {
   localStorage.setItem(HIDDEN_THEMES_STORAGE_KEY, JSON.stringify(validIds));
 }
 
-const THEME_API_BASE = "http://192.168.0.115:5000";
+const THEME_API_BASE = "";
 const HIDDEN_THEMES_DIRTY_KEY = "strava:hiddenThemesDirty";
 let hiddenThemesSyncTimer = null;
 

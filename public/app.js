@@ -508,7 +508,7 @@ async function pollPrBackfillStatus() {
   clearPrBackfillPolling();
 
   try {
-    const res = await fetch("http://192.168.0.115:5000/api/pr-backfill/status");
+    const res = await fetch("/api/pr-backfill/status");
     const data = await res.json();
     const status = data.prBackfill;
 
@@ -528,7 +528,7 @@ async function startPrBackfill() {
   statusDiv.innerHTML = "Starting PR backfill background job…";
 
   try {
-    const res = await fetch("http://192.168.0.115:5000/api/pr-backfill/start", {
+    const res = await fetch("/api/pr-backfill/start", {
       method: "POST"
     });
     const data = await res.json();
@@ -555,7 +555,7 @@ async function stopPrBackfill() {
   statusDiv.innerHTML = "Stopping PR backfill…";
 
   try {
-    const res = await fetch("http://192.168.0.115:5000/api/pr-backfill/stop", {
+    const res = await fetch("/api/pr-backfill/stop", {
       method: "POST"
     });
     const data = await res.json();
@@ -2405,7 +2405,7 @@ window.onload = async () => {
   statusDiv.innerHTML = "Loading dashboard…";
   showSpinner();
 
-  const res = await fetch("http://192.168.0.115:5000/api/analytics/auto");
+  const res = await fetch("/api/analytics/auto");
   const data = await res.json();
 
   hideSpinner();
@@ -2429,7 +2429,7 @@ async function refreshData() {
   statusDiv.innerHTML = "Refreshing (only new activities + PR data)…";
   showSpinner();
 
-  const res = await fetch("http://192.168.0.115:5000/api/analytics?refresh=1&segments=1&updated=1");
+  const res = await fetch("/api/analytics?refresh=1&segments=1&updated=1");
   const data = await res.json();
 
   hideSpinner();
@@ -2450,7 +2450,7 @@ async function resumePull() {
   showSpinner();
 
   try {
-    const res = await fetch("http://192.168.0.115:5000/api/analytics?resume=1");
+    const res = await fetch("/api/analytics?resume=1");
     const data = await res.json();
 
     hideSpinner();
@@ -2475,7 +2475,7 @@ async function fullPull() {
   statusDiv.innerHTML = "Performing full data pull…";
   showSpinner();
 
-  const res = await fetch("http://192.168.0.115:5000/api/analytics?full=1");
+  const res = await fetch("/api/analytics?full=1");
   const data = await res.json();
 
   hideSpinner();
@@ -2738,7 +2738,7 @@ function renderSegmentDistanceHighlights(items, gearDetails = {}) {
 
 /* ----------------- BIKE PHOTO GALLERY ----------------- */
 
-const BIKE_IMAGES_API = "http://192.168.0.115:5000/api/bike-images";
+const BIKE_IMAGES_API = "/api/bike-images";
 const BIKE_SLIDESHOW_MS = 4000;
 let bikeImageManifest = {};
 const bikeGallery = { imgUrl: null, gid: null, name: "", index: 0, timer: null, version: {}, busy: false };
@@ -2822,7 +2822,7 @@ function renderBikeGallery() {
   if (count) {
     const url = urls[bikeGallery.index];
     const v = bikeGallery.version[bikeGalleryFilename(url)];
-    const full = `http://192.168.0.115:5000${url}${v ? `?v=${v}` : ""}`;
+    const full = `${url}${v ? `?v=${v}` : ""}`;
     els.img.alt = `${bikeGallery.name} photo ${bikeGallery.index + 1} of ${count}`;
     if (bikeGallery.imgUrl !== full || !els.img.getAttribute("src")) {
       bikeGallery.imgUrl = full;
