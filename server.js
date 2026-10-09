@@ -169,7 +169,8 @@ app.get("/dashboard", (req, res, next) => {
   next();
 });
 
-app.use("/dashboard", express.static("public"));
+app.use("/dashboard", express.static(require("path").join(__dirname, "client", "dist")));
+app.use("/dashboard", express.static(require("path").join(__dirname, "public")));
 
 app.get("/auth", (req, res) => {
   const url =
