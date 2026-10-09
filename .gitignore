@@ -1,3 +1,5 @@
 public/images/bikes/*
 !public/images/bikes/.gitkeep
 settings.json
+config.local.js
+.env
