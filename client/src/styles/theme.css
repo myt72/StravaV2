@@ -39,6 +39,11 @@
   --heat-2: #fdba74;
   --heat-3: #f97316;
   --heat-4: #c2410c;
+  --heat-fg-0: var(--text);
+  --heat-fg-1: var(--text);
+  --heat-fg-2: var(--text);
+  --heat-fg-3: var(--text);
+  --heat-fg-4: var(--accent-contrast);
 
   --radius: 12px;
   --radius-sm: 8px;
@@ -78,6 +83,11 @@
   --heat-2: #9a4f1a;
   --heat-3: #e0711f;
   --heat-4: #fdba74;
+  --heat-fg-0: var(--text);
+  --heat-fg-1: var(--text);
+  --heat-fg-2: var(--text);
+  --heat-fg-3: var(--accent-contrast);
+  --heat-fg-4: var(--accent-contrast);
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
   --overlay: rgba(0, 0, 0, 0.65);

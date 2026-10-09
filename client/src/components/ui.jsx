@@ -116,8 +116,13 @@ export function ActivityLink({ activity, children }) {
 }
 
 /* ---------- table ---------- */
-/** columns: { key, label, render?, value?, align?, wrap?, sortable? } */
-export function DataTable({ columns, rows, rowKey, initialSort, onRowClick, pageSize, empty, caption }) {
+/**
+ * columns: { key, label, render?, renderChild?, value?, align?, wrap?, sortable? }
+ * pinnedRows: rows always rendered first, never sorted.
+ * expand (optional): { isOpen(row), toggle(row), label(row), disabledReason?(row), children(row) -> child rows }
+ *   adds a trailing arrow column; open rows render children directly beneath them (cells use renderChild when present).
+ */
+export function DataTable({ columns, rows, rowKey, initialSort, onRowClick, pageSize, empty, caption, pinnedRows, expand }) {
   const [sort, setSort] = useState(initialSort || null);
   const [limit, setLimit] = useState(pageSize || Infinity);
 
@@ -145,8 +150,45 @@ export function DataTable({ columns, rows, rowKey, initialSort, onRowClick, page
       : { key: col.key, dir: col.align === "r" ? "desc" : "asc" });
   };
 
-  if (!rows.length) return <Empty>{empty}</Empty>;
+  if (!rows.length && !pinnedRows?.length) return <Empty>{empty}</Empty>;
   const visible = sorted.slice(0, limit);
+
+  const renderRow = (row, { pinned = false } = {}) => {
+    const open = expand?.isOpen(row);
+    const disabledReason = expand?.disabledReason?.(row);
+    const key = rowKey(row);
+    return [
+      <tr key={key} className={`${onRowClick && !pinned ? "clickable" : ""} ${pinned ? "pinned" : ""}`.trim()}
+        onClick={onRowClick && !pinned ? () => onRowClick(row) : undefined}>
+        {columns.map(c => (
+          <td key={c.key} className={`${c.align === "r" ? "r num" : ""} ${c.wrap ? "wrap" : ""}`}>
+            {c.render ? c.render(row) : row[c.key]}
+          </td>
+        ))}
+        {expand && (
+          <td className="expand-cell">
+            <button type="button" className="expand-btn" aria-expanded={!!open} aria-label={expand.label(row)}
+              title={disabledReason || expand.label(row)} disabled={!!disabledReason}
+              onClick={e => { e.stopPropagation(); expand.toggle(row); }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
+          </td>
+        )}
+      </tr>,
+      ...(open && !disabledReason ? expand.children(row) : []).map(child => (
+        <tr key={`${key}/${child.key}`} className="child-row">
+          {columns.map(c => (
+            <td key={c.key} className={`${c.align === "r" ? "r num" : ""} ${c.wrap ? "wrap" : ""}`}>
+              {c.renderChild ? c.renderChild(child, row) : c.render ? c.render(child) : child[c.key]}
+            </td>
+          ))}
+          {expand && <td className="expand-cell" />}
+        </tr>
+      ))
+    ];
+  };
 
   return (
     <>
@@ -166,18 +208,12 @@ export function DataTable({ columns, rows, rowKey, initialSort, onRowClick, page
                   )}
                 </th>
               ))}
+              {expand && <th scope="col" className="expand-cell"><span className="sr-only">Expand</span></th>}
             </tr>
           </thead>
           <tbody>
-            {visible.map(row => (
-              <tr key={rowKey(row)} className={onRowClick ? "clickable" : ""} onClick={onRowClick ? () => onRowClick(row) : undefined}>
-                {columns.map(c => (
-                  <td key={c.key} className={`${c.align === "r" ? "r num" : ""} ${c.wrap ? "wrap" : ""}`}>
-                    {c.render ? c.render(row) : row[c.key]}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {pinnedRows?.map(row => renderRow(row, { pinned: true }))}
+            {visible.map(row => renderRow(row))}
           </tbody>
         </table>
       </div>

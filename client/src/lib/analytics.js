@@ -1,7 +1,7 @@
 // Ported from V1 public/app.js so numbers match. Pure functions only.
 import {
   miles, feet, comma, formatDuration, getDateKey, getWeekStartMonday, getWeekNumber,
-  formatShortDate, formatMonthLabel, getGearName
+  formatShortDate, formatMonthLabel, getGearName, MONTHS
 } from "./format.js";
 
 export const EXCLUDED_HIGHEST_ELEVATION_ACTIVITY_ID = "1380665549";
@@ -310,6 +310,149 @@ export function buildAnnualBreakdowns(activities) {
     y.maxStreak = computeMaxStreak(y.dayKeys);
   });
   return { annual, totalDistance, totalElevation, totalCount, totalMovingTime };
+}
+
+/** Aggregate of ALL activities passed in, shaped like a buildAnnualBreakdowns year row. */
+export function buildAnnualTotals(activities) {
+  const t = { distance: 0, elevation: 0, count: 0, moving_time: 0, maxRideDistance: 0, maxRideElevation: 0 };
+  const dayKeys = [];
+  for (const a of activities || []) {
+    t.distance += a.distance || 0;
+    t.elevation += a.total_elevation_gain || 0;
+    t.count += 1;
+    t.moving_time += a.moving_time || 0;
+    t.maxRideDistance = Math.max(t.maxRideDistance, a.distance || 0);
+    t.maxRideElevation = Math.max(t.maxRideElevation, a.total_elevation_gain || 0);
+    dayKeys.push(getDateKey(a.start_date));
+  }
+  t.activeDaysCount = new Set(dayKeys).size;
+  t.maxStreak = computeMaxStreak(dayKeys);
+  return t;
+}
+
+/**
+ * Nested rows for the annual summary.
+ * mode: "monthly" | "weekly" | "bike" (V1 annualBreakdownMode values).
+ * Pass one year's activities for a year row, or all activities with combineYears for the Totals row
+ * (monthly = Jan..Dec combined across years; weekly is not supported when combined and returns []).
+ * Weeks are keyed by their Monday (YYYY-MM-DD) so rows always sum to their parent; trend is the
+ * percent change in distance vs the previous week that has data (null when there is none), as in V1.
+ */
+export function buildAnnualSubRows(activities, mode, { segmentData = {}, gearName = id => id, combineYears = false } = {}) {
+  const buckets = new Map();
+  const bucketFor = (key, extra) => {
+    if (!buckets.has(key)) {
+      buckets.set(key, { key, ...extra, distance: 0, elevation: 0, count: 0, moving_time: 0, pr_count: 0, days: new Set() });
+    }
+    return buckets.get(key);
+  };
+
+  for (const a of activities || []) {
+    let b;
+    if (mode === "monthly") {
+      const d = new Date(a.start_date);
+      const mi = d.getMonth();
+      const monthKey = `${d.getFullYear()}-${String(mi + 1).padStart(2, "0")}`;
+      b = combineYears ? bucketFor(String(mi).padStart(2, "0"), { label: MONTHS[mi] })
+        : bucketFor(monthKey, { label: MONTHS[mi], monthKey });
+    } else if (mode === "weekly") {
+      if (combineYears) return [];
+      const ws = getWeekStartMonday(a.start_date);
+      const weekStart = getDateKey(ws);
+      b = bucketFor(weekStart, { label: `Wk ${getWeekNumber(ws)} · ${MONTHS[ws.getMonth()]} ${ws.getDate()}`, weekStart });
+    } else {
+      const gearId = a.gear_id || null;
+      b = bucketFor(gearId || "none", { label: gearId ? gearName(gearId) : "No bike", gearId });
+    }
+    b.distance += a.distance || 0;
+    b.elevation += a.total_elevation_gain || 0;
+    b.count += 1;
+    b.moving_time += a.moving_time || 0;
+    b.pr_count += prCountFor(segmentData, a);
+    b.days.add(getDateKey(a.start_date));
+  }
+
+  const rows = [...buckets.values()].map(({ days, ...r }) => {
+    r.activeDaysCount = days.size;
+    if (r.moving_time > 0 && r.distance > 0) r.avg_speed_mph = (r.distance / 1609.34) / (r.moving_time / 3600);
+    return r;
+  });
+  if (mode === "bike") return rows.sort((a, b) => b.distance - a.distance);
+  rows.sort((a, b) => a.key.localeCompare(b.key));
+  if (mode === "weekly") {
+    rows.forEach((r, i) => {
+      const prev = i > 0 ? rows[i - 1] : null;
+      r.trend = prev && prev.distance > 0 ? ((r.distance - prev.distance) / prev.distance) * 100 : null;
+    });
+  }
+  return rows;
+}
+
+const quantileOf = (sorted, q) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] : 0);
+
+/**
+ * Period tiles for the activity calendar. granularity: "week" | "month" | "quarter" | "year".
+ * Returns { rows: [{ year, cells }], thresholds } with rows newest first (a single row for "year").
+ * Weeks are ISO weeks (rows by ISO year). cell.params is the Activities drill-down for that period:
+ * week = { week: Monday YYYY-MM-DD }, month = { month: YYYY-MM }, quarter = { quarter: YYYY-Qn }, year = { year }.
+ */
+export function buildPeriodGrid(activities, metric, granularity, now = new Date()) {
+  const m = METRICS[metric] || METRICS.distance;
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const pad = n => String(n).padStart(2, "0");
+  const isoYearOf = ws => new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + 3).getFullYear();
+  const sums = {};
+  let minYear = Infinity;
+  let maxYear = granularity === "week" ? isoYearOf(getWeekStartMonday(today)) : today.getFullYear();
+
+  for (const a of activities || []) {
+    const d = new Date(a.start_date);
+    let key, yr = d.getFullYear();
+    if (granularity === "week") {
+      const ws = getWeekStartMonday(a.start_date);
+      key = getDateKey(ws);
+      yr = isoYearOf(ws);
+    } else if (granularity === "month") key = `${yr}-${pad(d.getMonth() + 1)}`;
+    else if (granularity === "quarter") key = `${yr}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+    else key = String(yr);
+    sums[key] = (sums[key] || 0) + m.value(a);
+    minYear = Math.min(minYear, yr);
+    maxYear = Math.max(maxYear, yr);
+  }
+  if (!isFinite(minYear)) minYear = maxYear;
+
+  const cell = (key, label, fullLabel, start, params) => ({
+    key, label, fullLabel, value: sums[key] || 0, future: start > today, params
+  });
+  const yearCells = y => {
+    if (granularity === "month") {
+      return MONTHS.map((mn, i) => cell(`${y}-${pad(i + 1)}`, `${mn} ${y}`, `${mn} ${y}`, new Date(y, i, 1), { month: `${y}-${pad(i + 1)}` }));
+    }
+    if (granularity === "quarter") {
+      return [1, 2, 3, 4].map(q => cell(`${y}-Q${q}`, `Q${q} ${y}`, `Q${q} ${y}`, new Date(y, (q - 1) * 3, 1), { quarter: `${y}-Q${q}` }));
+    }
+    const jan4 = new Date(y, 0, 4);
+    const total = getWeekNumber(new Date(y, 11, 28));
+    const cells = [];
+    for (let w = 1; w <= total; w++) {
+      const ws = new Date(y, 0, 4 - ((jan4.getDay() + 6) % 7) + (w - 1) * 7);
+      const key = getDateKey(ws);
+      cells.push(cell(key, `Wk ${w}`, `Week ${w}, ${y} (week of ${MONTHS[ws.getMonth()]} ${ws.getDate()})`, ws, { week: key }));
+    }
+    return cells;
+  };
+
+  const rows = [];
+  if (granularity === "year") {
+    const cells = [];
+    for (let y = minYear; y <= maxYear; y++) cells.push(cell(String(y), String(y), String(y), new Date(y, 0, 1), { year: String(y) }));
+    rows.push({ year: null, cells });
+  } else {
+    for (let y = maxYear; y >= minYear; y--) rows.push({ year: y, cells: yearCells(y) });
+  }
+
+  const nonZero = rows.flatMap(r => r.cells).filter(c => c.value > 0).map(c => c.value).sort((x, y) => x - y);
+  return { rows, thresholds: [quantileOf(nonZero, 0.25), quantileOf(nonZero, 0.5), quantileOf(nonZero, 0.75)] };
 }
 
 /** Same-period comparison: this calendar year to date vs. last year to the same date. */
