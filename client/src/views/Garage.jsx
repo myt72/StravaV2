@@ -24,25 +24,34 @@ function useBikes() {
   const { filtered } = useAppData();
   const [pinned, setPinned] = usePersistentState("pinnedBikes", []);
   const [selected, setSelected] = usePersistentState("compareBikes", []);
+  const [manualRetired, setManualRetired] = usePersistentState("retiredBikes", []);
+  const details = filtered.gearDetails || {};
+  // Strava gear details carry a boolean `retired`; only fall back to a manual toggle if no bike has that field.
+  const hasRetiredField = Object.values(details).some(d => typeof d?.retired === "boolean");
   const rows = useMemo(() => Object.keys(filtered.bikeYearStats || {}).map(gid => ({
     gid,
-    name: filtered.gearDetails?.[gid]?.name || gid,
+    name: details[gid]?.name || gid,
+    isRetired: hasRetiredField ? details[gid]?.retired === true : manualRetired.includes(gid),
     total: filtered.gearTotals[gid],
     bikeYearStats: filtered.bikeYearStats[gid],
     years: Object.keys(filtered.bikeYearStats[gid]).sort((a, b) => b - a),
     isPinned: pinned.includes(gid)
-  })).filter(r => r.total), [filtered, pinned]);
+  })).filter(r => r.total), [filtered, pinned, details, hasRetiredField, manualRetired]);
   const toggle = (list, set) => id => set(list.includes(id) ? list.filter(x => x !== id) : [...list, id]);
-  return { rows, pinned, togglePin: toggle(pinned, setPinned), selected, toggleSelected: toggle(selected, setSelected), setSelected };
+  return { rows, canToggleRetired: !hasRetiredField, toggleRetired: toggle(manualRetired, setManualRetired), pinned, togglePin: toggle(pinned, setPinned), selected, toggleSelected: toggle(selected, setSelected), setSelected };
 }
 
-function BikeStats({ total }) {
+function BikeStats({ total, gid, name }) {
   const speed = formatSpeed(total.avg_speed_mph, "Ride");
   return (
     <div className="metrics num">
       <span>{comma(miles(total.distance).toFixed(1))} mi</span>
       <span>{comma(feet(total.elevation).toFixed(0))} ft</span>
-      <span>{plural(total.count, "activity").replace("activitys", "activities")}</span>
+      <span>
+        <a href={`#/activities?bike=${encodeURIComponent(gid)}`} aria-label={`View ${plural(total.count, "activity").replace("activitys", "activities")} for ${name}`}>
+          {plural(total.count, "activity").replace("activitys", "activities")}
+        </a>
+      </span>
       <span>{formatDuration(total.moving_time)}</span>
       <span>{plural(total.pr_count || 0, "PR")}</span>
       {speed && <span>{speed}</span>}
@@ -63,6 +72,8 @@ function GarageList({ bikes }) {
   const [search, setSearch] = usePersistentState("bikeSearch", "");
   const [sort, setSort] = usePersistentState("bikeSort", "distance-desc");
 
+  const [retiredOpen, setRetiredOpen] = useState(true);
+
   const rows = useMemo(() => {
     const q = search.toLowerCase().trim();
     const [field, direction] = sort.split("-");
@@ -74,6 +85,26 @@ function GarageList({ bikes }) {
       return (a.total.distance - b.total.distance) * dir;
     });
   }, [bikes.rows, search, sort]);
+
+  const current = rows.filter(r => !r.isRetired);
+  const retired = rows.filter(r => r.isRetired);
+
+  const renderCard = r => (
+    <Card key={r.gid} className="bike-card">
+      <button type="button" style={{ all: "unset", cursor: "pointer", display: "block" }} onClick={() => navigate(`/garage/${r.gid}`)} aria-label={`Open ${r.name}`}>
+        <Thumb urls={bikeImages[r.gid]} alt="" />
+      </button>
+      <a className="bike-title" href={`#/garage/${encodeURIComponent(r.gid)}`}>{r.name}</a>
+      <BikeStats total={r.total} gid={r.gid} name={r.name} />
+      <div className="card-actions">
+        <label className="check"><input type="checkbox" checked={bikes.selected.includes(r.gid)} onChange={() => bikes.toggleSelected(r.gid)} /> Compare</label>
+        <button type="button" className="btn sm" aria-pressed={r.isPinned} onClick={() => bikes.togglePin(r.gid)}>{r.isPinned ? "Pinned" : "Pin"}</button>
+        {bikes.canToggleRetired && (
+          <button type="button" className="btn sm" onClick={() => bikes.toggleRetired(r.gid)}>{r.isRetired ? "Unretire" : "Retire"}</button>
+        )}
+      </div>
+    </Card>
+  );
 
   const selectedCount = bikes.selected.filter(id => bikes.rows.some(r => r.gid === id)).length;
 
@@ -94,21 +125,24 @@ function GarageList({ bikes }) {
         </label>
       </div>
       {!rows.length ? <Empty>No bikes match the current filters.</Empty> : (
-        <div className="grid cards">
-          {rows.map(r => (
-            <Card key={r.gid} className="bike-card">
-              <button type="button" style={{ all: "unset", cursor: "pointer", display: "block" }} onClick={() => navigate(`/garage/${r.gid}`)} aria-label={`Open ${r.name}`}>
-                <Thumb urls={bikeImages[r.gid]} alt="" />
-              </button>
-              <a className="bike-title" href={`#/garage/${encodeURIComponent(r.gid)}`}>{r.name}</a>
-              <BikeStats total={r.total} />
-              <div className="card-actions">
-                <label className="check"><input type="checkbox" checked={bikes.selected.includes(r.gid)} onChange={() => bikes.toggleSelected(r.gid)} /> Compare</label>
-                <button type="button" className="btn sm" aria-pressed={r.isPinned} onClick={() => bikes.togglePin(r.gid)}>{r.isPinned ? "Pinned" : "Pin"}</button>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <>
+          {current.length > 0 && (
+            <section className="garage-section" aria-labelledby="garage-current">
+              <h2 id="garage-current" className="garage-heading">Current ({current.length})</h2>
+              <div className="grid garage-grid">{current.map(renderCard)}</div>
+            </section>
+          )}
+          {retired.length > 0 && (
+            <section className="garage-section" aria-labelledby="garage-retired">
+              <h2 id="garage-retired" className="garage-heading">
+                <button type="button" className="cell-link" aria-expanded={retiredOpen} aria-controls="garage-retired-grid" onClick={() => setRetiredOpen(o => !o)}>
+                  {retiredOpen ? "▾" : "▸"} Retired ({retired.length})
+                </button>
+              </h2>
+              {retiredOpen && <div id="garage-retired-grid" className="grid garage-grid">{retired.map(renderCard)}</div>}
+            </section>
+          )}
+        </>
       )}
     </div>
   );
@@ -190,7 +224,7 @@ function BikeDetail({ bike, bikes }) {
             <button type="button" className="btn sm" aria-pressed={bike.isPinned} onClick={() => bikes.togglePin(bike.gid)}>{bike.isPinned ? "Pinned" : "Pin"}</button>
           </div>
         )} />
-      <BikeStats total={bike.total} />
+      <BikeStats total={bike.total} gid={bike.gid} name={bike.name} />
 
       <div className="grid three">
         {insightCards.map(([label, value, sub]) => (
