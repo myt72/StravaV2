@@ -2,7 +2,7 @@ const express = require("express");
 const fetch = require("node-fetch");
 const cors = require("cors");
 const fs = require("fs");
-const { client_id, client_secret, redirect_uri } = require("./config");
+const { client_id, client_secret, redirect_uri, port} = require("./config");
 
 const app = express();
 app.use(cors());
@@ -1436,4 +1436,4 @@ app.put("/api/settings/hidden-themes", (req, res) => {
   }
 });
 
-app.listen(5000, "0.0.0.0", () => console.log("Server running on LAN"));
+app.listen(port, "0.0.0.0", () => console.log(`Server running on port ${port}`));
