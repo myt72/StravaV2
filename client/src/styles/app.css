@@ -124,6 +124,8 @@ select:hover, input:hover { border-color: var(--text-muted); }
 .yoy-tip th, .yoy-tip td { padding: 2px 6px; text-align: left; white-space: nowrap; }
 .yoy-tip th { color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border); }
 .yoy-tip .r { text-align: right; }
+.yoy-tip .rank-cell { width: 3.5em; font-variant-numeric: tabular-nums; }
+.yoy-tip .rank-leader { font-weight: 700; }
 .yoy-tip tr.latest td { background: var(--surface-2); font-weight: 600; }
 .yoy-swatch { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: baseline; }
 .hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; }
