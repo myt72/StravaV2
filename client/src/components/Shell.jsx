@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { PROFILE } from "../lib/profile.js";
+import { THEMES } from "../lib/theme.js";
 import { DATE_RANGES, useAppData } from "../context/AppData.jsx";
 import { Icon } from "./ui.jsx";
 
@@ -11,11 +14,32 @@ export const NAV = [
   { id: "admin", label: "Data" }
 ];
 
+function ProfileLink() {
+  const [imgFailed, setImgFailed] = useState(false);
+  return (
+    <a className="profile" href={PROFILE.dashboardUrl} target="_blank" rel="noopener noreferrer"
+      aria-label={`Open ${PROFILE.name}'s Strava dashboard (opens in a new tab)`}>
+      <span className="avatar" aria-hidden="true">
+        {PROFILE.avatarUrl && !imgFailed
+          ? <img src={PROFILE.avatarUrl} alt="" onError={() => setImgFailed(true)} />
+          : PROFILE.initials}
+      </span>
+      <span className="profile-text">
+        <span className="profile-name">{PROFILE.name}</span>
+        <span className="profile-sub">{PROFILE.subtitle}</span>
+      </span>
+    </a>
+  );
+}
+
+const THEME_LABELS = { light: "Light mode", dark: "Dark mode", matrix: "Matrix mode" };
+
 export function Sidebar({ current, theme, onToggleTheme }) {
+  const nextTheme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
   const { backfillActive, prBackfill } = useAppData();
   return (
     <aside className="sidebar">
-      <div className="brand"><span className="brand-mark" aria-hidden="true">S</span> Strava V2</div>
+      <ProfileLink />
       <nav className="nav" aria-label="Main">
         {NAV.map(item => (
           <a key={item.id} href={`#/${item.id}`} className="nav-link" aria-current={current === item.id ? "page" : undefined}>
@@ -31,9 +55,9 @@ export function Sidebar({ current, theme, onToggleTheme }) {
       </nav>
       <div className="sidebar-foot">
         <button type="button" className="nav-link" style={{ border: 0, background: "transparent" }} onClick={onToggleTheme}
-          aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
-          <Icon name={theme === "dark" ? "sun" : "moon"} />
-          <span className="btn-label">{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+          aria-label={`Switch to ${THEME_LABELS[nextTheme].toLowerCase()}`}>
+          <Icon name={theme === "light" ? "moon" : "sun"} />
+          <span className="btn-label">{THEME_LABELS[nextTheme]}</span>
         </button>
       </div>
     </aside>

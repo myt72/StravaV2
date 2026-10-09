@@ -1,7 +1,7 @@
 // Ported from V1 public/app.js so numbers match. Pure functions only.
 import {
   miles, feet, comma, formatDuration, getDateKey, getWeekStartMonday, getWeekNumber,
-  formatShortDate, formatMonthLabel, getGearName, MONTHS
+  formatDate, formatShortDate, formatMonthLabel, getGearName, MONTHS
 } from "./format.js";
 
 export const EXCLUDED_HIGHEST_ELEVATION_ACTIVITY_ID = "1380665549";
@@ -359,7 +359,7 @@ export function buildAnnualSubRows(activities, mode, { segmentData = {}, gearNam
       if (combineYears) return [];
       const ws = getWeekStartMonday(a.start_date);
       const weekStart = getDateKey(ws);
-      b = bucketFor(weekStart, { label: `Wk ${getWeekNumber(ws)} · ${MONTHS[ws.getMonth()]} ${ws.getDate()}`, weekStart });
+      b = bucketFor(weekStart, { label: formatDate(ws), weekStart });
     } else {
       const gearId = a.gear_id || null;
       b = bucketFor(gearId || "none", { label: gearId ? gearName(gearId) : "No bike", gearId });
@@ -385,7 +385,7 @@ export function buildAnnualSubRows(activities, mode, { segmentData = {}, gearNam
       r.trend = prev && prev.distance > 0 ? ((r.distance - prev.distance) / prev.distance) * 100 : null;
     });
   }
-  return rows;
+  return rows.reverse();
 }
 
 const quantileOf = (sorted, q) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] : 0);
@@ -401,7 +401,7 @@ export function buildPeriodGrid(activities, metric, granularity, now = new Date(
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const pad = n => String(n).padStart(2, "0");
   const isoYearOf = ws => new Date(ws.getFullYear(), ws.getMonth(), ws.getDate() + 3).getFullYear();
-  const sums = {};
+  const sums = {}, counts = {}, elevs = {};
   let minYear = Infinity;
   let maxYear = granularity === "week" ? isoYearOf(getWeekStartMonday(today)) : today.getFullYear();
 
@@ -416,13 +416,15 @@ export function buildPeriodGrid(activities, metric, granularity, now = new Date(
     else if (granularity === "quarter") key = `${yr}-Q${Math.floor(d.getMonth() / 3) + 1}`;
     else key = String(yr);
     sums[key] = (sums[key] || 0) + m.value(a);
+    counts[key] = (counts[key] || 0) + 1;
+    elevs[key] = (elevs[key] || 0) + (a.total_elevation_gain || 0);
     minYear = Math.min(minYear, yr);
     maxYear = Math.max(maxYear, yr);
   }
   if (!isFinite(minYear)) minYear = maxYear;
 
   const cell = (key, label, fullLabel, start, params) => ({
-    key, label, fullLabel, value: sums[key] || 0, future: start > today, params
+    key, label, fullLabel, value: sums[key] || 0, count: counts[key] || 0, elevation: elevs[key] || 0, future: start > today, params
   });
   const yearCells = y => {
     if (granularity === "month") {

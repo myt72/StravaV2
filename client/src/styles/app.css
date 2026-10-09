@@ -28,8 +28,14 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
   position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 4px;
   padding: 16px 12px; background: var(--surface); border-right: 1px solid var(--border);
 }
-.brand { display: flex; align-items: center; gap: 10px; padding: 4px 10px 14px; font-weight: 700; font-size: 1.05rem; }
-.brand-mark { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-contrast); display: grid; place-items: center; font-weight: 800; }
+.profile { display: flex; align-items: center; gap: 10px; padding: 6px 10px 14px; color: var(--text); text-decoration: none; border-radius: var(--radius-sm); }
+.profile:hover .profile-name { text-decoration: underline; }
+.profile:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.avatar { width: 36px; height: 36px; flex: none; border-radius: 50%; overflow: hidden; background: var(--accent); color: var(--accent-contrast); display: grid; place-items: center; font-weight: 800; font-size: 0.85rem; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.profile-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.profile-name { font-weight: 700; font-size: 1.02rem; overflow-wrap: anywhere; }
+.profile-sub { font-size: 0.75rem; color: var(--text-muted); }
 .nav { display: flex; flex-direction: column; gap: 2px; }
 .nav-link {
   display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius-sm);
@@ -156,6 +162,14 @@ table.data .expand-cell { width: 1%; text-align: right; }
 .period-row.single { grid-template-columns: repeat(var(--cols), minmax(var(--tile-min, 56px), 1fr)); }
 .period-year { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; }
 .period-tile { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1px; min-height: 48px; padding: 4px 2px; border: 0; border-radius: 6px; background: var(--heat-0); color: var(--heat-fg-0); font-size: 0.7rem; line-height: 1.15; text-align: center; overflow: hidden; }
+.period-grid.with-stats .period-tile { container-type: inline-size; min-height: 56px; }
+.period-tile .tile-stats { display: flex; flex-wrap: wrap; justify-content: center; font-size: 0.62rem; opacity: 0.9; font-variant-numeric: tabular-nums; }
+.period-tile .tile-stats > span { white-space: nowrap; }
+@container (max-width: 90px) {
+  .tile-sep { display: none; }
+  .tile-stats { flex-direction: column; align-items: center; }
+}
+@container (max-width: 64px) { .tile-elev { display: none; } }
 .period-tile .tile-value { font-weight: 700; font-variant-numeric: tabular-nums; }
 .period-tile[data-level="0"] { color: var(--heat-fg-0); }
 .period-tile[data-level="1"] { color: var(--heat-fg-1); }
@@ -187,6 +201,16 @@ button.period-tile:focus-visible { outline: 3px solid var(--focus); outline-offs
 .toolbar .spacer { flex: 1; }
 
 /* ---------- garage ---------- */
+.garage-section { display: flex; flex-direction: column; gap: 10px; }
+.garage-heading { margin: 8px 0 0; font-size: 1.1rem; }
+.garage-heading .cell-link { font: inherit; }
+.grid.garage-grid { grid-template-columns: minmax(0, 1fr); }
+.grid.garage-grid > * { max-width: none; min-width: 0; }
+@media (min-width: 600px) { .grid.garage-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .grid.garage-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1200px) { .grid.garage-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.garage-grid .bike-card { padding: 12px; }
+.garage-grid .metrics { font-size: 0.82rem; gap: 2px 10px; }
 .bike-card { display: flex; flex-direction: column; gap: 10px; }
 .bike-thumb { aspect-ratio: 16 / 9; border-radius: var(--radius-sm); background: var(--surface-2); overflow: hidden; display: grid; place-items: center; color: var(--text-muted); }
 .bike-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -248,7 +272,8 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
     position: fixed; top: auto; bottom: 0; left: 0; right: 0; height: auto; flex-direction: row; z-index: 30;
     padding: 4px 6px; border-right: 0; border-top: 1px solid var(--border); overflow-x: auto;
   }
-  .brand, .sidebar-foot .btn-label { display: none; }
+  .profile { display: none; }
+  .sidebar-foot .btn-label { display: none; }
   .sidebar-foot { margin: 0; flex-direction: row; align-items: center; }
   .nav { flex-direction: row; flex: 1; justify-content: space-around; gap: 0; }
   .nav-link { flex-direction: column; gap: 2px; font-size: 0.68rem; padding: 6px 8px; min-width: 56px; text-align: center; position: relative; }

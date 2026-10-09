@@ -92,3 +92,48 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
   --overlay: rgba(0, 0, 0, 0.65);
 }
+
+:root[data-theme="matrix"] {
+  color-scheme: dark;
+  --font-sans: var(--font-mono);
+  --bg: #020a04;
+  --surface: #06140a;
+  --surface-2: #0a1f10;
+  --surface-hover: #0f2d17;
+  --border: #14532d;
+  --text: #b6f5c8;
+  --text-muted: #6fbf88;
+  --accent: #22ff66;
+  --accent-strong: #7dffa0;
+  --accent-contrast: #02140a;
+  --accent-soft: #0b3a1a;
+  --focus: #eaff5c;
+
+  --positive: #22ff66;
+  --negative: #ff5c7a;
+  --warning: #eaff5c;
+
+  --chart-1: #22ff66;
+  --chart-2: #2dd4bf;
+  --chart-3: #a3e635;
+  --chart-4: #38bdf8;
+  --chart-5: #eaff5c;
+  --chart-6: #86efac;
+  --chart-grid: #0f3a1d;
+
+  --heat-0: #0a1f10;
+  --heat-1: #0f4d24;
+  --heat-2: #147a37;
+  --heat-3: #1fc95a;
+  --heat-4: #7dffa0;
+  --heat-fg-0: var(--text);
+  --heat-fg-1: var(--text);
+  --heat-fg-2: #eafff0;
+  --heat-fg-3: var(--accent-contrast);
+  --heat-fg-4: var(--accent-contrast);
+
+  --radius: 6px;
+  --radius-sm: 4px;
+  --shadow: 0 0 0 1px rgba(34, 255, 102, 0.12), 0 0 14px rgba(34, 255, 102, 0.08);
+  --overlay: rgba(0, 8, 2, 0.75);
+}
