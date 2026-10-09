@@ -1,0 +1,84 @@
+/*
+ * Theme layer: every color, radius, shadow and font used by the app comes from
+ * these design tokens. To add a theme, add another [data-theme="name"] block
+ * that overrides the tokens (and list it in THEMES in lib/theme.js).
+ */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --surface-2: #f0f2f6;
+  --surface-hover: #e8ebf2;
+  --border: #d7dbe4;
+  --text: #171a21;
+  --text-muted: #566072;
+  --accent: #c2410c;
+  --accent-strong: #9a3412;
+  --accent-contrast: #ffffff;
+  --accent-soft: #ffedd5;
+  --focus: #1d4ed8;
+
+  --positive: #15803d;
+  --negative: #b91c1c;
+  --warning: #a16207;
+
+  --chart-1: #c2410c;
+  --chart-2: #1d4ed8;
+  --chart-3: #0f766e;
+  --chart-4: #7c3aed;
+  --chart-5: #b45309;
+  --chart-6: #be185d;
+  --chart-grid: #e3e6ed;
+
+  --heat-0: #e6e9f0;
+  --heat-1: #fed7aa;
+  --heat-2: #fdba74;
+  --heat-3: #f97316;
+  --heat-4: #c2410c;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 14px rgba(15, 23, 42, 0.05);
+  --overlay: rgba(15, 23, 42, 0.5);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e1117;
+  --surface: #161b24;
+  --surface-2: #1d2430;
+  --surface-hover: #262f3e;
+  --border: #2c3647;
+  --text: #e9edf4;
+  --text-muted: #9aa6ba;
+  --accent: #fb923c;
+  --accent-strong: #fdba74;
+  --accent-contrast: #1a1006;
+  --accent-soft: #3a2411;
+  --focus: #7cb0ff;
+
+  --positive: #4ade80;
+  --negative: #f87171;
+  --warning: #facc15;
+
+  --chart-1: #fb923c;
+  --chart-2: #60a5fa;
+  --chart-3: #2dd4bf;
+  --chart-4: #a78bfa;
+  --chart-5: #fbbf24;
+  --chart-6: #f472b6;
+  --chart-grid: #2a3342;
+
+  --heat-0: #212a38;
+  --heat-1: #5b3416;
+  --heat-2: #9a4f1a;
+  --heat-3: #e0711f;
+  --heat-4: #fdba74;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.3);
+  --overlay: rgba(0, 0, 0, 0.65);
+}
