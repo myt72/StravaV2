@@ -3,3 +3,5 @@ public/images/bikes/*
 settings.json
 config.local.js
 .env
+node_modules/
+cache.json
