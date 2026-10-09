@@ -187,3 +187,151 @@
 }
 .matrix-rain-toggle:hover { background: #16311d; }
 .matrix-rain-toggle:focus-visible { outline: 2px solid #e8fff0; outline-offset: 2px; }
+
+/* Retro OS (Windows 95): ported from V1 public/themes/retro-os.css and mapped to V2 classes/tokens. */
+:root[data-theme="retro-os"] {
+  color-scheme: light;
+  --font-sans: "MS Sans Serif", Tahoma, "Segoe UI", Geneva, Verdana, sans-serif;
+  --font-mono: "Courier New", Courier, monospace;
+  --bg: #008080;
+  --surface: #c0c0c0;
+  --surface-2: #d4d0c8;
+  --surface-hover: #d4d0c8;
+  --surface-deep: #a8a8a8;
+  --border: #808080;
+  --text: #000000;
+  --text-muted: #404040;
+  --accent: #000080;
+  --accent-strong: #000080;
+  --accent-secondary: #0a64a8;
+  --accent-contrast: #ffffff;
+  --accent-soft: #d4d0c8;
+  --focus: #800000;
+
+  --positive: #005a00;
+  --negative: #800000;
+  --warning: #5c3b00;
+
+  --chart-1: #000080;
+  --chart-2: #008080;
+  --chart-3: #800000;
+  --chart-4: #808000;
+  --chart-5: #800080;
+  --chart-6: #008000;
+  --chart-grid: #808080;
+
+  --heat-0: #d4d0c8;
+  --heat-1: #a0d8d8;
+  --heat-2: #40a0a0;
+  --heat-3: #0a64a8;
+  --heat-4: #000080;
+  --heat-fg-0: #000000;
+  --heat-fg-1: #000000;
+  --heat-fg-2: #000000;
+  --heat-fg-3: #ffffff;
+  --heat-fg-4: #ffffff;
+
+  --radius: 0;
+  --radius-sm: 0;
+  --shadow: none;
+  --overlay: rgba(0, 0, 0, 0.5);
+
+  --bevel-raised: #ffffff #404040 #404040 #ffffff;
+  --bevel-sunken: #808080 #ffffff #ffffff #808080;
+  --titlebar: linear-gradient(90deg, #000080, #0a64a8);
+
+  background: var(--bg);
+  font-size: 14px;
+}
+
+:root[data-theme="retro-os"] body { font-size: 14px; }
+:root[data-theme="retro-os"] *,
+:root[data-theme="retro-os"] *::before,
+:root[data-theme="retro-os"] *::after { border-radius: 0 !important; backdrop-filter: none; }
+
+/* raised surfaces */
+:root[data-theme="retro-os"] .card,
+:root[data-theme="retro-os"] .sidebar,
+:root[data-theme="retro-os"] .filterbar,
+:root[data-theme="retro-os"] .headline,
+:root[data-theme="retro-os"] .notice,
+:root[data-theme="retro-os"] dialog,
+:root[data-theme="retro-os"] .drawer,
+:root[data-theme="retro-os"] .chart-tip,
+:root[data-theme="retro-os"] .btn,
+:root[data-theme="retro-os"] .seg,
+:root[data-theme="retro-os"] .chip,
+:root[data-theme="retro-os"] .tab,
+:root[data-theme="retro-os"] .expand-btn {
+  background-color: #c0c0c0; color: #000000; border: 2px solid; border-color: #ffffff #404040 #404040 #ffffff; box-shadow: none;
+}
+:root[data-theme="retro-os"] .sidebar { border-width: 0 2px 0 0; border-color: #ffffff #404040 #404040 #ffffff; }
+:root[data-theme="retro-os"] .filterbar { background-color: #c0c0c0; }
+:root[data-theme="retro-os"] .headline { border-left-width: 2px; }
+:root[data-theme="retro-os"] .btn:active:not(:disabled),
+:root[data-theme="retro-os"] .chip:active,
+:root[data-theme="retro-os"] .tab:active,
+:root[data-theme="retro-os"] .expand-btn:active { border-color: #404040 #ffffff #ffffff #404040; }
+:root[data-theme="retro-os"] .btn:hover:not(:disabled) { background: #d4d0c8; }
+:root[data-theme="retro-os"] .btn.primary,
+:root[data-theme="retro-os"] .btn.primary:hover:not(:disabled) { background: #000080; color: #ffffff; border-color: #ffffff #404040 #404040 #ffffff; }
+:root[data-theme="retro-os"] .btn.danger { color: #800000; }
+:root[data-theme="retro-os"] .btn.ghost { background: transparent; border-color: transparent; }
+
+/* segmented / chips / tabs / nav: active = navy on white */
+:root[data-theme="retro-os"] .seg { border-color: #808080 #ffffff #ffffff #808080; background: #c0c0c0; }
+:root[data-theme="retro-os"] .seg button { color: #000000; background: #c0c0c0; border-radius: 0; }
+:root[data-theme="retro-os"] .seg button:hover { background: #d4d0c8; }
+:root[data-theme="retro-os"] .seg button[aria-pressed="true"],
+:root[data-theme="retro-os"] .chip[aria-pressed="true"],
+:root[data-theme="retro-os"] .tab[aria-selected="true"],
+:root[data-theme="retro-os"] .nav-link[aria-current="page"] { background: #000080; color: #ffffff; border-color: #404040 #ffffff #ffffff #404040; }
+:root[data-theme="retro-os"] .chip:hover,
+:root[data-theme="retro-os"] .tab:hover { background: #d4d0c8; color: #000000; }
+:root[data-theme="retro-os"] .chip[aria-pressed="true"]:hover,
+:root[data-theme="retro-os"] .tab[aria-selected="true"]:hover { background: #000080; color: #ffffff; }
+:root[data-theme="retro-os"] .tabs { border-bottom: 2px solid #808080; }
+:root[data-theme="retro-os"] .nav-link { color: #000000; }
+:root[data-theme="retro-os"] .nav-link:hover:not([aria-current="page"]) { background: #d4d0c8; }
+:root[data-theme="retro-os"] .kpi.primary { border-color: #000080; box-shadow: none; }
+
+/* sunken fields */
+:root[data-theme="retro-os"] select,
+:root[data-theme="retro-os"] input[type="text"],
+:root[data-theme="retro-os"] input[type="search"],
+:root[data-theme="retro-os"] input[type="number"],
+:root[data-theme="retro-os"] .table-wrap,
+:root[data-theme="retro-os"] .progress {
+  background: #ffffff; color: #000000; border: 2px solid; border-color: #808080 #ffffff #ffffff #808080;
+}
+:root[data-theme="retro-os"] select:hover,
+:root[data-theme="retro-os"] input:hover { background: #ffffff; }
+:root[data-theme="retro-os"] .progress { height: 16px; }
+:root[data-theme="retro-os"] .progress > div { background: repeating-linear-gradient(90deg, #000080 0 10px, transparent 10px 12px); }
+:root[data-theme="retro-os"] table.data th { background: #d4d0c8; color: #000000; }
+:root[data-theme="retro-os"] table.data tbody tr:hover td { background: #d4d0c8; }
+:root[data-theme="retro-os"] table.data tr.pinned td { background: #d4d0c8; }
+:root[data-theme="retro-os"] .table-wrap { background: #ffffff; }
+:root[data-theme="retro-os"] table.data td { color: #000000; }
+
+/* title bars */
+:root[data-theme="retro-os"] .card { padding: 8px; }
+:root[data-theme="retro-os"] .card-head { background: var(--titlebar); margin: -8px -8px 8px; padding: 3px 8px; }
+:root[data-theme="retro-os"] .card-head h2,
+:root[data-theme="retro-os"] .drawer-head h2,
+:root[data-theme="retro-os"] .drawer-head h3 { color: #ffffff; font-size: 14px; font-weight: 700; margin: 0; }
+:root[data-theme="retro-os"] .drawer-head { background: var(--titlebar); color: #ffffff; border-bottom: 0; }
+:root[data-theme="retro-os"] .drawer-head .btn { color: #000000; }
+:root[data-theme="retro-os"] .card-head .seg button { min-height: 26px; padding: 2px 10px; }
+:root[data-theme="retro-os"] dialog .dialog-body > h2:first-child,
+:root[data-theme="retro-os"] dialog .dialog-body > h3:first-child { background: var(--titlebar); color: #ffffff; margin: -20px -20px 4px; padding: 3px 8px; font-size: 14px; }
+:root[data-theme="retro-os"] dialog::backdrop { background: var(--overlay); }
+:root[data-theme="retro-os"] a,
+:root[data-theme="retro-os"] .cell-link { color: #000080; }
+
+/* charts, tooltips */
+:root[data-theme="retro-os"] .recharts-text { fill: #000000; }
+:root[data-theme="retro-os"] .yoy-tip tr.latest td { background: #d4d0c8; }
+:root[data-theme="retro-os"] .yoy-tip th { border-bottom-color: #808080; }
+:root[data-theme="retro-os"] .heat-cell,
+:root[data-theme="retro-os"] .period-tile { border: 1px solid #808080; }

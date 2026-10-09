@@ -8,7 +8,8 @@ import * as matrixRain from "./matrixRain.js";
  */
 export const THEMES = [
   { id: "default", label: "Default", supportsMode: true },
-  { id: "matrix", label: "90s Cyber-Thriller (Matrix / Hackers)", supportsMode: false, decor: matrixRain }
+  { id: "matrix", label: "90s Cyber-Thriller (Matrix / Hackers)", supportsMode: false, decor: matrixRain },
+  { id: "retro-os", label: "Retro OS (Windows 95)", supportsMode: false }
 ];
 
 const themeById = id => THEMES.find(t => t.id === id) || THEMES[0];

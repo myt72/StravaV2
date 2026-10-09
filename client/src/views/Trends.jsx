@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAppData } from "../context/AppData.jsx";
-import { METRICS, buildAnnualBreakdowns, buildAnnualSubRows, buildAnnualTotals, buildMonthlyTrend, buildYearOverYear, sumMetric } from "../lib/analytics.js";
+import { METRICS, buildAnnualBreakdowns, buildAnnualSubRows, buildAnnualTotals, buildMonthlyTrend, buildYearOverYear, buildYearOverYearWeekly, sumMetric } from "../lib/analytics.js";
 import { comma, feet, formatDuration, miles } from "../lib/format.js";
 import { navigate } from "../lib/router.js";
-import { usePersistentState } from "../lib/storage.js";
-import { Card, ChartTip, Chip, DataTable, Empty, PageHead, Segmented } from "../components/ui.jsx";
+import { readStored, usePersistentState } from "../lib/storage.js";
+import { Card, ChartTip, Chip, DataTable, Empty, PageHead, Segmented, YoyTip } from "../components/ui.jsx";
 
 const OPTIONS = [
   { value: "distance", label: "Distance" },
@@ -21,13 +21,20 @@ const BREAKDOWN_OPTIONS = [
 const TOTALS_KEY = "totals";
 const LINE_COLORS = ["var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)", "var(--chart-1)"];
 
+const YOY_OPTIONS = [
+  { value: "month", label: "Monthly" },
+  { value: "week", label: "Weekly" },
+  { value: "cum", label: "Cumulative" }
+];
+const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, allowEscapeViewBox: { x: true, y: true } };
+
 const axisTick = { fontSize: 12 };
 const tickFmt = metric => v => (metric === "count" ? comma(v) : comma(Math.round(v)));
 
 export default function Trends() {
   const { filtered, gearName } = useAppData();
   const [metric, setMetric] = usePersistentState("trendsMetric", "distance");
-  const [cumulative, setCumulative] = usePersistentState("trendsCumulative", false);
+  const [yoyMode, setYoyMode] = usePersistentState("trendsYoyMode", readStored("trendsCumulative", false) ? "cum" : "month");
   const [breakdown, setBreakdown] = usePersistentState("annualBreakdownMode", "monthly");
   const [expanded, setExpanded] = usePersistentState("annualExpandedYears", []);
   const [selected, setSelected] = usePersistentState("trendsTypes", []);
@@ -44,7 +51,11 @@ export default function Trends() {
   const years = Object.keys(annual.annual).map(Number).sort((a, b) => a - b);
   const annualData = years.slice().reverse().map(y => ({ label: String(y), value: sumMetric(activities.filter(a => new Date(a.start_date).getFullYear() === y), metric) }));
   const monthly = useMemo(() => buildMonthlyTrend(activities, metric).reverse(), [activities, metric]);
-  const yoy = useMemo(() => buildYearOverYear(activities, metric, cumulative), [activities, metric, cumulative]);
+  const yoyView = YOY_OPTIONS.some(o => o.value === yoyMode) ? yoyMode : "month";
+  const yoy = useMemo(
+    () => (yoyView === "week" ? buildYearOverYearWeekly(activities, metric) : buildYearOverYear(activities, metric, yoyView === "cum")),
+    [activities, metric, yoyView]
+  );
 
   const toggleType = t => setSelected(prev => {
     const cur = prev.filter(x => types.includes(x));
@@ -137,7 +148,7 @@ export default function Trends() {
                     <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                     <XAxis dataKey="label" tick={axisTick} />
                     <YAxis tick={axisTick} tickFormatter={tickFmt(metric)} width={56} />
-                    <Tooltip content={<ChartTip format={m.fmt} />} cursor={{ fill: "var(--surface-hover)" }} />
+                    <Tooltip {...tooltipProps} content={<ChartTip format={m.fmt} />} cursor={{ fill: "var(--surface-hover)" }} />
                     <Bar dataKey="value" name={m.label} fill="var(--chart-1)" radius={[4, 4, 0, 0]} cursor="pointer"
                       onClick={d => navigate("/activities", { year: d.label })} />
                   </BarChart>
@@ -151,7 +162,7 @@ export default function Trends() {
                     <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                     <XAxis dataKey="label" tick={axisTick} interval="preserveStartEnd" />
                     <YAxis tick={axisTick} tickFormatter={tickFmt(metric)} width={56} />
-                    <Tooltip content={<ChartTip format={m.fmt} />} cursor={{ fill: "var(--surface-hover)" }} />
+                    <Tooltip {...tooltipProps} content={<ChartTip format={m.fmt} />} cursor={{ fill: "var(--surface-hover)" }} />
                     <Bar dataKey="value" name={m.label} fill="var(--chart-2)" radius={[4, 4, 0, 0]} cursor="pointer"
                       onClick={d => navigate("/activities", { month: d.key })} />
                   </BarChart>
@@ -161,15 +172,14 @@ export default function Trends() {
           </div>
 
           <Card title={`Year over year · ${m.label.toLowerCase()}`}
-            right={<Segmented label="Line mode" value={cumulative ? "cum" : "month"} onChange={v => setCumulative(v === "cum")}
-              options={[{ value: "month", label: "Monthly" }, { value: "cum", label: "Cumulative" }]} />}>
-            <div className="chart-box short" role="img" aria-label="Line chart comparing years month by month">
+            right={<Segmented label="Line mode" value={yoyView} onChange={setYoyMode} options={YOY_OPTIONS} />}>
+            <div className="chart-box short" role="img" aria-label={`Line chart comparing years ${yoyView === "week" ? "week by week" : "month by month"}`}>
               <ResponsiveContainer>
                 <LineChart data={yoy.rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="var(--chart-grid)" />
-                  <XAxis dataKey="label" tick={axisTick} />
+                  <XAxis dataKey="label" tick={axisTick} interval={yoyView === "week" ? 3 : 0} />
                   <YAxis tick={axisTick} tickFormatter={tickFmt(metric)} width={56} />
-                  <Tooltip formatter={v => (v == null ? "–" : m.fmt(v))} contentStyle={{ background: "var(--surface)", border: "1px solid var(--border)" }} />
+                  <Tooltip {...tooltipProps} content={<YoyTip metricLabel={m.label} format={m.fmt} years={yoy.years} colors={LINE_COLORS} />} />
                   <Legend />
                   {yoy.years.map((y, i) => (
                     <Line key={y} type="monotone" dataKey={y} name={String(y)} stroke={LINE_COLORS[i % LINE_COLORS.length]}

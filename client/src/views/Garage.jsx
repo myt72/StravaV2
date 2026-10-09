@@ -244,7 +244,7 @@ function BikeDetail({ bike, bikes }) {
                 <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={v => comma(Math.round(v))} />
-                <Tooltip content={<ChartTip format={v => `${comma(v.toFixed(1))} mi`} />} cursor={{ fill: "var(--surface-hover)" }} />
+                <Tooltip wrapperStyle={{ zIndex: 1000, pointerEvents: "none" }} allowEscapeViewBox={{ x: true, y: true }} content={<ChartTip format={v => `${comma(v.toFixed(1))} mi`} />} cursor={{ fill: "var(--surface-hover)" }} />
                 <Bar dataKey="value" name="Distance" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
