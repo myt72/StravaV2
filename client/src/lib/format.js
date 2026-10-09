@@ -3,6 +3,14 @@ export const comma = x => Number(x).toLocaleString("en-US");
 export const miles = meters => (meters || 0) / 1609.34;
 export const feet = meters => (meters || 0) * 3.28084;
 
+export function ordinal(n) {
+  const lastTwoDigits = Math.abs(n) % 100;
+  const suffix = lastTwoDigits >= 11 && lastTwoDigits <= 13
+    ? "th"
+    : ({ 1: "st", 2: "nd", 3: "rd" }[Math.abs(n) % 10] || "th");
+  return `${n}${suffix}`;
+}
+
 export function formatDuration(seconds) {
   const total = Math.max(0, Math.round(seconds || 0));
   const hours = Math.floor(total / 3600);
