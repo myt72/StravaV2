@@ -80,7 +80,9 @@ function GarageList({ bikes }) {
   return (
     <div className="content">
       <PageHead title="Garage"
-        right={<a className="btn" href="#/garage/compare" aria-disabled={!selectedCount}>Compare bikes ({selectedCount})</a>}>
+        right={selectedCount
+          ? <a className="btn" href="#/garage/compare">Compare bikes ({selectedCount})</a>
+          : <button type="button" className="btn" disabled>Compare bikes (0)</button>}>
         Pick a bike for its yearly history and photos, or tick “Compare” on several bikes.
       </PageHead>
       <div className="toolbar">

@@ -137,7 +137,7 @@ export function DataTable({ columns, rows, rowKey, initialSort, onRowClick, page
     });
   }, [rows, sort, columns]);
 
-  useEffect(() => setLimit(pageSize || Infinity), [rows, pageSize]);
+  useEffect(() => setLimit(pageSize || Infinity), [rows.length, pageSize]);
 
   const toggleSort = col => {
     setSort(prev => prev?.key === col.key
