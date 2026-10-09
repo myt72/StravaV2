@@ -3,7 +3,7 @@ import { useAppData } from "../context/AppData.jsx";
 import { timeOfDayLabel, weekdayIndex, WEEKDAYS } from "../lib/analytics.js";
 import { fetchFeaturedActivities } from "../lib/api.js";
 import {
-  comma, extractStravaActivityId, feet, formatDate, formatDateTime, formatDuration, getDateKey, getStravaSegmentUrl, isValidHttpUrl, miles
+  comma, extractStravaActivityId, feet, formatDate, formatDateTime, formatDuration, getDateKey, getWeekStartMonday, getStravaSegmentUrl, isValidHttpUrl, miles
 } from "../lib/format.js";
 import { Card, Chip, DataTable, Drawer, PageHead } from "../components/ui.jsx";
 
@@ -86,22 +86,27 @@ export default function Activities({ route }) {
   const { params, replaceParams } = route;
   const [search, setSearch] = useState(params.q || "");
 
-  const filterKeys = ["date", "month", "year", "dow", "tod"];
-  const labels = { date: "Day", month: "Month", year: "Year", dow: "Weekday", tod: "Time of day" };
+  // week = Monday of the week (YYYY-MM-DD), quarter = YYYY-Qn, bike = gear id ("none" = activities without a bike)
+  const filterKeys = ["date", "week", "month", "quarter", "year", "dow", "tod", "bike"];
+  const labels = { date: "Day", week: "Week of", month: "Month", quarter: "Quarter", year: "Year", dow: "Weekday", tod: "Time of day", bike: "Bike" };
+  const filterValue = (k, v) => (k === "bike" ? (v === "none" ? "No bike" : gearName(v)) : v);
 
   const rows = useMemo(() => {
     const q = search.trim().toLowerCase();
     return filtered.activities.filter(a => {
       const d = new Date(a.start_date);
       if (params.date && getDateKey(a.start_date) !== params.date) return false;
+      if (params.week && getDateKey(getWeekStartMonday(a.start_date)) !== params.week) return false;
       if (params.month && getDateKey(a.start_date).slice(0, 7) !== params.month) return false;
+      if (params.quarter && `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}` !== params.quarter) return false;
       if (params.year && String(d.getFullYear()) !== String(params.year)) return false;
       if (params.dow && WEEKDAYS[weekdayIndex(d)] !== params.dow) return false;
       if (params.tod && timeOfDayLabel(d) !== params.tod) return false;
+      if (params.bike && (params.bike === "none" ? a.gear_id : a.gear_id !== params.bike)) return false;
       if (!q) return true;
       return [a.name, a.sport_type, gearName(a.gear_id)].some(v => String(v || "").toLowerCase().includes(q));
     });
-  }, [filtered.activities, params.date, params.month, params.year, params.dow, params.tod, search, gearName]);
+  }, [filtered.activities, params.date, params.week, params.month, params.quarter, params.year, params.dow, params.tod, params.bike, search, gearName]);
 
   const selected = params.id ? raw.activities.find(a => String(a.id) === String(params.id)) : null;
   const open = id => replaceParams({ ...params, id });
@@ -132,7 +137,7 @@ export default function Activities({ route }) {
           onChange={e => setSearch(e.target.value)} style={{ minWidth: 260 }} />
         {activeFilters.length > 0 && (
           <div className="chips" aria-label="Active drill-down filters">
-            {activeFilters.map(k => <Chip key={k} active removable onClick={() => dropFilter(k)}>{labels[k]}: {params[k]}</Chip>)}
+            {activeFilters.map(k => <Chip key={k} active removable onClick={() => dropFilter(k)}>{labels[k]}: {filterValue(k, params[k])}</Chip>)}
           </div>
         )}
       </div>

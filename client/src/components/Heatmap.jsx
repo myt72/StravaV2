@@ -9,6 +9,25 @@ function quantile(sorted, q) {
   return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
 }
 
+export const heatLevelFor = thresholds => v => {
+  if (v <= 0) return 0;
+  if (v <= thresholds[0]) return 1;
+  if (v <= thresholds[1]) return 2;
+  if (v <= thresholds[2]) return 3;
+  return 4;
+};
+
+export function HeatLegend({ children }) {
+  return (
+    <div className="heat-legend">
+      <span aria-live="polite" style={{ marginRight: "auto" }}>{children}</span>
+      Less
+      {[0, 1, 2, 3, 4].map(l => <span key={l} className="heat-cell" data-level={l} />)}
+      More
+    </div>
+  );
+}
+
 /** GitHub-style calendar. Arrow keys move between days, Enter opens that day. */
 export default function Heatmap({ activities, metric, onSelectDay }) {
   const m = METRICS[metric] || METRICS.distance;
@@ -51,13 +70,7 @@ export default function Heatmap({ activities, metric, onSelectDay }) {
     };
   }, [activities, m]);
 
-  const level = v => {
-    if (v <= 0) return 0;
-    if (v <= thresholds[0]) return 1;
-    if (v <= thresholds[1]) return 2;
-    if (v <= thresholds[2]) return 3;
-    return 4;
-  };
+  const level = heatLevelFor(thresholds);
 
   const lastIndex = cells.reduce((acc, c, i) => (c.future ? acc : i), 0);
   const cur = focus ?? lastIndex;
@@ -109,12 +122,7 @@ export default function Heatmap({ activities, metric, onSelectDay }) {
           ))}
         </div>
       </div>
-      <div className="heat-legend">
-        <span aria-live="polite" style={{ marginRight: "auto" }}>{focus !== null && active ? describe(active) : "Click a day to see its activities"}</span>
-        Less
-        {[0, 1, 2, 3, 4].map(l => <span key={l} className="heat-cell" data-level={l} />)}
-        More
-      </div>
+      <HeatLegend>{focus !== null && active ? describe(active) : "Click a day to see its activities"}</HeatLegend>
     </div>
   );
 }

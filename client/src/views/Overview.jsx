@@ -3,14 +3,24 @@ import { useAppData } from "../context/AppData.jsx";
 import { METRICS, buildHeadline, buildKpis, buildRecentPeriodStats, buildYearComparison } from "../lib/analytics.js";
 import { comma, feet, formatDate, formatDateRange, formatDuration, miles } from "../lib/format.js";
 import { navigate } from "../lib/router.js";
+import { usePersistentState } from "../lib/storage.js";
 import { ActivityLink, Card, Empty, PageHead, Segmented } from "../components/ui.jsx";
 import Heatmap from "../components/Heatmap.jsx";
+import PeriodGrid from "../components/PeriodGrid.jsx";
 
 export const METRIC_OPTIONS = [
   { value: "distance", label: "Distance" },
   { value: "moving_time", label: "Time" },
   { value: "elevation", label: "Elevation" },
   { value: "count", label: "Activities" }
+];
+
+const GRANULARITY_OPTIONS = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "quarter", label: "Quarter" },
+  { value: "year", label: "Year" }
 ];
 
 const Delta = ({ value }) => (
@@ -21,6 +31,8 @@ const Delta = ({ value }) => (
 export default function Overview() {
   const { filtered, insights, primaryMetric, setPrimaryMetric, gearName } = useAppData();
   const activities = filtered.activities;
+  const [storedGranularity, setGranularity] = usePersistentState("calendarGranularity", "day");
+  const granularity = GRANULARITY_OPTIONS.some(o => o.value === storedGranularity) ? storedGranularity : "day";
 
   const kpis = useMemo(() => buildKpis(activities, filtered.gearTotals), [activities, filtered.gearTotals]);
   const recent = useMemo(() => buildRecentPeriodStats(activities), [activities]);
@@ -90,8 +102,11 @@ export default function Overview() {
         </Card>
       </div>
 
-      <Card title={`Activity calendar · ${METRICS[primaryMetric].label.toLowerCase()}`}>
-        <Heatmap activities={activities} metric={primaryMetric} onSelectDay={date => navigate("/activities", { date })} />
+      <Card title={`Activity calendar · ${METRICS[primaryMetric].label.toLowerCase()}`}
+        right={<Segmented label="Calendar granularity" value={granularity} options={GRANULARITY_OPTIONS} onChange={setGranularity} />}>
+        {granularity === "day"
+          ? <Heatmap activities={activities} metric={primaryMetric} onSelectDay={date => navigate("/activities", { date })} />
+          : <PeriodGrid activities={activities} metric={primaryMetric} granularity={granularity} onSelect={params => navigate("/activities", params)} />}
       </Card>
 
       <Card title="Recent activities" right={<a className="btn sm" href="#/activities">All activities</a>}>
