@@ -279,6 +279,54 @@ export function buildYearOverYear(activities, metric, cumulative = false) {
   return { years: yearList, rows };
 }
 
+/** ISO week (Monday start) and ISO week-year for a date; Dec 29-31 may belong to week 1 of the next year. */
+function isoWeekParts(d) {
+  const thursday = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  thursday.setDate(thursday.getDate() + 4 - (thursday.getDay() || 7));
+  return { isoYear: thursday.getFullYear(), week: getWeekNumber(d) };
+}
+
+function isoWeeksInYear(y) {
+  return getWeekNumber(new Date(y, 11, 28));
+}
+
+/** Per-ISO-week-year values for year-over-year lines; rows are keyed by week number (1..53) with label "Wk N". */
+export function buildYearOverYearWeekly(activities, metric) {
+  const years = {};
+  (activities || []).forEach(a => {
+    const { isoYear, week } = isoWeekParts(new Date(a.start_date));
+    if (!years[isoYear]) years[isoYear] = Array(54).fill(0);
+    years[isoYear][week] += (METRICS[metric] || METRICS.count).value(a);
+  });
+  const yearList = Object.keys(years).map(Number).sort((a, b) => a - b);
+  const now = isoWeekParts(new Date());
+  const rows = Array.from({ length: 53 }, (_, i) => ({ label: `Wk ${i + 1}`, week: i + 1 }));
+  yearList.forEach(y => {
+    const last = y === now.isoYear ? now.week : isoWeeksInYear(y);
+    for (let w = 1; w <= 53; w++) rows[w - 1][y] = w > last ? null : years[y][w];
+  });
+  return { years: yearList, rows };
+}
+
+/**
+ * Rank years by value at one x position (highest = rank 1; ties share a rank, competition ranking 1,1,3).
+ * Input: { [year]: number | null }. Returns { ranked: [{ year, value, rank, diff, pct }], missing: [year] }.
+ * diff/pct are relative to the leader (0 for the leader; pct is null when the leader's value is 0).
+ */
+export function rankYearValues(valuesByYear) {
+  const entries = Object.entries(valuesByYear || {}).map(([year, value]) => ({ year: Number(year), value }));
+  const present = entries.filter(e => typeof e.value === "number" && Number.isFinite(e.value))
+    .sort((a, b) => b.value - a.value || b.year - a.year);
+  const missing = entries.filter(e => !present.includes(e)).map(e => e.year).sort((a, b) => b - a);
+  const top = present.length ? present[0].value : 0;
+  let rank = 0;
+  const ranked = present.map((e, i) => {
+    if (i === 0 || e.value !== present[i - 1].value) rank = i + 1;
+    return { year: e.year, value: e.value, rank, diff: e.value - top, pct: top ? ((e.value - top) / top) * 100 : null };
+  });
+  return { ranked, missing };
+}
+
 /* ---------- annual ---------- */
 
 export function buildAnnualBreakdowns(activities) {

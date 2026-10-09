@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { navigate } from "../lib/router.js";
+import { rankYearValues } from "../lib/analytics.js";
 
 /* ---------- icons ---------- */
 const paths = {
@@ -288,6 +289,39 @@ export function ChartTip({ active, payload, label, format }) {
           {payload.length > 1 ? `${p.name}: ` : ""}{format ? format(p.value) : p.value}
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Year-over-year tooltip: every year at the hovered position ranked, with difference and % vs #1. */
+export function YoyTip({ active, payload, label, metricLabel, format, years, colors }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload || {};
+  const { ranked, missing } = rankYearValues(Object.fromEntries(years.map(y => [y, row[y] ?? null])));
+  const latest = years[years.length - 1];
+  const swatch = y => <span className="yoy-swatch" style={{ background: colors[years.indexOf(y) % colors.length] }} aria-hidden="true" />;
+  return (
+    <div className="chart-tip yoy-tip">
+      <div className="yoy-head"><strong>{label}</strong><span className="muted">{metricLabel}</span></div>
+      <table>
+        <thead>
+          <tr><th>Year</th><th>Rank</th><th className="r">Value</th><th className="r">vs #1</th><th className="r">%</th></tr>
+        </thead>
+        <tbody>
+          {ranked.map(r => (
+            <tr key={r.year} className={r.year === latest ? "latest" : ""}>
+              <td>{swatch(r.year)}{r.year}</td>
+              <td>#{r.rank} <span className="muted">of {ranked.length}</span></td>
+              <td className="r">{format(r.value)}</td>
+              <td className="r">{r.rank === 1 ? "—" : `-${format(Math.abs(r.diff))}`}</td>
+              <td className={`r ${r.rank === 1 || r.pct == null ? "" : "negative"}`}>{r.rank === 1 || r.pct == null ? "—" : `${r.pct.toFixed(1)}%`}</td>
+            </tr>
+          ))}
+          {missing.map(y => (
+            <tr key={y} className="muted"><td>{swatch(y)}{y}</td><td colSpan={4}>no data</td></tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

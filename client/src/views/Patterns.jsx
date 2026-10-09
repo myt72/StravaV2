@@ -22,7 +22,7 @@ function PatternChart({ data, metric, color, paramKey, label }) {
           <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={v => comma(Math.round(v))} />
-          <Tooltip content={<ChartTip format={m.fmt} />} cursor={{ fill: "var(--surface-hover)" }} />
+          <Tooltip wrapperStyle={{ zIndex: 1000, pointerEvents: "none" }} allowEscapeViewBox={{ x: true, y: true }} content={<ChartTip format={m.fmt} />} cursor={{ fill: "var(--surface-hover)" }} />
           <Bar dataKey="value" name={m.label} fill={color} radius={[4, 4, 0, 0]} cursor="pointer"
             onClick={d => navigate("/activities", { [paramKey]: d.label })} />
         </BarChart>
