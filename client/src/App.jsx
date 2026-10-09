@@ -48,7 +48,7 @@ function Gate({ viewId, children }) {
 
 export default function App() {
   const route = useRoute();
-  const [theme, toggleTheme] = useTheme();
+  const themeState = useTheme();
   const viewId = VIEWS[route.segments[0]] ? route.segments[0] : "overview";
   const View = VIEWS[viewId];
   const title = NAV.find(n => n.id === viewId)?.label;
@@ -56,7 +56,7 @@ export default function App() {
   return (
     <div className="shell">
       <a className="skip-link" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById("main-content")?.focus(); }}>Skip to content</a>
-      <Sidebar current={viewId} theme={theme} onToggleTheme={toggleTheme} />
+      <Sidebar current={viewId} themeState={themeState} />
       <div className="main">
         <FilterBar />
         <main id="main-content" tabIndex={-1} aria-label={title} style={{ outline: "none" }}>
