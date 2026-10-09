@@ -32,10 +32,8 @@ function ProfileLink() {
   );
 }
 
-const THEME_LABELS = { light: "Light mode", dark: "Dark mode", matrix: "Matrix mode" };
-
-export function Sidebar({ current, theme, onToggleTheme }) {
-  const nextTheme = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+export function Sidebar({ current, themeState }) {
+  const { themeId, setThemeId, colorMode, toggleColorMode, theme } = themeState;
   const { backfillActive, prBackfill } = useAppData();
   return (
     <aside className="sidebar">
@@ -54,11 +52,19 @@ export function Sidebar({ current, theme, onToggleTheme }) {
         ))}
       </nav>
       <div className="sidebar-foot">
-        <button type="button" className="nav-link" style={{ border: 0, background: "transparent" }} onClick={onToggleTheme}
-          aria-label={`Switch to ${THEME_LABELS[nextTheme].toLowerCase()}`}>
-          <Icon name={theme === "light" ? "moon" : "sun"} />
-          <span className="btn-label">{THEME_LABELS[nextTheme]}</span>
-        </button>
+        <label className="theme-picker">
+          <span>Theme</span>
+          <select value={themeId} onChange={e => setThemeId(e.target.value)}>
+            {THEMES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+        </label>
+        {theme.supportsMode && (
+          <button type="button" className="nav-link mode-toggle" onClick={toggleColorMode}
+            aria-label={`Switch to ${colorMode === "dark" ? "light" : "dark"} mode`}>
+            <Icon name={colorMode === "light" ? "moon" : "sun"} />
+            <span className="btn-label">{colorMode === "dark" ? "Light mode" : "Dark mode"}</span>
+          </button>
+        )}
       </div>
     </aside>
   );

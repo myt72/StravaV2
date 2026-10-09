@@ -337,12 +337,14 @@ export function buildAnnualTotals(activities) {
  * (monthly = Jan..Dec combined across years; weekly is not supported when combined and returns []).
  * Weeks are keyed by their Monday (YYYY-MM-DD) so rows always sum to their parent; trend is the
  * percent change in distance vs the previous week that has data (null when there is none), as in V1.
+ * Months get the same trend (distance vs the previous month with data); pass trendActivities (the full
+ * selection, all years) so January can compare with the previous December. Not computed with combineYears.
  */
-export function buildAnnualSubRows(activities, mode, { segmentData = {}, gearName = id => id, combineYears = false } = {}) {
+export function buildAnnualSubRows(activities, mode, { segmentData = {}, gearName = id => id, combineYears = false, trendActivities = null } = {}) {
   const buckets = new Map();
   const bucketFor = (key, extra) => {
     if (!buckets.has(key)) {
-      buckets.set(key, { key, ...extra, distance: 0, elevation: 0, count: 0, moving_time: 0, pr_count: 0, days: new Set() });
+      buckets.set(key, { key, ...extra, distance: 0, elevation: 0, count: 0, moving_time: 0, pr_count: 0, maxRideDistance: 0, maxRideElevation: 0, days: new Set() });
     }
     return buckets.get(key);
   };
@@ -369,11 +371,14 @@ export function buildAnnualSubRows(activities, mode, { segmentData = {}, gearNam
     b.count += 1;
     b.moving_time += a.moving_time || 0;
     b.pr_count += prCountFor(segmentData, a);
+    b.maxRideDistance = Math.max(b.maxRideDistance, a.distance || 0);
+    b.maxRideElevation = Math.max(b.maxRideElevation, a.total_elevation_gain || 0);
     b.days.add(getDateKey(a.start_date));
   }
 
   const rows = [...buckets.values()].map(({ days, ...r }) => {
     r.activeDaysCount = days.size;
+    r.maxStreak = computeMaxStreak([...days]);
     if (r.moving_time > 0 && r.distance > 0) r.avg_speed_mph = (r.distance / 1609.34) / (r.moving_time / 3600);
     return r;
   });
@@ -383,6 +388,20 @@ export function buildAnnualSubRows(activities, mode, { segmentData = {}, gearNam
     rows.forEach((r, i) => {
       const prev = i > 0 ? rows[i - 1] : null;
       r.trend = prev && prev.distance > 0 ? ((r.distance - prev.distance) / prev.distance) * 100 : null;
+    });
+  }
+  if (mode === "monthly" && !combineYears) {
+    const totals = {};
+    for (const a of trendActivities || activities || []) {
+      const d = new Date(a.start_date);
+      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      totals[k] = (totals[k] || 0) + (a.distance || 0);
+    }
+    const keys = Object.keys(totals).sort();
+    rows.forEach(r => {
+      const i = keys.indexOf(r.key);
+      const prev = i > 0 ? totals[keys[i - 1]] : 0;
+      r.trend = prev > 0 ? ((r.distance - prev) / prev) * 100 : null;
     });
   }
   return rows.reverse();
@@ -447,7 +466,7 @@ export function buildPeriodGrid(activities, metric, granularity, now = new Date(
   const rows = [];
   if (granularity === "year") {
     const cells = [];
-    for (let y = minYear; y <= maxYear; y++) cells.push(cell(String(y), String(y), String(y), new Date(y, 0, 1), { year: String(y) }));
+    for (let y = maxYear; y >= minYear; y--) cells.push(cell(String(y), String(y), String(y), new Date(y, 0, 1), { year: String(y) }));
     rows.push({ year: null, cells });
   } else {
     for (let y = maxYear; y >= minYear; y--) rows.push({ year: y, cells: yearCells(y) });

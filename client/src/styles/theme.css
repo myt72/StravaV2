@@ -1,7 +1,7 @@
 /*
  * Theme layer: every color, radius, shadow and font used by the app comes from
  * these design tokens. To add a theme, add another [data-theme="name"] block
- * that overrides the tokens (and list it in THEMES in lib/theme.js).
+ * that overrides the tokens (and add an entry to THEMES in lib/theme.js).
  */
 :root,
 :root[data-theme="light"] {
@@ -93,36 +93,38 @@
   --overlay: rgba(0, 0, 0, 0.65);
 }
 
+/* Matrix: ported from V1 matrix-thriller.css; panels are translucent so the rain canvas shows through. */
 :root[data-theme="matrix"] {
   color-scheme: dark;
-  --font-sans: var(--font-mono);
-  --bg: #020a04;
-  --surface: #06140a;
-  --surface-2: #0a1f10;
-  --surface-hover: #0f2d17;
-  --border: #14532d;
-  --text: #b6f5c8;
-  --text-muted: #6fbf88;
-  --accent: #22ff66;
-  --accent-strong: #7dffa0;
-  --accent-contrast: #02140a;
-  --accent-soft: #0b3a1a;
-  --focus: #eaff5c;
+  --font-sans: "OCR A Std", "Courier New", monospace;
+  --font-mono: "OCR A Std", "Courier New", monospace;
+  --bg: #050805;
+  --surface: #172019;
+  --surface-2: #1a241c;
+  --surface-hover: #16311d;
+  --border: #3b6c49;
+  --text: #e0f6e5;
+  --text-muted: #b6d8be;
+  --accent: #39ff66;
+  --accent-strong: #39ff66;
+  --accent-contrast: #071009;
+  --accent-soft: #16311d;
+  --focus: #e8fff0;
 
-  --positive: #22ff66;
-  --negative: #ff5c7a;
-  --warning: #eaff5c;
+  --positive: #39ff66;
+  --negative: #ff7373;
+  --warning: #e4e878;
 
-  --chart-1: #22ff66;
-  --chart-2: #2dd4bf;
-  --chart-3: #a3e635;
-  --chart-4: #38bdf8;
-  --chart-5: #eaff5c;
-  --chart-6: #86efac;
-  --chart-grid: #0f3a1d;
+  --chart-1: #39ff66;
+  --chart-2: #00c7a5;
+  --chart-3: #a8ff70;
+  --chart-4: #46d7be;
+  --chart-5: #e4e878;
+  --chart-6: #baffc7;
+  --chart-grid: #2f5a3b;
 
-  --heat-0: #0a1f10;
-  --heat-1: #0f4d24;
+  --heat-0: #1a241c;
+  --heat-1: #14532d;
   --heat-2: #147a37;
   --heat-3: #1fc95a;
   --heat-4: #7dffa0;
@@ -132,8 +134,56 @@
   --heat-fg-3: var(--accent-contrast);
   --heat-fg-4: var(--accent-contrast);
 
-  --radius: 6px;
-  --radius-sm: 4px;
-  --shadow: 0 0 0 1px rgba(34, 255, 102, 0.12), 0 0 14px rgba(34, 255, 102, 0.08);
+  --radius: 3px;
+  --radius-sm: 2px;
+  --shadow: 0 0 18px #00ff6622;
+  --shadow-soft: 0 0 9px #00ff6618;
   --overlay: rgba(0, 8, 2, 0.75);
+
+  --glass-sidebar: rgba(8, 14, 10, 0.8);
+  --glass-card: rgba(10, 18, 12, 0.78);
+  --glass-blur: blur(1.5px);
+  --opaque-sidebar: #0b100d;
+  --opaque-card: #172019;
+  --opaque-overlay: #0f1711;
+
+  background: var(--bg);
 }
+
+:root[data-theme="matrix"] body,
+:root[data-theme="matrix"] #root,
+:root[data-theme="matrix"] .shell,
+:root[data-theme="matrix"] .main { background: transparent; }
+
+:root[data-theme="matrix"] .sidebar { background: var(--glass-sidebar); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+:root[data-theme="matrix"] .card,
+:root[data-theme="matrix"] .table-wrap,
+:root[data-theme="matrix"] .filterbar,
+:root[data-theme="matrix"] .headline { background: var(--glass-card); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+:root[data-theme="matrix"] .card,
+:root[data-theme="matrix"] .table-wrap { box-shadow: var(--shadow); }
+:root[data-theme="matrix"] dialog,
+:root[data-theme="matrix"] .drawer,
+:root[data-theme="matrix"] .chart-tip,
+:root[data-theme="matrix"] select,
+:root[data-theme="matrix"] option { background: var(--opaque-overlay); color: var(--text); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="matrix"] .progress > div { background: #39ff66; box-shadow: 0 0 8px #39ff6670; }
+:root[data-theme="matrix"] .progress { background: #26382b; border: 1px solid #385842; }
+:root[data-theme="matrix"] table.data th { background: transparent; }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-theme="matrix"] .sidebar { background: var(--opaque-sidebar); }
+  :root[data-theme="matrix"] .card,
+  :root[data-theme="matrix"] .table-wrap,
+  :root[data-theme="matrix"] .filterbar,
+  :root[data-theme="matrix"] .headline { background: var(--opaque-card); }
+}
+
+/* Rain toggle button (created by lib/matrixRain.js; exists only while Matrix is active) */
+.matrix-rain-toggle {
+  position: fixed; right: 12px; bottom: 12px; z-index: 50; padding: 6px 10px;
+  font: 12px "OCR A Std", "Courier New", monospace; color: #baffc7; background: #0b100d;
+  border: 1px solid #39ff66; border-radius: 2px; cursor: pointer; box-shadow: 0 0 10px #39ff6633;
+}
+.matrix-rain-toggle:hover { background: #16311d; }
+.matrix-rain-toggle:focus-visible { outline: 2px solid #e8fff0; outline-offset: 2px; }

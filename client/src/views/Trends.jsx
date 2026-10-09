@@ -42,8 +42,8 @@ export default function Trends() {
   const m = METRICS[metric];
   const annual = useMemo(() => buildAnnualBreakdowns(activities), [activities]);
   const years = Object.keys(annual.annual).map(Number).sort((a, b) => a - b);
-  const annualData = years.map(y => ({ label: String(y), value: sumMetric(activities.filter(a => new Date(a.start_date).getFullYear() === y), metric) }));
-  const monthly = useMemo(() => buildMonthlyTrend(activities, metric), [activities, metric]);
+  const annualData = years.slice().reverse().map(y => ({ label: String(y), value: sumMetric(activities.filter(a => new Date(a.start_date).getFullYear() === y), metric) }));
+  const monthly = useMemo(() => buildMonthlyTrend(activities, metric).reverse(), [activities, metric]);
   const yoy = useMemo(() => buildYearOverYear(activities, metric, cumulative), [activities, metric, cumulative]);
 
   const toggleType = t => setSelected(prev => {
@@ -64,7 +64,7 @@ export default function Trends() {
   const subRowsByKey = useMemo(() => {
     const byYear = {};
     activities.forEach(a => { (byYear[new Date(a.start_date).getFullYear()] ||= []).push(a); });
-    const opts = { segmentData: filtered.segmentData, gearName };
+    const opts = { segmentData: filtered.segmentData, gearName, trendActivities: activities };
     const out = {};
     openKeys.forEach(id => {
       out[id] = id === TOTALS_KEY
@@ -102,7 +102,7 @@ export default function Trends() {
     { key: "maxStreak", label: "Max streak", align: "r", render: r => num(r.maxStreak, v => `${comma(v)} days`) },
     { key: "maxRideDistance", label: "Max ride", align: "r", render: r => num(r.maxRideDistance, v => `${comma(miles(v).toFixed(1))} mi`) },
     { key: "maxRideElevation", label: "Max climb", align: "r", render: r => num(r.maxRideElevation, v => `${comma(feet(v).toFixed(0))} ft`) },
-    ...(mode === "weekly" ? [{ key: "trend", label: "vs prev week", align: "r", sortable: false, render: () => "", renderChild: c => trendCell(c.trend) }] : []),
+    ...(mode !== "bike" ? [{ key: "trend", label: mode === "weekly" ? "vs prev week" : "vs prev month", align: "r", sortable: false, render: () => "", renderChild: c => (c.trend === undefined ? "" : trendCell(c.trend)) }] : []),
     ...(mode === "bike" ? [
       { key: "pr_count", label: "PRs", align: "r", sortable: false, render: () => "", renderChild: c => comma(c.pr_count) },
       { key: "avg_speed_mph", label: "Avg speed", align: "r", sortable: false, render: () => "", renderChild: c => num(c.avg_speed_mph, v => `${v.toFixed(1)} mph`) }
