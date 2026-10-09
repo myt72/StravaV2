@@ -1,0 +1,51 @@
+body[data-theme="prism"] {
+  --bg: #000; --bg-2: radial-gradient(ellipse at 50% 100%, #161616, #000 72%);
+  --surface: #080808; --surface-strong: #101010; --surface-muted: #141414; --surface-deep: #030303;
+  --text: #fff; --text-muted: #d0d0d0; --border: #777;
+  --accent: #fff; --accent-2: #aaa; --distance: #ff6a54; --time: #ffe34d; --elevation: #57e887;
+  --danger: #ff6a54; --success: #57e887; --warning: #ffe34d; --shadow: 0 8px 24px #000; --shadow-soft: 0 3px 10px #000;
+  --radius: 2px; --radius-sm: 1px; --glass: none; --t-on-accent: #000; --t-track: #333;
+  --t-fill-distance: #ff6a54; --t-fill-time: #ffe34d; --t-fill-elevation: #57e887;
+  font-family: Futura, "Century Gothic", "Helvetica Neue", Arial, sans-serif; background: var(--bg-2); color: var(--text);
+}
+body[data-theme="prism"] .side-rail { background: #050505; border-right: 1px solid #777; }
+body[data-theme="prism"] .brand-orb { background: conic-gradient(#ff453a, #ffb224, #ffe34d, #56e878, #38bfff, #955bff, #ff453a); box-shadow: none; }
+body[data-theme="prism"] .menu-trigger, body[data-theme="prism"] .segmented-btn.active,
+body[data-theme="prism"] .annual-breakdown-mode-btn.active, body[data-theme="prism"] .pin-button.pinned { background: #fff; color: #000; border: 1px solid #fff; }
+body[data-theme="prism"] .secondary-trigger, body[data-theme="prism"] .dropdown-menu,
+body[data-theme="prism"] #theme-manager, body[data-theme="prism"] #bike-gallery { background: #080808; color: #fff; border: 1px solid #777; }
+body[data-theme="prism"] .dropdown-item { color: #fff; }
+body[data-theme="prism"] .accent-bar { background: linear-gradient(90deg, #ff453a, #ffb224, #ffe34d, #56e878, #38bfff, #955bff); }
+body[data-theme="prism"] .hero-main::before { background: linear-gradient(115deg, transparent 48%, #fff1 49%, transparent 50%); }
+body[data-theme="prism"] .kpi-card::after { display: none; }
+body[data-theme="prism"] .status-bar, body[data-theme="prism"] .hero-main,
+body[data-theme="prism"] .chart-card, body[data-theme="prism"] .kpi-card, body[data-theme="prism"] .hero-stat,
+body[data-theme="prism"] .record-card, body[data-theme="prism"] .highlight-card,
+body[data-theme="prism"] .featured-activity-card, body[data-theme="prism"] .comparison-mobile-card,
+body[data-theme="prism"] .bike-insight-card { background: #080808; color: #fff; --text: #fff; --text-muted: #d0d0d0; border: 1px solid #555; box-shadow: none; }
+body[data-theme="prism"] .bar-track, body[data-theme="prism"] .stack-list-track,
+body[data-theme="prism"] .timeline-bar-track, body[data-theme="prism"] .annual-strip-track { background: #292929; border: 1px solid #555; }
+body[data-theme="prism"] .bar-fill, body[data-theme="prism"] .stack-list-fill { background: linear-gradient(90deg, #ff453a, #ffb224, #ffe34d, #56e878, #38bfff, #955bff); }
+body[data-theme="prism"] .timeline-bar-fill, body[data-theme="prism"] .annual-strip-fill { background: linear-gradient(180deg, #ff453a, #ffb224, #ffe34d, #56e878, #38bfff, #955bff); }
+body[data-theme="prism"] .timeline-bars-wrap, body[data-theme="prism"] .annual-strip-chart,
+body[data-theme="prism"] .timeline-bars-wrap.tone-distance, body[data-theme="prism"] .timeline-bars-wrap.tone-time,
+body[data-theme="prism"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="prism"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: linear-gradient(180deg, #ff453a, #ff8b58); }
+body[data-theme="prism"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: linear-gradient(180deg, #ffe34d, #f7a53c); }
+body[data-theme="prism"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: linear-gradient(180deg, #38bfff, #955bff); }
+body[data-theme="prism"] .bar-label, body[data-theme="prism"] .bar-value, body[data-theme="prism"] .timeline-bar-value,
+body[data-theme="prism"] .timeline-bar-label, body[data-theme="prism"] .annual-strip-top,
+body[data-theme="prism"] .annual-strip-label { color: #fff; }
+body[data-theme="prism"] .annual-strip-sub { color: #d0d0d0; }
+body[data-theme="prism"] .spinner-wheel { border-color: #555; border-top-color: #fff; }
+@media (max-width: 720px) { body[data-theme="prism"] .hero-period-stats { grid-template-columns: 1fr; } }
+body[data-theme="prism"] .status-bar, body[data-theme="prism"] .hero-main, body[data-theme="prism"] .kpi-card,
+body[data-theme="prism"] .chart-card, body[data-theme="prism"] .hero-stat, body[data-theme="prism"] .record-card,
+body[data-theme="prism"] .highlight-card, body[data-theme="prism"] .featured-activity-card,
+body[data-theme="prism"] .comparison-mobile-card, body[data-theme="prism"] .bike-insight-card,
+body[data-theme="prism"] #theme-manager, body[data-theme="prism"] #bike-gallery { border-radius: var(--radius); }
+body[data-theme="prism"] .segmented-control, body[data-theme="prism"] .segmented-btn,
+body[data-theme="prism"] .annual-breakdown-mode-btn, body[data-theme="prism"] .pin-button,
+body[data-theme="prism"] .filter-field select, body[data-theme="prism"] .filter-field input,
+body[data-theme="prism"] .bike-controls input, body[data-theme="prism"] .bike-controls select,
+body[data-theme="prism"] .side-meta, body[data-theme="prism"] .dropdown-menu { border-radius: var(--radius-sm); }

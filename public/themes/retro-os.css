@@ -1,0 +1,112 @@
+/* retro-os theme: every selector is scoped to body[data-theme="retro-os"] */
+body[data-theme="retro-os"] {
+  --bg: #008080;
+  --bg-2: #008080;
+  --surface: #c0c0c0;
+  --surface-strong: #d4d0c8;
+  --surface-muted: #c0c0c0;
+  --surface-deep: #a8a8a8;
+  --text: #000000;
+  --text-muted: #404040;
+  --border: #808080;
+  --accent: #000080;
+  --accent-2: #0a64a8;
+  --distance: #000080;
+  --time: #5c3b00;
+  --elevation: #005a00;
+  --danger: #960000;
+  --success: #005a00;
+  --warning: #5c3b00;
+  --shadow: none;
+  --shadow-soft: none;
+  --radius: 0;
+  --radius-sm: 0;
+  --glass: none;
+  --t-on-accent: #ffffff;
+  --t-track: #ffffff;
+  --t-fill-distance: #000080;
+  --t-fill-time: #808000;
+  --t-fill-elevation: #008000;
+  font-family: "MS Sans Serif", Tahoma, "Segoe UI", Geneva, Verdana, sans-serif;
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+/* Replace Default's hard-coded colors so nothing leaks */
+body[data-theme="retro-os"] .side-rail { background: #c0c0c0; backdrop-filter: none; border-right: 1px solid var(--border); }
+body[data-theme="retro-os"] .brand-orb { background: var(--accent); box-shadow: 0 0 0 3px var(--surface-strong), 0 0 0 4px var(--accent-2); }
+body[data-theme="retro-os"] .dropdown-menu { backdrop-filter: none; border-radius: var(--radius-sm); }
+body[data-theme="retro-os"] .menu-trigger { background: var(--accent); color: var(--t-on-accent); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-soft); }
+body[data-theme="retro-os"] .secondary-trigger { background: var(--surface-strong); color: var(--text); border: 1px solid var(--border); }
+body[data-theme="retro-os"] .segmented-btn.active,
+body[data-theme="retro-os"] .annual-breakdown-mode-btn.active,
+body[data-theme="retro-os"] .pin-button.pinned { background: var(--accent); color: var(--t-on-accent); }
+body[data-theme="retro-os"] .accent-bar { background: var(--accent); }
+body[data-theme="retro-os"] .hero-main::before { background: none; }
+body[data-theme="retro-os"] .hero-stat { background: var(--surface-strong); }
+body[data-theme="retro-os"] .kpi-card::after { display: none; }
+body[data-theme="retro-os"] .status-bar,
+body[data-theme="retro-os"] .hero-main,
+body[data-theme="retro-os"] .kpi-card { border-radius: var(--radius); }
+body[data-theme="retro-os"] .chart-card,
+body[data-theme="retro-os"] .hero-stat,
+body[data-theme="retro-os"] .record-card,
+body[data-theme="retro-os"] .highlight-card,
+body[data-theme="retro-os"] .featured-activity-card,
+body[data-theme="retro-os"] .comparison-mobile-card,
+body[data-theme="retro-os"] .bike-insight-card,
+body[data-theme="retro-os"] .segmented-control,
+body[data-theme="retro-os"] .segmented-btn,
+body[data-theme="retro-os"] .annual-breakdown-mode-btn,
+body[data-theme="retro-os"] .pin-button,
+body[data-theme="retro-os"] .filter-field select,
+body[data-theme="retro-os"] .filter-field input,
+body[data-theme="retro-os"] .side-meta { border-radius: var(--radius-sm); }
+body[data-theme="retro-os"] .spinner-wheel { border-color: var(--border); border-top-color: var(--accent); }
+
+/* Charts: explicit fills, tracks and text colors (AA contrast on --surface-muted) */
+body[data-theme="retro-os"] .bar-track,
+body[data-theme="retro-os"] .stack-list-track { background: var(--t-track); }
+body[data-theme="retro-os"] .bar-fill,
+body[data-theme="retro-os"] .stack-list-fill { background: var(--accent); }
+body[data-theme="retro-os"] .bar-label { color: var(--text); }
+body[data-theme="retro-os"] .bar-value { color: var(--text-muted); }
+body[data-theme="retro-os"] .timeline-bars-wrap,
+body[data-theme="retro-os"] .annual-strip-chart,
+body[data-theme="retro-os"] .timeline-bars-wrap.tone-distance,
+body[data-theme="retro-os"] .timeline-bars-wrap.tone-time,
+body[data-theme="retro-os"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="retro-os"] .timeline-bar-track,
+body[data-theme="retro-os"] .annual-strip-track { background: var(--t-track); border: 1px solid var(--border); box-sizing: border-box; border-radius: var(--radius-sm); }
+body[data-theme="retro-os"] .timeline-bar-fill,
+body[data-theme="retro-os"] .annual-strip-fill { background: var(--accent); border-radius: 0; }
+body[data-theme="retro-os"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="retro-os"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="retro-os"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="retro-os"] .timeline-bar-value,
+body[data-theme="retro-os"] .annual-strip-top { color: var(--text); }
+body[data-theme="retro-os"] .timeline-bar-label,
+body[data-theme="retro-os"] .annual-strip-label { color: var(--text); }
+body[data-theme="retro-os"] .annual-strip-sub { color: var(--text-muted); }
+
+body[data-theme="retro-os"] *, body[data-theme="retro-os"] button, body[data-theme="retro-os"] select, body[data-theme="retro-os"] input { font-family: inherit; border-radius: 0; backdrop-filter: none; }
+body[data-theme="retro-os"] .card, body[data-theme="retro-os"] .glass-card, body[data-theme="retro-os"] .chart-card, body[data-theme="retro-os"] .kpi-card, body[data-theme="retro-os"] .hero-stat, body[data-theme="retro-os"] .record-card, body[data-theme="retro-os"] .dropdown-menu, body[data-theme="retro-os"] .topbar, body[data-theme="retro-os"] .side-rail { background-color: #c0c0c0; border: 2px solid; border-color: #ffffff #404040 #404040 #ffffff; box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #dfdfdf; }
+body[data-theme="retro-os"] .topbar { padding: 10px 14px; }
+body[data-theme="retro-os"] .side-rail { border-width: 2px; }
+body[data-theme="retro-os"] .card-title-wrap { background: linear-gradient(90deg, #000080, #0a64a8); margin: -8px -8px 0; padding: 3px 8px; }
+body[data-theme="retro-os"] .card-title-wrap h2, body[data-theme="retro-os"] .card-title-wrap .card-kicker { color: #ffffff; font-size: 14px; display: inline-block; margin: 0; }
+body[data-theme="retro-os"] .card-title-wrap .card-kicker { margin-right: 8px; }
+body[data-theme="retro-os"] .menu-trigger, body[data-theme="retro-os"] .secondary-trigger, body[data-theme="retro-os"] .segmented-btn, body[data-theme="retro-os"] .dropdown-item { background: #c0c0c0; color: #000000; border: 2px solid; border-color: #ffffff #404040 #404040 #ffffff; box-shadow: inset -1px -1px 0 #808080; }
+body[data-theme="retro-os"] .menu-trigger:active, body[data-theme="retro-os"] .secondary-trigger:active { border-color: #404040 #ffffff #ffffff #404040; }
+body[data-theme="retro-os"] .segmented-btn.active, body[data-theme="retro-os"] .annual-breakdown-mode-btn.active, body[data-theme="retro-os"] .pin-button.pinned { background: #000080; color: #ffffff; border-color: #404040 #ffffff #ffffff #404040; }
+body[data-theme="retro-os"] .segmented-control { background: #c0c0c0; border-radius: 0; border: 2px solid; border-color: #808080 #ffffff #ffffff #808080; }
+body[data-theme="retro-os"] input, body[data-theme="retro-os"] select { background: #ffffff; color: #000000; border: 2px solid; border-color: #808080 #ffffff #ffffff #808080; }
+body[data-theme="retro-os"] .bar-track, body[data-theme="retro-os"] .stack-list-track, body[data-theme="retro-os"] .timeline-bar-track, body[data-theme="retro-os"] .annual-strip-track { background: #ffffff; border: 2px solid; border-color: #808080 #ffffff #ffffff #808080; border-radius: 0; }
+body[data-theme="retro-os"] .bar-track, body[data-theme="retro-os"] .stack-list-track { height: 16px; }
+body[data-theme="retro-os"] .bar-fill, body[data-theme="retro-os"] .stack-list-fill { border-radius: 0; background: repeating-linear-gradient(90deg, #000080 0 10px, transparent 10px 12px); }
+body[data-theme="retro-os"] .timeline-bar-fill, body[data-theme="retro-os"] .annual-strip-fill { background: conic-gradient(#000080 25%, #ffffff 0 50%, #000080 0 75%, #ffffff 0) 0 0/4px 4px; }
+body[data-theme="retro-os"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: conic-gradient(#000080 25%, #ffffff 0 50%, #000080 0 75%, #ffffff 0) 0 0/4px 4px; }
+body[data-theme="retro-os"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: conic-gradient(#808000 25%, #ffffff 0 50%, #808000 0 75%, #ffffff 0) 0 0/4px 4px; }
+body[data-theme="retro-os"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: conic-gradient(#008000 25%, #ffffff 0 50%, #008000 0 75%, #ffffff 0) 0 0/4px 4px; }
+body[data-theme="retro-os"] .brand-orb { border-radius: 0; box-shadow: none; }
+body[data-theme="retro-os"] .dropdown-menu { background: #c0c0c0; }

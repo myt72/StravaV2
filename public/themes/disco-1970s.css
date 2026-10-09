@@ -1,0 +1,56 @@
+body[data-theme="disco-1970s"] {
+  --bg: #21180f; --bg-2: repeating-conic-gradient(#342519 0 25%, #251c13 0 50%) 0 0/44px 44px;
+  --surface: #261d14; --surface-strong: #302419; --surface-muted: #33271a; --surface-deep: #17120d;
+  --text: #fff0cf; --text-muted: #ddc89f; --border: #9a7838;
+  --accent: #e5a93b; --accent-2: #ff9a50; --distance: #f2c557; --time: #f08736; --elevation: #a9ba54;
+  --danger: #f06443; --success: #a9ba54; --warning: #f2c557; --shadow: 0 8px 22px #0009; --shadow-soft: 0 4px 12px #0007;
+  --radius: 8px; --radius-sm: 5px; --glass: none; --t-on-accent: #20170e; --t-track: #51402b;
+  --t-fill-distance: #f2c557; --t-fill-time: #f08736; --t-fill-elevation: #a9ba54;
+  font-family: "Bookman Old Style", Georgia, serif; background: var(--bg-2); color: var(--text);
+}
+body[data-theme="disco-1970s"] .side-rail { background: #17120d; border-right: 2px solid #9a7838; }
+body[data-theme="disco-1970s"] .brand-orb { background: radial-gradient(circle at 30% 25%, #fff 0 4%, #d4d4cd 5% 14%, #888 15% 18%, #bbb 19% 28%, #555 29%); box-shadow: 0 0 14px #e5a93b66; }
+body[data-theme="disco-1970s"] .menu-trigger, body[data-theme="disco-1970s"] .segmented-btn.active,
+body[data-theme="disco-1970s"] .annual-breakdown-mode-btn.active, body[data-theme="disco-1970s"] .pin-button.pinned { background: #e5a93b; color: #20170e; border: 1px solid #f2c557; }
+body[data-theme="disco-1970s"] .secondary-trigger, body[data-theme="disco-1970s"] .dropdown-menu,
+body[data-theme="disco-1970s"] #theme-manager, body[data-theme="disco-1970s"] #bike-gallery { background: #261d14; color: #fff0cf; border: 1px solid #9a7838; }
+body[data-theme="disco-1970s"] .dropdown-item { color: #fff0cf; }
+body[data-theme="disco-1970s"] .accent-bar { background: repeating-linear-gradient(90deg, #e5a93b 0 10px, #cc5500 10px 20px, #556b2f 20px 30px); }
+body[data-theme="disco-1970s"] .hero-main::before { background: radial-gradient(circle at 90% 0, #e5a93b22, transparent 38%); }
+body[data-theme="disco-1970s"] .kpi-card::after { display: none; }
+body[data-theme="disco-1970s"] .status-bar, body[data-theme="disco-1970s"] .hero-main,
+body[data-theme="disco-1970s"] .chart-card, body[data-theme="disco-1970s"] .kpi-card, body[data-theme="disco-1970s"] .hero-stat,
+body[data-theme="disco-1970s"] .record-card, body[data-theme="disco-1970s"] .highlight-card,
+body[data-theme="disco-1970s"] .featured-activity-card, body[data-theme="disco-1970s"] .comparison-mobile-card,
+body[data-theme="disco-1970s"] .bike-insight-card { background: #261d14; color: #fff0cf; --text: #fff0cf; --text-muted: #ddc89f; border: 1px solid #9a7838; box-shadow: var(--shadow-soft); }
+body[data-theme="disco-1970s"] .bar-track, body[data-theme="disco-1970s"] .stack-list-track,
+body[data-theme="disco-1970s"] .timeline-bar-track, body[data-theme="disco-1970s"] .annual-strip-track { background: #51402b; border: 1px solid #856938; }
+body[data-theme="disco-1970s"] .bar-fill, body[data-theme="disco-1970s"] .stack-list-fill,
+body[data-theme="disco-1970s"] .timeline-bar-fill, body[data-theme="disco-1970s"] .annual-strip-fill { background: repeating-linear-gradient(90deg, #e5a93b 0 8px, #cc5500 8px 10px); }
+body[data-theme="disco-1970s"] .timeline-bars-wrap, body[data-theme="disco-1970s"] .annual-strip-chart,
+body[data-theme="disco-1970s"] .timeline-bars-wrap.tone-distance, body[data-theme="disco-1970s"] .timeline-bars-wrap.tone-time,
+body[data-theme="disco-1970s"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="disco-1970s"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="disco-1970s"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="disco-1970s"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="disco-1970s"] .bar-label, body[data-theme="disco-1970s"] .bar-value, body[data-theme="disco-1970s"] .timeline-bar-value,
+body[data-theme="disco-1970s"] .timeline-bar-label, body[data-theme="disco-1970s"] .annual-strip-top,
+body[data-theme="disco-1970s"] .annual-strip-label { color: #fff0cf; }
+body[data-theme="disco-1970s"] .annual-strip-sub { color: #ddc89f; }
+body[data-theme="disco-1970s"] .spinner-wheel { border-color: #51402b; border-top-color: #e5a93b; }
+body[data-theme="disco-1970s"] h1, body[data-theme="disco-1970s"] h2, body[data-theme="disco-1970s"] h3 { font-family: "Cooper Black", "Bookman Old Style", Georgia, serif; font-weight: 900; }
+@media (prefers-reduced-motion: no-preference) {
+  body[data-theme="disco-1970s"] .kpi-card, body[data-theme="disco-1970s"] .chart-card { animation: disco1970-tile-flash .45s ease-out 1; }
+  @keyframes disco1970-tile-flash { 0% { box-shadow: 0 0 18px #e5a93b88; } 100% { box-shadow: var(--shadow-soft); } }
+}
+@media (max-width: 720px) { body[data-theme="disco-1970s"] .hero-period-stats { grid-template-columns: 1fr; } }
+body[data-theme="disco-1970s"] .status-bar, body[data-theme="disco-1970s"] .hero-main, body[data-theme="disco-1970s"] .kpi-card,
+body[data-theme="disco-1970s"] .chart-card, body[data-theme="disco-1970s"] .hero-stat, body[data-theme="disco-1970s"] .record-card,
+body[data-theme="disco-1970s"] .highlight-card, body[data-theme="disco-1970s"] .featured-activity-card,
+body[data-theme="disco-1970s"] .comparison-mobile-card, body[data-theme="disco-1970s"] .bike-insight-card,
+body[data-theme="disco-1970s"] #theme-manager, body[data-theme="disco-1970s"] #bike-gallery { border-radius: var(--radius); }
+body[data-theme="disco-1970s"] .segmented-control, body[data-theme="disco-1970s"] .segmented-btn,
+body[data-theme="disco-1970s"] .annual-breakdown-mode-btn, body[data-theme="disco-1970s"] .pin-button,
+body[data-theme="disco-1970s"] .filter-field select, body[data-theme="disco-1970s"] .filter-field input,
+body[data-theme="disco-1970s"] .bike-controls input, body[data-theme="disco-1970s"] .bike-controls select,
+body[data-theme="disco-1970s"] .side-meta, body[data-theme="disco-1970s"] .dropdown-menu { border-radius: var(--radius-sm); }

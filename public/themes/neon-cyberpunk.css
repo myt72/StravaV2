@@ -1,0 +1,62 @@
+/* cyberpunk theme: every selector is scoped to body[data-theme="cyberpunk"] */
+body[data-theme="cyberpunk"] {
+  --bg: #05060a;
+  --bg-2: linear-gradient(180deg,#05060a 0%,#0b0f1a 100%);
+  --surface: rgba(10,14,24,0.88);
+  --surface-strong: rgba(14,20,34,0.96);
+  --surface-muted: rgba(8,12,20,0.9);
+  --surface-deep: #070a12;
+  --text: #e6fdff;
+  --text-muted: #7fb7c4;
+  --border: rgba(0,255,230,0.35);
+  --accent: #00ffe1;
+  --accent-2: #ff2bd6;
+  --distance: #00ffe1;
+  --time: #fcee0a;
+  --elevation: #39ff14;
+  --danger: #ff4d6d;
+  --success: #3ddc97;
+  --warning: #ffb347;
+  --shadow: 0 0 22px rgba(0,255,225,0.18);
+  --shadow-soft: 0 0 22px rgba(0,255,225,0.18);
+  --radius: 2px;
+  --radius-sm: 2px;
+  --glass: none;
+}
+
+body[data-theme="cyberpunk"] {
+  font-family: "Courier New", monospace;
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+
+body[data-theme="cyberpunk"] h1 { text-transform: uppercase; letter-spacing: 0.08em; text-shadow: 0 0 10px var(--accent); }
+
+/* Chart legibility: no gradient behind text, explicit text colors, solid fills distinct from the track */
+body[data-theme="cyberpunk"] .hero-main::before { background: radial-gradient(circle, rgba(0,255,225,0.14), transparent 60%); }
+body[data-theme="cyberpunk"] .spinner-wheel { border-color: var(--border); border-top-color: var(--accent); }
+body[data-theme="cyberpunk"] .hero-stat { background: var(--surface-strong); }
+body[data-theme="cyberpunk"] .bar-track,
+body[data-theme="cyberpunk"] .stack-list-track { background: #02040a; border: 1px solid var(--border); }
+body[data-theme="cyberpunk"] .bar-fill,
+body[data-theme="cyberpunk"] .stack-list-fill { background: var(--accent); }
+body[data-theme="cyberpunk"] .bar-label { color: var(--text); }
+body[data-theme="cyberpunk"] .bar-value { color: var(--text-muted); }
+body[data-theme="cyberpunk"] .timeline-bars-wrap,
+body[data-theme="cyberpunk"] .annual-strip-chart,
+body[data-theme="cyberpunk"] .timeline-bars-wrap.tone-distance,
+body[data-theme="cyberpunk"] .timeline-bars-wrap.tone-time,
+body[data-theme="cyberpunk"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="cyberpunk"] .timeline-bar-track,
+body[data-theme="cyberpunk"] .annual-strip-track { background: #02040a; border: 1px solid var(--border); box-sizing: border-box; }
+body[data-theme="cyberpunk"] .timeline-bar-fill,
+body[data-theme="cyberpunk"] .annual-strip-fill { background: var(--accent); }
+body[data-theme="cyberpunk"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: #00ffe1; }
+body[data-theme="cyberpunk"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: #fcee0a; }
+body[data-theme="cyberpunk"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: #39ff14; }
+body[data-theme="cyberpunk"] .timeline-bar-value,
+body[data-theme="cyberpunk"] .annual-strip-top,
+body[data-theme="cyberpunk"] .timeline-bar-label,
+body[data-theme="cyberpunk"] .annual-strip-label { color: var(--text); }
+body[data-theme="cyberpunk"] .annual-strip-sub { color: var(--text-muted); }

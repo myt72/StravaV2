@@ -1,0 +1,65 @@
+/* lcars theme: every selector is scoped to body[data-theme="lcars"] */
+body[data-theme="lcars"] {
+  --bg: #000000;
+  --bg-2: #000000;
+  --surface: rgba(17,17,34,0.95);
+  --surface-strong: #15152b;
+  --surface-muted: #0d0d1c;
+  --surface-deep: #0a0a16;
+  --text: #ffcc99;
+  --text-muted: #cc99cc;
+  --border: #ff9966;
+  --accent: #ff9966;
+  --accent-2: #cc99cc;
+  --distance: #99ccff;
+  --time: #ffcc66;
+  --elevation: #99ff99;
+  --danger: #ff4d6d;
+  --success: #3ddc97;
+  --warning: #ffb347;
+  --shadow: none;
+  --shadow-soft: none;
+  --radius: 28px;
+  --radius-sm: 18px;
+  --glass: none;
+}
+
+body[data-theme="lcars"] {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+
+body[data-theme="lcars"] h1, body[data-theme="lcars"] .eyebrow { text-transform: uppercase; letter-spacing: 0.12em; }
+body[data-theme="lcars"] .side-rail { border-radius: 0 40px 40px 0; border-right: 14px solid var(--accent); }
+body[data-theme="lcars"] .topbar { border-bottom: 10px solid var(--accent-2); border-radius: 0 0 0 40px; }
+
+/* Chart legibility: no gradient behind text, explicit text colors, solid fills distinct from the track */
+body[data-theme="lcars"] .hero-main::before { background: none; }
+body[data-theme="lcars"] .spinner-wheel { border-color: var(--border); border-top-color: var(--accent); }
+body[data-theme="lcars"] .hero-stat { background: var(--surface-strong); }
+body[data-theme="lcars"] .bar-track,
+body[data-theme="lcars"] .stack-list-track { background: #000000; border: 1px solid var(--border); }
+body[data-theme="lcars"] .bar-fill,
+body[data-theme="lcars"] .stack-list-fill { background: var(--accent); }
+body[data-theme="lcars"] .bar-label { color: var(--text); }
+body[data-theme="lcars"] .bar-value { color: var(--text-muted); }
+body[data-theme="lcars"] .timeline-bars-wrap,
+body[data-theme="lcars"] .annual-strip-chart,
+body[data-theme="lcars"] .timeline-bars-wrap.tone-distance,
+body[data-theme="lcars"] .timeline-bars-wrap.tone-time,
+body[data-theme="lcars"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="lcars"] .timeline-bar-track,
+body[data-theme="lcars"] .annual-strip-track { background: #000000; border: 1px solid var(--border); box-sizing: border-box; }
+body[data-theme="lcars"] .timeline-bar-fill,
+body[data-theme="lcars"] .annual-strip-fill { background: var(--accent); }
+body[data-theme="lcars"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: #99ccff; }
+body[data-theme="lcars"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: #ffcc66; }
+body[data-theme="lcars"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: #99ff99; }
+body[data-theme="lcars"] .timeline-bar-value,
+body[data-theme="lcars"] .annual-strip-top,
+body[data-theme="lcars"] .timeline-bar-label,
+body[data-theme="lcars"] .annual-strip-label { color: var(--text); }
+body[data-theme="lcars"] .annual-strip-sub { color: var(--text-muted); }
+body[data-theme="lcars"] .kpi-card::after { display: none; }

@@ -1,0 +1,108 @@
+/* neo-brutalist theme: every selector is scoped to body[data-theme="neo-brutalist"] */
+body[data-theme="neo-brutalist"] {
+  --bg: #ffe94d;
+  --bg-2: #ffe94d;
+  --surface: #f1e4ff;
+  --surface-strong: #ffffff;
+  --surface-muted: #d9fbe8;
+  --surface-deep: #ffd1e8;
+  --text: #000000;
+  --text-muted: #2b2b2b;
+  --border: #000000;
+  --accent: #5b2bff;
+  --accent-2: #ff3d81;
+  --distance: #0057d9;
+  --time: #9a4500;
+  --elevation: #006b3c;
+  --danger: #c20000;
+  --success: #006b3c;
+  --warning: #9a4500;
+  --shadow: 6px 6px 0 #000000;
+  --shadow-soft: 4px 4px 0 #000000;
+  --radius: 0;
+  --radius-sm: 0;
+  --glass: none;
+  --t-on-accent: #ffffff;
+  --t-track: #ffffff;
+  --t-fill-distance: #4dabff;
+  --t-fill-time: #ff9a3d;
+  --t-fill-elevation: #2ee59d;
+  font-family: "Arial Black", "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+/* Replace Default's hard-coded colors so nothing leaks */
+body[data-theme="neo-brutalist"] .side-rail { background: #ff9ccf; backdrop-filter: none; border-right: 1px solid var(--border); }
+body[data-theme="neo-brutalist"] .brand-orb { background: var(--accent); box-shadow: 0 0 0 3px var(--surface-strong), 0 0 0 4px var(--accent-2); }
+body[data-theme="neo-brutalist"] .dropdown-menu { backdrop-filter: none; border-radius: var(--radius-sm); }
+body[data-theme="neo-brutalist"] .menu-trigger { background: var(--accent); color: var(--t-on-accent); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-soft); }
+body[data-theme="neo-brutalist"] .secondary-trigger { background: var(--surface-strong); color: var(--text); border: 1px solid var(--border); }
+body[data-theme="neo-brutalist"] .segmented-btn.active,
+body[data-theme="neo-brutalist"] .annual-breakdown-mode-btn.active,
+body[data-theme="neo-brutalist"] .pin-button.pinned { background: var(--accent); color: var(--t-on-accent); }
+body[data-theme="neo-brutalist"] .accent-bar { background: var(--accent); }
+body[data-theme="neo-brutalist"] .hero-main::before { background: none; }
+body[data-theme="neo-brutalist"] .hero-stat { background: var(--surface-strong); }
+body[data-theme="neo-brutalist"] .kpi-card::after { display: none; }
+body[data-theme="neo-brutalist"] .status-bar,
+body[data-theme="neo-brutalist"] .hero-main,
+body[data-theme="neo-brutalist"] .kpi-card { border-radius: var(--radius); }
+body[data-theme="neo-brutalist"] .chart-card,
+body[data-theme="neo-brutalist"] .hero-stat,
+body[data-theme="neo-brutalist"] .record-card,
+body[data-theme="neo-brutalist"] .highlight-card,
+body[data-theme="neo-brutalist"] .featured-activity-card,
+body[data-theme="neo-brutalist"] .comparison-mobile-card,
+body[data-theme="neo-brutalist"] .bike-insight-card,
+body[data-theme="neo-brutalist"] .segmented-control,
+body[data-theme="neo-brutalist"] .segmented-btn,
+body[data-theme="neo-brutalist"] .annual-breakdown-mode-btn,
+body[data-theme="neo-brutalist"] .pin-button,
+body[data-theme="neo-brutalist"] .filter-field select,
+body[data-theme="neo-brutalist"] .filter-field input,
+body[data-theme="neo-brutalist"] .side-meta { border-radius: var(--radius-sm); }
+body[data-theme="neo-brutalist"] .spinner-wheel { border-color: var(--border); border-top-color: var(--accent); }
+
+/* Charts: explicit fills, tracks and text colors (AA contrast on --surface-muted) */
+body[data-theme="neo-brutalist"] .bar-track,
+body[data-theme="neo-brutalist"] .stack-list-track { background: var(--t-track); }
+body[data-theme="neo-brutalist"] .bar-fill,
+body[data-theme="neo-brutalist"] .stack-list-fill { background: var(--accent); }
+body[data-theme="neo-brutalist"] .bar-label { color: var(--text); }
+body[data-theme="neo-brutalist"] .bar-value { color: var(--text-muted); }
+body[data-theme="neo-brutalist"] .timeline-bars-wrap,
+body[data-theme="neo-brutalist"] .annual-strip-chart,
+body[data-theme="neo-brutalist"] .timeline-bars-wrap.tone-distance,
+body[data-theme="neo-brutalist"] .timeline-bars-wrap.tone-time,
+body[data-theme="neo-brutalist"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="neo-brutalist"] .timeline-bar-track,
+body[data-theme="neo-brutalist"] .annual-strip-track { background: var(--t-track); border: 1px solid var(--border); box-sizing: border-box; border-radius: var(--radius-sm); }
+body[data-theme="neo-brutalist"] .timeline-bar-fill,
+body[data-theme="neo-brutalist"] .annual-strip-fill { background: var(--accent); border-radius: 0; }
+body[data-theme="neo-brutalist"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="neo-brutalist"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="neo-brutalist"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="neo-brutalist"] .timeline-bar-value,
+body[data-theme="neo-brutalist"] .annual-strip-top { color: var(--text); }
+body[data-theme="neo-brutalist"] .timeline-bar-label,
+body[data-theme="neo-brutalist"] .annual-strip-label { color: var(--text); }
+body[data-theme="neo-brutalist"] .annual-strip-sub { color: var(--text-muted); }
+
+body[data-theme="neo-brutalist"] h1, body[data-theme="neo-brutalist"] h2, body[data-theme="neo-brutalist"] h3, body[data-theme="neo-brutalist"] .kpi-value, body[data-theme="neo-brutalist"] .hero-stat-value { font-weight: 900; letter-spacing: -0.02em; }
+body[data-theme="neo-brutalist"] .card, body[data-theme="neo-brutalist"] .glass-card, body[data-theme="neo-brutalist"] .chart-card, body[data-theme="neo-brutalist"] .kpi-card, body[data-theme="neo-brutalist"] .hero-stat, body[data-theme="neo-brutalist"] .record-card, body[data-theme="neo-brutalist"] .dropdown-menu, body[data-theme="neo-brutalist"] .side-rail { border: 3px solid #000000; }
+body[data-theme="neo-brutalist"] .side-rail { border-width: 0 3px 0 0; }
+body[data-theme="neo-brutalist"] .menu-trigger, body[data-theme="neo-brutalist"] .secondary-trigger, body[data-theme="neo-brutalist"] .segmented-btn, body[data-theme="neo-brutalist"] .dropdown-item { border: 3px solid #000000; box-shadow: 3px 3px 0 #000000; transition: transform 0.08s, box-shadow 0.08s; }
+body[data-theme="neo-brutalist"] .menu-trigger:hover, body[data-theme="neo-brutalist"] .secondary-trigger:hover { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000000; }
+body[data-theme="neo-brutalist"] .menu-trigger:active, body[data-theme="neo-brutalist"] .secondary-trigger:active { transform: translate(3px, 3px); box-shadow: 0 0 0 #000000; }
+body[data-theme="neo-brutalist"] .dropdown-item { box-shadow: none; border-width: 0 0 3px 0; }
+body[data-theme="neo-brutalist"] .bar-track, body[data-theme="neo-brutalist"] .stack-list-track, body[data-theme="neo-brutalist"] .timeline-bar-track, body[data-theme="neo-brutalist"] .annual-strip-track { border: 3px solid #000000; border-radius: 0; }
+body[data-theme="neo-brutalist"] .bar-track, body[data-theme="neo-brutalist"] .stack-list-track { height: 18px; }
+body[data-theme="neo-brutalist"] .bar-fill, body[data-theme="neo-brutalist"] .stack-list-fill { background: #ff3d81; border-radius: 0; }
+body[data-theme="neo-brutalist"] .annual-strip-fill { background: #ff3d81; border-top: 3px solid #000000; }
+body[data-theme="neo-brutalist"] .timeline-bar-fill { border-top: 3px solid #000000; }
+body[data-theme="neo-brutalist"] .brand-orb { border: 3px solid #000000; box-shadow: none; }
+body[data-theme="neo-brutalist"] .accent-bar { height: 8px; border-radius: 0; border: 2px solid #000000; }
+body[data-theme="neo-brutalist"] #status { color: #000000; }
+body[data-theme="neo-brutalist"] .eyebrow, body[data-theme="neo-brutalist"] .card-kicker, body[data-theme="neo-brutalist"] .hero-kicker { color: #000000; background: #ffe94d; display: inline-block; padding: 1px 6px; border: 2px solid #000000; }
+@media (prefers-reduced-motion: reduce) { body[data-theme="neo-brutalist"] .menu-trigger, body[data-theme="neo-brutalist"] .secondary-trigger, body[data-theme="neo-brutalist"] .segmented-btn, body[data-theme="neo-brutalist"] .dropdown-item { transition: none; } }

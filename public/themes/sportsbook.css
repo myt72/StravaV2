@@ -1,0 +1,79 @@
+/* Sportsbook board: neon scoreboard tiles and stadium-light meters */
+body[data-theme="sportsbook"] {
+  --bg: #0e1116;
+  --bg-2: radial-gradient(ellipse at 50% -20%, #242c34, transparent 58%), #0e1116;
+  --surface: #171c23;
+  --surface-strong: #20262f;
+  --surface-muted: #191f27;
+  --surface-deep: #10141a;
+  --text: #f4f7f7;
+  --text-muted: #c0c8ce;
+  --border: #34414b;
+  --accent: #00e676;
+  --accent-2: #ffd700;
+  --distance: #00e676;
+  --time: #ffd700;
+  --elevation: #00d9c2;
+  --danger: #ff5364;
+  --success: #00e676;
+  --warning: #ffd700;
+  --shadow: 0 12px 28px rgba(0,0,0,.36);
+  --shadow-soft: 0 5px 15px rgba(0,0,0,.28);
+  --radius: 5px;
+  --radius-sm: 3px;
+  --glass: none;
+  --t-on-accent: #07140e;
+  --t-track: #303941;
+  --t-fill-distance: #00e676;
+  --t-fill-time: #ffd700;
+  --t-fill-elevation: #00d9c2;
+  font-family: "Barlow Condensed", Teko, Oswald, "Arial Narrow", "Segoe UI", sans-serif;
+  background: var(--bg-2);
+  color: var(--text);
+}
+body[data-theme="sportsbook"] .side-rail { background: #10151a; backdrop-filter: none; border-right: 1px solid #34414b; }
+body[data-theme="sportsbook"] .brand-orb { background: var(--accent); box-shadow: 0 0 11px rgba(0,230,118,.45); }
+body[data-theme="sportsbook"] .dropdown-menu { background: #20262f; backdrop-filter: none; border-radius: 3px; }
+body[data-theme="sportsbook"] .menu-trigger { background: #00e676; color: #07140e; border: 1px solid #00e676; border-radius: 3px; box-shadow: 0 0 12px rgba(0,230,118,.2); }
+body[data-theme="sportsbook"] .secondary-trigger { background: #20262f; color: #00e676; border: 1px solid #00e676; }
+body[data-theme="sportsbook"] .segmented-btn.active, body[data-theme="sportsbook"] .annual-breakdown-mode-btn.active, body[data-theme="sportsbook"] .pin-button.pinned { background: #00e676; color: #07140e; }
+body[data-theme="sportsbook"] .accent-bar { background: linear-gradient(90deg, #00e676, #ffd700); }
+body[data-theme="sportsbook"] .hero-main::before { background: radial-gradient(ellipse, rgba(0,230,118,.12), transparent 65%); }
+body[data-theme="sportsbook"] .kpi-card::after { display: none; }
+body[data-theme="sportsbook"] .status-bar, body[data-theme="sportsbook"] .hero-main, body[data-theme="sportsbook"] .kpi-card,
+body[data-theme="sportsbook"] .chart-card, body[data-theme="sportsbook"] .hero-stat, body[data-theme="sportsbook"] .record-card,
+body[data-theme="sportsbook"] .highlight-card, body[data-theme="sportsbook"] .featured-activity-card,
+body[data-theme="sportsbook"] .comparison-mobile-card, body[data-theme="sportsbook"] .bike-insight-card { border-radius: 5px; }
+body[data-theme="sportsbook"] .kpi-card, body[data-theme="sportsbook"] .hero-stat { border: 1px solid #00a957; }
+body[data-theme="sportsbook"] .kpi-value, body[data-theme="sportsbook"] .hero-stat-value { font-weight: 900; font-size: clamp(1.5rem, 2.4vw, 2.4rem); font-variant-numeric: tabular-nums; }
+body[data-theme="sportsbook"] .trend-up, body[data-theme="sportsbook"] .hero-stat-delta.positive {
+  display: inline-block; padding: 3px 7px; color: #06150d; background: #00e676; border-radius: 3px;
+}
+body[data-theme="sportsbook"] .trend-down, body[data-theme="sportsbook"] .hero-stat-delta.negative {
+  display: inline-block; padding: 3px 7px; color: #fff; background: #b82437; border-radius: 3px;
+}
+body[data-theme="sportsbook"] .bar-track, body[data-theme="sportsbook"] .stack-list-track { background: #303941; border: 1px solid #53616b; border-radius: 2px; }
+body[data-theme="sportsbook"] .bar-fill, body[data-theme="sportsbook"] .stack-list-fill { background: linear-gradient(90deg, #00a957, #00e676); border-radius: 1px; box-shadow: 0 0 8px rgba(0,230,118,.25); }
+body[data-theme="sportsbook"] .timeline-bars-wrap, body[data-theme="sportsbook"] .annual-strip-chart,
+body[data-theme="sportsbook"] .timeline-bars-wrap.tone-distance, body[data-theme="sportsbook"] .timeline-bars-wrap.tone-time,
+body[data-theme="sportsbook"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="sportsbook"] .timeline-bar-track, body[data-theme="sportsbook"] .annual-strip-track { background: #303941; border: 1px solid #53616b; border-radius: 2px; }
+body[data-theme="sportsbook"] .timeline-bar-fill, body[data-theme="sportsbook"] .annual-strip-fill { background: linear-gradient(180deg, #00e676, #00a957); border-radius: 1px 1px 0 0; }
+body[data-theme="sportsbook"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="sportsbook"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="sportsbook"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="sportsbook"] .bar-label, body[data-theme="sportsbook"] .bar-value, body[data-theme="sportsbook"] .timeline-bar-value,
+body[data-theme="sportsbook"] .timeline-bar-label, body[data-theme="sportsbook"] .annual-strip-top,
+body[data-theme="sportsbook"] .annual-strip-label, body[data-theme="sportsbook"] .annual-strip-sub { color: #f4f7f7; }
+body[data-theme="sportsbook"] .spinner-wheel { border-color: #303941; border-top-color: var(--accent); }
+body[data-theme="sportsbook"] .segmented-control, body[data-theme="sportsbook"] .segmented-btn,
+body[data-theme="sportsbook"] .annual-breakdown-mode-btn, body[data-theme="sportsbook"] .pin-button,
+body[data-theme="sportsbook"] .filter-field select, body[data-theme="sportsbook"] .filter-field input,
+body[data-theme="sportsbook"] .bike-controls input, body[data-theme="sportsbook"] .bike-controls select { border-radius: 3px; }
+body[data-theme="sportsbook"] #theme-manager, body[data-theme="sportsbook"] #bike-gallery { background: #20262f; color: #f4f7f7; border-color: #53616b; }
+body[data-theme="sportsbook"] #theme-manager p, body[data-theme="sportsbook"] #theme-manager legend { color: #c0c8ce; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes sportsbook-flash { 0% { box-shadow: 0 0 17px rgba(0,230,118,.28); } 100% { box-shadow: var(--shadow-soft); } }
+  body[data-theme="sportsbook"] .kpi-card, body[data-theme="sportsbook"] .hero-stat { animation: sportsbook-flash .65s ease-out 1; }
+}
+@media (max-width: 720px) { body[data-theme="sportsbook"] .hero-period-stats { grid-template-columns: 1fr; } }

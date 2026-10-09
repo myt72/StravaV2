@@ -1,0 +1,71 @@
+body[data-theme="matrix-thriller"] {
+  --bg: #111612; --bg-2: repeating-linear-gradient(90deg, #111612 0 31px, #172019 32px, #111612 33px), repeating-linear-gradient(0deg, #111612 0 31px, #18211a 32px, #111612 33px);
+  --surface: #172019; --surface-strong: #1c2820; --surface-muted: #1a241c; --surface-deep: #0b100d;
+  --text: #e0f6e5; --text-muted: #b6d8be; --border: #3b6c49;
+  --accent: #39ff66; --accent-2: #00c7a5; --distance: #39ff66; --time: #a8ff70; --elevation: #46d7be;
+  --danger: #ff7373; --success: #39ff66; --warning: #e4e878; --shadow: 0 0 18px #00ff6622; --shadow-soft: 0 0 9px #00ff6618;
+  --radius: 3px; --radius-sm: 2px; --glass: none; --t-on-accent: #071009; --t-track: #283c2e;
+  --t-fill-distance: #39ff66; --t-fill-time: #a8ff70; --t-fill-elevation: #46d7be;
+  font-family: "OCR A Std", "Courier New", monospace; background: #050805; color: var(--text);
+}
+body[data-theme="matrix-thriller"] .side-rail { background: #0b100d; border-right: 1px solid #3b6c49; }
+body[data-theme="matrix-thriller"] .brand-orb { background: #39ff66; box-shadow: 0 0 16px #39ff6688; }
+body[data-theme="matrix-thriller"] .menu-trigger, body[data-theme="matrix-thriller"] .segmented-btn.active,
+body[data-theme="matrix-thriller"] .annual-breakdown-mode-btn.active, body[data-theme="matrix-thriller"] .pin-button.pinned { background: #16311d; color: #baffc7; border: 1px solid #39ff66; box-shadow: 0 0 10px #39ff6633; }
+body[data-theme="matrix-thriller"] .secondary-trigger, body[data-theme="matrix-thriller"] .dropdown-menu,
+body[data-theme="matrix-thriller"] #theme-manager, body[data-theme="matrix-thriller"] #bike-gallery { background: #111a13; color: #e0f6e5; border: 1px solid #3b6c49; }
+body[data-theme="matrix-thriller"] .dropdown-item { color: #e0f6e5; }
+body[data-theme="matrix-thriller"] .accent-bar { background: #39ff66; box-shadow: 0 0 9px #39ff6688; }
+body[data-theme="matrix-thriller"] .hero-main::before { background: repeating-linear-gradient(90deg, transparent 0 46px, #39ff6609 47px 48px); }
+body[data-theme="matrix-thriller"] .kpi-card::after { display: none; }
+body[data-theme="matrix-thriller"] .status-bar, body[data-theme="matrix-thriller"] .hero-main,
+body[data-theme="matrix-thriller"] .chart-card, body[data-theme="matrix-thriller"] .kpi-card, body[data-theme="matrix-thriller"] .hero-stat,
+body[data-theme="matrix-thriller"] .record-card, body[data-theme="matrix-thriller"] .highlight-card,
+body[data-theme="matrix-thriller"] .featured-activity-card, body[data-theme="matrix-thriller"] .comparison-mobile-card,
+body[data-theme="matrix-thriller"] .bike-insight-card { position: relative; background: #172019; color: #e0f6e5; --text: #e0f6e5; --text-muted: #b6d8be; border: 1px solid #3b6c49; box-shadow: 0 0 13px #00ff6615; }
+body[data-theme="matrix-thriller"] .bar-track, body[data-theme="matrix-thriller"] .stack-list-track,
+body[data-theme="matrix-thriller"] .timeline-bar-track, body[data-theme="matrix-thriller"] .annual-strip-track { background: #26382b; border: 1px solid #385842; }
+body[data-theme="matrix-thriller"] .bar-fill, body[data-theme="matrix-thriller"] .stack-list-fill,
+body[data-theme="matrix-thriller"] .timeline-bar-fill, body[data-theme="matrix-thriller"] .annual-strip-fill { background: #39ff66; box-shadow: 0 0 8px #39ff6670; }
+body[data-theme="matrix-thriller"] .timeline-bars-wrap, body[data-theme="matrix-thriller"] .annual-strip-chart,
+body[data-theme="matrix-thriller"] .timeline-bars-wrap.tone-distance, body[data-theme="matrix-thriller"] .timeline-bars-wrap.tone-time,
+body[data-theme="matrix-thriller"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="matrix-thriller"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="matrix-thriller"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="matrix-thriller"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="matrix-thriller"] .bar-label, body[data-theme="matrix-thriller"] .bar-value, body[data-theme="matrix-thriller"] .timeline-bar-value,
+body[data-theme="matrix-thriller"] .timeline-bar-label, body[data-theme="matrix-thriller"] .annual-strip-top,
+body[data-theme="matrix-thriller"] .annual-strip-label { color: #e0f6e5; }
+body[data-theme="matrix-thriller"] .annual-strip-sub { color: #b6d8be; }
+body[data-theme="matrix-thriller"] .spinner-wheel { border-color: #385842; border-top-color: #39ff66; }
+@media (max-width: 720px) { body[data-theme="matrix-thriller"] .hero-period-stats { grid-template-columns: 1fr; } }
+body[data-theme="matrix-thriller"] .status-bar, body[data-theme="matrix-thriller"] .hero-main, body[data-theme="matrix-thriller"] .kpi-card,
+body[data-theme="matrix-thriller"] .chart-card, body[data-theme="matrix-thriller"] .hero-stat, body[data-theme="matrix-thriller"] .record-card,
+body[data-theme="matrix-thriller"] .highlight-card, body[data-theme="matrix-thriller"] .featured-activity-card,
+body[data-theme="matrix-thriller"] .comparison-mobile-card, body[data-theme="matrix-thriller"] .bike-insight-card,
+body[data-theme="matrix-thriller"] #theme-manager, body[data-theme="matrix-thriller"] #bike-gallery { border-radius: var(--radius); }
+body[data-theme="matrix-thriller"] .segmented-control, body[data-theme="matrix-thriller"] .segmented-btn,
+body[data-theme="matrix-thriller"] .annual-breakdown-mode-btn, body[data-theme="matrix-thriller"] .pin-button,
+body[data-theme="matrix-thriller"] .filter-field select, body[data-theme="matrix-thriller"] .filter-field input,
+body[data-theme="matrix-thriller"] .bike-controls input, body[data-theme="matrix-thriller"] .bike-controls select,
+body[data-theme="matrix-thriller"] .side-meta, body[data-theme="matrix-thriller"] .dropdown-menu { border-radius: var(--radius-sm); }
+body[data-theme="matrix-thriller"] #app-shell { position: relative; z-index: 1; background: transparent; }
+body[data-theme="matrix-thriller"] .dropdown-menu { background: #0f1711; z-index: 200; }
+body[data-theme="matrix-thriller"] #theme-manager, body[data-theme="matrix-thriller"] #bike-gallery { background: #0f1711; }
+
+/* Rain visible behind panels */
+body[data-theme="matrix-thriller"] .side-rail { background: rgba(8,14,10,0.8); }
+body[data-theme="matrix-thriller"] .status-bar, body[data-theme="matrix-thriller"] .hero-main, body[data-theme="matrix-thriller"] .kpi-card, body[data-theme="matrix-thriller"] .chart-card, body[data-theme="matrix-thriller"] .hero-stat, body[data-theme="matrix-thriller"] .record-card,
+body[data-theme="matrix-thriller"] .highlight-card, body[data-theme="matrix-thriller"] .featured-activity-card, body[data-theme="matrix-thriller"] .comparison-mobile-card, body[data-theme="matrix-thriller"] .bike-insight-card,
+body[data-theme="matrix-thriller"] .bike-card-summary { background: rgba(10,18,12,0.78); -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px); }
+body[data-theme="matrix-thriller"] .side-rail { -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body[data-theme="matrix-thriller"] .side-rail { background: #0b100d; }
+  body[data-theme="matrix-thriller"] .status-bar, body[data-theme="matrix-thriller"] .hero-main, body[data-theme="matrix-thriller"] .kpi-card, body[data-theme="matrix-thriller"] .chart-card, body[data-theme="matrix-thriller"] .hero-stat, body[data-theme="matrix-thriller"] .record-card,
+  body[data-theme="matrix-thriller"] .highlight-card, body[data-theme="matrix-thriller"] .featured-activity-card, body[data-theme="matrix-thriller"] .comparison-mobile-card, body[data-theme="matrix-thriller"] .bike-insight-card,
+  body[data-theme="matrix-thriller"] .bike-card-summary { background: #172019; }
+}
+body[data-theme="matrix-thriller"] .dropdown-menu, body[data-theme="matrix-thriller"] #theme-manager, body[data-theme="matrix-thriller"] #bike-gallery { background: #0f1711; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.matrix-rain-toggle { position: fixed; right: 12px; bottom: 12px; z-index: 50; padding: 6px 10px; font: 12px "OCR A Std", "Courier New", monospace; color: #baffc7; background: #0b100d; border: 1px solid #39ff66; border-radius: 2px; cursor: pointer; box-shadow: 0 0 10px #39ff6633; }
+.matrix-rain-toggle:hover { background: #16311d; }
+.matrix-rain-toggle:focus-visible { outline: 2px solid #e8fff0; outline-offset: 2px; }

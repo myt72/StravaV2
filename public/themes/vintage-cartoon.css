@@ -1,0 +1,105 @@
+/* vintage-cartoon theme: every selector is scoped to body[data-theme="vintage-cartoon"] */
+body[data-theme="vintage-cartoon"] {
+  --bg: #f4f1ea;
+  --bg-2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E"), #f4f1ea;
+  --surface: #fbf8f1;
+  --surface-strong: #fffdf8;
+  --surface-muted: #ece6d8;
+  --surface-deep: #e2dac8;
+  --text: #2b2b2b;
+  --text-muted: #55504a;
+  --border: #2b2b2b;
+  --accent: #b5372b;
+  --accent-2: #2d5f8a;
+  --distance: #2d5f8a;
+  --time: #8a5a00;
+  --elevation: #2f6b3a;
+  --danger: #b5372b;
+  --success: #2f6b3a;
+  --warning: #8a5a00;
+  --shadow: 3px 4px 0 rgba(43,43,43,0.85);
+  --shadow-soft: 2px 3px 0 rgba(43,43,43,0.8);
+  --radius: 18px 24px 16px 26px / 24px 16px 26px 18px;
+  --radius-sm: 10px 14px 9px 13px / 13px 9px 14px 10px;
+  --glass: none;
+  --t-on-accent: #fffdf8;
+  --t-track: #fffdf8;
+  --t-fill-distance: #4a86b8;
+  --t-fill-time: #e0a83a;
+  --t-fill-elevation: #6aa56f;
+  font-family: "Cooper Black", "Cooper Std", "Baloo 2", Baloo, "Trebuchet MS", "Arial Rounded MT Bold", sans-serif;
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+/* Replace Default's hard-coded colors so nothing leaks */
+body[data-theme="vintage-cartoon"] .side-rail { background: #e2dac8; backdrop-filter: none; border-right: 1px solid var(--border); }
+body[data-theme="vintage-cartoon"] .brand-orb { background: var(--accent); box-shadow: 0 0 0 3px var(--surface-strong), 0 0 0 4px var(--accent-2); }
+body[data-theme="vintage-cartoon"] .dropdown-menu { backdrop-filter: none; border-radius: var(--radius-sm); }
+body[data-theme="vintage-cartoon"] .menu-trigger { background: var(--accent); color: var(--t-on-accent); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-soft); }
+body[data-theme="vintage-cartoon"] .secondary-trigger { background: var(--surface-strong); color: var(--text); border: 1px solid var(--border); }
+body[data-theme="vintage-cartoon"] .segmented-btn.active,
+body[data-theme="vintage-cartoon"] .annual-breakdown-mode-btn.active,
+body[data-theme="vintage-cartoon"] .pin-button.pinned { background: var(--accent); color: var(--t-on-accent); }
+body[data-theme="vintage-cartoon"] .accent-bar { background: var(--accent); }
+body[data-theme="vintage-cartoon"] .hero-main::before { background: none; }
+body[data-theme="vintage-cartoon"] .hero-stat { background: var(--surface-strong); }
+body[data-theme="vintage-cartoon"] .kpi-card::after { display: none; }
+body[data-theme="vintage-cartoon"] .status-bar,
+body[data-theme="vintage-cartoon"] .hero-main,
+body[data-theme="vintage-cartoon"] .kpi-card { border-radius: var(--radius); }
+body[data-theme="vintage-cartoon"] .chart-card,
+body[data-theme="vintage-cartoon"] .hero-stat,
+body[data-theme="vintage-cartoon"] .record-card,
+body[data-theme="vintage-cartoon"] .highlight-card,
+body[data-theme="vintage-cartoon"] .featured-activity-card,
+body[data-theme="vintage-cartoon"] .comparison-mobile-card,
+body[data-theme="vintage-cartoon"] .bike-insight-card,
+body[data-theme="vintage-cartoon"] .segmented-control,
+body[data-theme="vintage-cartoon"] .segmented-btn,
+body[data-theme="vintage-cartoon"] .annual-breakdown-mode-btn,
+body[data-theme="vintage-cartoon"] .pin-button,
+body[data-theme="vintage-cartoon"] .filter-field select,
+body[data-theme="vintage-cartoon"] .filter-field input,
+body[data-theme="vintage-cartoon"] .side-meta { border-radius: var(--radius-sm); }
+body[data-theme="vintage-cartoon"] .spinner-wheel { border-color: var(--border); border-top-color: var(--accent); }
+
+/* Charts: explicit fills, tracks and text colors (AA contrast on --surface-muted) */
+body[data-theme="vintage-cartoon"] .bar-track,
+body[data-theme="vintage-cartoon"] .stack-list-track { background: var(--t-track); }
+body[data-theme="vintage-cartoon"] .bar-fill,
+body[data-theme="vintage-cartoon"] .stack-list-fill { background: var(--accent); }
+body[data-theme="vintage-cartoon"] .bar-label { color: var(--text); }
+body[data-theme="vintage-cartoon"] .bar-value { color: var(--text-muted); }
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap,
+body[data-theme="vintage-cartoon"] .annual-strip-chart,
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap.tone-distance,
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap.tone-time,
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="vintage-cartoon"] .timeline-bar-track,
+body[data-theme="vintage-cartoon"] .annual-strip-track { background: var(--t-track); border: 1px solid var(--border); box-sizing: border-box; border-radius: var(--radius-sm); }
+body[data-theme="vintage-cartoon"] .timeline-bar-fill,
+body[data-theme="vintage-cartoon"] .annual-strip-fill { background: var(--accent); border-radius: 0; }
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="vintage-cartoon"] .timeline-bar-value,
+body[data-theme="vintage-cartoon"] .annual-strip-top { color: var(--text); }
+body[data-theme="vintage-cartoon"] .timeline-bar-label,
+body[data-theme="vintage-cartoon"] .annual-strip-label { color: var(--text); }
+body[data-theme="vintage-cartoon"] .annual-strip-sub { color: var(--text-muted); }
+
+body[data-theme="vintage-cartoon"] .card, body[data-theme="vintage-cartoon"] .glass-card, body[data-theme="vintage-cartoon"] .chart-card, body[data-theme="vintage-cartoon"] .kpi-card, body[data-theme="vintage-cartoon"] .hero-stat, body[data-theme="vintage-cartoon"] .record-card, body[data-theme="vintage-cartoon"] .dropdown-menu { border: 2.5px solid #2b2b2b; }
+body[data-theme="vintage-cartoon"] .card { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.09'/%3E%3C/svg%3E"); }
+body[data-theme="vintage-cartoon"] .side-rail { border-right: 3px solid #2b2b2b; }
+body[data-theme="vintage-cartoon"] .menu-trigger, body[data-theme="vintage-cartoon"] .secondary-trigger { border: 2.5px solid #2b2b2b; }
+body[data-theme="vintage-cartoon"] .bar-track, body[data-theme="vintage-cartoon"] .stack-list-track { height: 16px; border: 2px solid #2b2b2b; border-radius: 9px 12px 8px 11px / 11px 8px 12px 9px; }
+body[data-theme="vintage-cartoon"] .bar-fill, body[data-theme="vintage-cartoon"] .stack-list-fill { border-radius: 0; background: repeating-linear-gradient(-55deg, #b5372b 0 4px, #d9695b 4px 6px); border-right: 2px solid #2b2b2b; }
+body[data-theme="vintage-cartoon"] .timeline-bar-track, body[data-theme="vintage-cartoon"] .annual-strip-track { border: 2px solid #2b2b2b; border-radius: 12px 9px 13px 10px / 10px 13px 9px 12px; }
+body[data-theme="vintage-cartoon"] .timeline-bar-fill, body[data-theme="vintage-cartoon"] .annual-strip-fill { border-radius: 8px 10px 0 0 / 6px 7px 0 0; border-top: 2px solid #2b2b2b; }
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: repeating-linear-gradient(-55deg, #4a86b8 0 4px, #86b3d6 4px 6px); }
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: repeating-linear-gradient(-55deg, #e0a83a 0 4px, #f0cd7e 4px 6px); }
+body[data-theme="vintage-cartoon"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: repeating-linear-gradient(-55deg, #6aa56f 0 4px, #a6cfa9 4px 6px); }
+body[data-theme="vintage-cartoon"] .annual-strip-fill { background: repeating-linear-gradient(-55deg, #b5372b 0 4px, #d9695b 4px 6px); }
+body[data-theme="vintage-cartoon"] .brand-orb { border: 2px solid #2b2b2b; box-shadow: 2px 2px 0 #2b2b2b; }
+body[data-theme="vintage-cartoon"] h1 { letter-spacing: -0.01em; }

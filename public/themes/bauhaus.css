@@ -1,0 +1,77 @@
+/* Bauhaus Technical: architectural paper, square modules and measured rules */
+body[data-theme="bauhaus"] {
+  --bg: #f4f4f6;
+  --bg-2: linear-gradient(90deg, rgba(0,85,165,.045) 1px, transparent 1px) 0 0/36px 36px,
+    linear-gradient(rgba(0,85,165,.045) 1px, transparent 1px) 0 0/36px 36px, #f4f4f6;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-muted: #e7e9ed;
+  --surface-deep: #d8dce2;
+  --text: #111111;
+  --text-muted: #41464d;
+  --border: #111111;
+  --accent: #0055a5;
+  --accent-2: #e5a93c;
+  --distance: #0055a5;
+  --time: #805200;
+  --elevation: #176242;
+  --danger: #a52025;
+  --success: #176242;
+  --warning: #805200;
+  --shadow: none;
+  --shadow-soft: none;
+  --radius: 0;
+  --radius-sm: 0;
+  --glass: none;
+  --t-on-accent: #ffffff;
+  --t-track: #d1d5db;
+  --t-fill-distance: #0055a5;
+  --t-fill-time: #bd801c;
+  --t-fill-elevation: #176242;
+  font-family: Futura, Montserrat, "Century Gothic", "Trebuchet MS", sans-serif;
+  background: var(--bg-2);
+  color: var(--text);
+}
+body[data-theme="bauhaus"] .side-rail { background: #e7e9ed; backdrop-filter: none; border-right: 2px solid #111; }
+body[data-theme="bauhaus"] .brand-orb { background: #0055a5; box-shadow: none; border-radius: 0; }
+body[data-theme="bauhaus"] .dropdown-menu { background: #fff; color: #111; backdrop-filter: none; border: 1px solid #111; border-radius: 0; }
+body[data-theme="bauhaus"] .dropdown-item { color: #111; }
+body[data-theme="bauhaus"] .menu-trigger { background: #0055a5; color: #fff; border: 1px solid #111; border-radius: 0; box-shadow: none; }
+body[data-theme="bauhaus"] .secondary-trigger { background: #e5a93c; color: #111; border: 1px solid #111; }
+body[data-theme="bauhaus"] .segmented-btn.active, body[data-theme="bauhaus"] .annual-breakdown-mode-btn.active, body[data-theme="bauhaus"] .pin-button.pinned { background: #0055a5; color: #fff; }
+body[data-theme="bauhaus"] .accent-bar { background: #e5a93c; border-radius: 0; }
+body[data-theme="bauhaus"] .hero-main::before { background: linear-gradient(90deg, transparent 0 68%, rgba(0,85,165,.08) 68% 69%, transparent 69%); }
+body[data-theme="bauhaus"] .kpi-card::after { display: none; }
+body[data-theme="bauhaus"] .status-bar, body[data-theme="bauhaus"] .hero-main, body[data-theme="bauhaus"] .kpi-card,
+body[data-theme="bauhaus"] .chart-card, body[data-theme="bauhaus"] .hero-stat, body[data-theme="bauhaus"] .record-card,
+body[data-theme="bauhaus"] .highlight-card, body[data-theme="bauhaus"] .featured-activity-card,
+body[data-theme="bauhaus"] .comparison-mobile-card, body[data-theme="bauhaus"] .bike-insight-card { border-radius: 0; }
+body[data-theme="bauhaus"] .chart-card, body[data-theme="bauhaus"] .kpi-card, body[data-theme="bauhaus"] .hero-stat,
+body[data-theme="bauhaus"] .record-card, body[data-theme="bauhaus"] .highlight-card,
+body[data-theme="bauhaus"] .featured-activity-card, body[data-theme="bauhaus"] .comparison-mobile-card,
+body[data-theme="bauhaus"] .bike-insight-card { border: 1px solid #111; }
+body[data-theme="bauhaus"] .kpi-grid { gap: 6px; }
+body[data-theme="bauhaus"] .kpi-card:nth-child(3n + 1) { border-top: 5px solid #0055a5; }
+body[data-theme="bauhaus"] .kpi-card:nth-child(3n + 2) { border-top: 5px solid #e5a93c; }
+body[data-theme="bauhaus"] .kpi-card:nth-child(3n) { border-top: 5px solid #111; }
+body[data-theme="bauhaus"] .bar-track, body[data-theme="bauhaus"] .stack-list-track { background: #d1d5db; border: 1px solid #111; border-radius: 0; }
+body[data-theme="bauhaus"] .bar-fill, body[data-theme="bauhaus"] .stack-list-fill { background: repeating-linear-gradient(90deg, #0055a5 0 10px, #fff 10px 12px); border-radius: 0; }
+body[data-theme="bauhaus"] .timeline-bars-wrap, body[data-theme="bauhaus"] .annual-strip-chart,
+body[data-theme="bauhaus"] .timeline-bars-wrap.tone-distance, body[data-theme="bauhaus"] .timeline-bars-wrap.tone-time,
+body[data-theme="bauhaus"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="bauhaus"] .timeline-bar-track, body[data-theme="bauhaus"] .annual-strip-track { background: #d1d5db; border: 1px solid #111; border-radius: 0; }
+body[data-theme="bauhaus"] .timeline-bar-fill, body[data-theme="bauhaus"] .annual-strip-fill { background: repeating-linear-gradient(90deg, #0055a5 0 10px, #fff 10px 12px); border-radius: 0; }
+body[data-theme="bauhaus"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: repeating-linear-gradient(90deg, #0055a5 0 10px, #fff 10px 12px); }
+body[data-theme="bauhaus"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: repeating-linear-gradient(90deg, #bd801c 0 10px, #fff 10px 12px); }
+body[data-theme="bauhaus"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: repeating-linear-gradient(90deg, #176242 0 10px, #fff 10px 12px); }
+body[data-theme="bauhaus"] .bar-label, body[data-theme="bauhaus"] .bar-value, body[data-theme="bauhaus"] .timeline-bar-value,
+body[data-theme="bauhaus"] .timeline-bar-label, body[data-theme="bauhaus"] .annual-strip-top,
+body[data-theme="bauhaus"] .annual-strip-label, body[data-theme="bauhaus"] .annual-strip-sub { color: #111; }
+body[data-theme="bauhaus"] .spinner-wheel { border-color: #d1d5db; border-top-color: #0055a5; border-radius: 0; }
+body[data-theme="bauhaus"] .segmented-control, body[data-theme="bauhaus"] .segmented-btn,
+body[data-theme="bauhaus"] .annual-breakdown-mode-btn, body[data-theme="bauhaus"] .pin-button,
+body[data-theme="bauhaus"] .filter-field select, body[data-theme="bauhaus"] .filter-field input,
+body[data-theme="bauhaus"] .bike-controls input, body[data-theme="bauhaus"] .bike-controls select { border-radius: 0; }
+body[data-theme="bauhaus"] #theme-manager, body[data-theme="bauhaus"] #bike-gallery { background: #fff; color: #111; border-radius: 0; }
+body[data-theme="bauhaus"] #theme-manager p, body[data-theme="bauhaus"] #theme-manager legend { color: #41464d; }
+@media (max-width: 720px) { body[data-theme="bauhaus"] .hero-period-stats { grid-template-columns: 1fr; } }

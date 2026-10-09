@@ -1,0 +1,52 @@
+body[data-theme="egyptian"] {
+  --bg: #c58f68; --bg-2: repeating-linear-gradient(0deg, #d6a77e 0 5px, #c99a72 6px 7px, #d6a77e 8px 14px);
+  --surface: #edc9af; --surface-strong: #f5dbc3; --surface-muted: #e1b995; --surface-deep: #cda27d;
+  --text: #24201d; --text-muted: #443429; --border: #72543b;
+  --accent: #002fa7; --accent-2: #673616; --distance: #002fa7; --time: #603018; --elevation: #19432d;
+  --danger: #8c2720; --success: #24563c; --warning: #714410; --shadow: 0 6px 15px #33251a55; --shadow-soft: 0 3px 8px #33251a38;
+  --radius: 10px; --radius-sm: 6px; --glass: none; --t-on-accent: #fff; --t-track: #c6a17e;
+  --t-fill-distance: #002fa7; --t-fill-time: #7b3e24; --t-fill-elevation: #24563c;
+  font-family: "Trajan Pro", "Copperplate", Georgia, serif; background: var(--bg-2); color: var(--text);
+}
+body[data-theme="egyptian"] .side-rail { background: #9e6d4d; border-right: 3px solid #002fa7; }
+body[data-theme="egyptian"] .brand-orb { background: #002fa7; box-shadow: 0 0 0 3px #edc9af; }
+body[data-theme="egyptian"] .menu-trigger, body[data-theme="egyptian"] .segmented-btn.active,
+body[data-theme="egyptian"] .annual-breakdown-mode-btn.active, body[data-theme="egyptian"] .pin-button.pinned { background: #002fa7; color: #fff; border: 1px solid #72543b; }
+body[data-theme="egyptian"] .secondary-trigger, body[data-theme="egyptian"] .dropdown-menu,
+body[data-theme="egyptian"] #theme-manager, body[data-theme="egyptian"] #bike-gallery { background: #f5dbc3; color: #24201d; border: 1px solid #72543b; }
+body[data-theme="egyptian"] .dropdown-item { color: #24201d; }
+body[data-theme="egyptian"] .accent-bar { background: repeating-linear-gradient(90deg, #002fa7 0 10px, #edc9af 10px 13px, #8b4a24 13px 23px); }
+body[data-theme="egyptian"] .hero-main::before { background: repeating-linear-gradient(0deg, transparent 0 16px, #72543b12 17px 19px); }
+body[data-theme="egyptian"] .kpi-card::after { display: none; }
+body[data-theme="egyptian"] .status-bar, body[data-theme="egyptian"] .hero-main,
+body[data-theme="egyptian"] .chart-card, body[data-theme="egyptian"] .kpi-card, body[data-theme="egyptian"] .hero-stat,
+body[data-theme="egyptian"] .record-card, body[data-theme="egyptian"] .highlight-card,
+body[data-theme="egyptian"] .featured-activity-card, body[data-theme="egyptian"] .comparison-mobile-card,
+body[data-theme="egyptian"] .bike-insight-card { background: #edc9af; color: #24201d; --text: #24201d; --text-muted: #514137; border: 1px solid #72543b; box-shadow: var(--shadow-soft); }
+body[data-theme="egyptian"] .bar-track, body[data-theme="egyptian"] .stack-list-track,
+body[data-theme="egyptian"] .timeline-bar-track, body[data-theme="egyptian"] .annual-strip-track { background: repeating-linear-gradient(90deg, #c6a17e 0 7px, #72543b 7px 8px); border: 1px solid #72543b; }
+body[data-theme="egyptian"] .bar-fill, body[data-theme="egyptian"] .stack-list-fill,
+body[data-theme="egyptian"] .timeline-bar-fill, body[data-theme="egyptian"] .annual-strip-fill { background: #002fa7; }
+body[data-theme="egyptian"] .timeline-bars-wrap, body[data-theme="egyptian"] .annual-strip-chart,
+body[data-theme="egyptian"] .timeline-bars-wrap.tone-distance, body[data-theme="egyptian"] .timeline-bars-wrap.tone-time,
+body[data-theme="egyptian"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="egyptian"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="egyptian"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="egyptian"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="egyptian"] .bar-label, body[data-theme="egyptian"] .bar-value, body[data-theme="egyptian"] .timeline-bar-value,
+body[data-theme="egyptian"] .timeline-bar-label, body[data-theme="egyptian"] .annual-strip-top,
+body[data-theme="egyptian"] .annual-strip-label { color: #24201d; }
+body[data-theme="egyptian"] .annual-strip-sub { color: #514137; }
+body[data-theme="egyptian"] .spinner-wheel { border-color: #c6a17e; border-top-color: #002fa7; }
+body[data-theme="egyptian"] .card-kicker, body[data-theme="egyptian"] .eyebrow { background: #edc9af; border: 1px solid #72543b; border-radius: 999px; padding: 2px 8px; }
+@media (max-width: 720px) { body[data-theme="egyptian"] .hero-period-stats { grid-template-columns: 1fr; } }
+body[data-theme="egyptian"] .status-bar, body[data-theme="egyptian"] .hero-main, body[data-theme="egyptian"] .kpi-card,
+body[data-theme="egyptian"] .chart-card, body[data-theme="egyptian"] .hero-stat, body[data-theme="egyptian"] .record-card,
+body[data-theme="egyptian"] .highlight-card, body[data-theme="egyptian"] .featured-activity-card,
+body[data-theme="egyptian"] .comparison-mobile-card, body[data-theme="egyptian"] .bike-insight-card,
+body[data-theme="egyptian"] #theme-manager, body[data-theme="egyptian"] #bike-gallery { border-radius: var(--radius); }
+body[data-theme="egyptian"] .segmented-control, body[data-theme="egyptian"] .segmented-btn,
+body[data-theme="egyptian"] .annual-breakdown-mode-btn, body[data-theme="egyptian"] .pin-button,
+body[data-theme="egyptian"] .filter-field select, body[data-theme="egyptian"] .filter-field input,
+body[data-theme="egyptian"] .bike-controls input, body[data-theme="egyptian"] .bike-controls select,
+body[data-theme="egyptian"] .side-meta, body[data-theme="egyptian"] .dropdown-menu { border-radius: var(--radius-sm); }

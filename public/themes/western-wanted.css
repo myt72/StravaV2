@@ -1,0 +1,54 @@
+body[data-theme="western-wanted"] {
+  --bg: #6e492c; --bg-2: repeating-linear-gradient(0deg, #765033 0 28px, #684529 29px 31px, #805a39 32px 34px);
+  --surface: #ead7b3; --surface-strong: #f4e6ca; --surface-muted: #dfc79e; --surface-deep: #c8ad80;
+  --text: #1a120b; --text-muted: #49351f; --border: #6a3b20;
+  --accent: #5c2e0c; --accent-2: #63300c; --distance: #5c2e0c; --time: #6b3513; --elevation: #263e20;
+  --danger: #8b2521; --success: #31512c; --warning: #75400f; --shadow: 4px 6px 0 #392719; --shadow-soft: 2px 3px 0 #392719;
+  --radius: 3px; --radius-sm: 2px; --glass: none; --t-on-accent: #fff8e9; --t-track: #c8ad80;
+  --t-fill-distance: #75400f; --t-fill-time: #6b3513; --t-fill-elevation: #31512c;
+  font-family: Rockwell, "Courier New", Georgia, serif; background: var(--bg-2); color: var(--text);
+}
+body[data-theme="western-wanted"] .side-rail { background: #4a301e; border-right: 3px solid #c49a62; }
+body[data-theme="western-wanted"] .brand-orb { background: #8b4513; box-shadow: 0 0 0 3px #ead7b3; }
+body[data-theme="western-wanted"] .menu-trigger, body[data-theme="western-wanted"] .segmented-btn.active,
+body[data-theme="western-wanted"] .annual-breakdown-mode-btn.active, body[data-theme="western-wanted"] .pin-button.pinned { background: #75400f; color: #fff8e9; border-color: #1a120b; }
+body[data-theme="western-wanted"] .secondary-trigger, body[data-theme="western-wanted"] .dropdown-menu,
+body[data-theme="western-wanted"] #theme-manager, body[data-theme="western-wanted"] #bike-gallery { background: #f4e6ca; color: #1a120b; }
+body[data-theme="western-wanted"] .dropdown-item { color: #1a120b; }
+body[data-theme="western-wanted"] .accent-bar { background: #8b4513; }
+body[data-theme="western-wanted"] .hero-main::before { background: repeating-linear-gradient(135deg, transparent 0 18px, rgba(117,64,15,.08) 19px 21px); }
+body[data-theme="western-wanted"] .kpi-card::after { display: none; }
+body[data-theme="western-wanted"] .status-bar, body[data-theme="western-wanted"] .hero-main,
+body[data-theme="western-wanted"] .chart-card, body[data-theme="western-wanted"] .kpi-card, body[data-theme="western-wanted"] .hero-stat,
+body[data-theme="western-wanted"] .record-card, body[data-theme="western-wanted"] .highlight-card,
+body[data-theme="western-wanted"] .featured-activity-card, body[data-theme="western-wanted"] .comparison-mobile-card,
+body[data-theme="western-wanted"] .bike-insight-card { background: #ead7b3; color: #1a120b; --text: #1a120b; --text-muted: #49351f; border: 1px solid #6a3b20; box-shadow: var(--shadow-soft); }
+body[data-theme="western-wanted"] .bar-track, body[data-theme="western-wanted"] .stack-list-track,
+body[data-theme="western-wanted"] .timeline-bar-track, body[data-theme="western-wanted"] .annual-strip-track { background: #c8ad80; border: 1px solid #6a3b20; }
+body[data-theme="western-wanted"] .bar-fill, body[data-theme="western-wanted"] .stack-list-fill,
+body[data-theme="western-wanted"] .timeline-bar-fill, body[data-theme="western-wanted"] .annual-strip-fill { background: #5c2e0c; }
+body[data-theme="western-wanted"] .timeline-bars-wrap, body[data-theme="western-wanted"] .annual-strip-chart,
+body[data-theme="western-wanted"] .timeline-bars-wrap.tone-distance, body[data-theme="western-wanted"] .timeline-bars-wrap.tone-time,
+body[data-theme="western-wanted"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="western-wanted"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="western-wanted"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="western-wanted"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="western-wanted"] .bar-label, body[data-theme="western-wanted"] .bar-value, body[data-theme="western-wanted"] .timeline-bar-value,
+body[data-theme="western-wanted"] .timeline-bar-label, body[data-theme="western-wanted"] .annual-strip-top,
+body[data-theme="western-wanted"] .annual-strip-label { color: #1a120b; }
+body[data-theme="western-wanted"] .annual-strip-sub { color: #49351f; }
+body[data-theme="western-wanted"] .card, body[data-theme="western-wanted"] .chart-card, body[data-theme="western-wanted"] .kpi-card { position: relative; }
+body[data-theme="western-wanted"] .card::before, body[data-theme="western-wanted"] .chart-card::before, body[data-theme="western-wanted"] .kpi-card::before { content: ""; position: absolute; top: 8px; right: 9px; width: 7px; height: 7px; border-radius: 50%; background: #765033; box-shadow: 0 1px 2px #392719; pointer-events: none; }
+body[data-theme="western-wanted"] .spinner-wheel { border-color: #c8ad80; border-top-color: #75400f; }
+body[data-theme="western-wanted"] h1, body[data-theme="western-wanted"] h2, body[data-theme="western-wanted"] h3 { text-transform: uppercase; letter-spacing: .07em; }
+@media (max-width: 720px) { body[data-theme="western-wanted"] .hero-period-stats { grid-template-columns: 1fr; } }
+body[data-theme="western-wanted"] .status-bar, body[data-theme="western-wanted"] .hero-main, body[data-theme="western-wanted"] .kpi-card,
+body[data-theme="western-wanted"] .chart-card, body[data-theme="western-wanted"] .hero-stat, body[data-theme="western-wanted"] .record-card,
+body[data-theme="western-wanted"] .highlight-card, body[data-theme="western-wanted"] .featured-activity-card,
+body[data-theme="western-wanted"] .comparison-mobile-card, body[data-theme="western-wanted"] .bike-insight-card,
+body[data-theme="western-wanted"] #theme-manager, body[data-theme="western-wanted"] #bike-gallery { border-radius: var(--radius); }
+body[data-theme="western-wanted"] .segmented-control, body[data-theme="western-wanted"] .segmented-btn,
+body[data-theme="western-wanted"] .annual-breakdown-mode-btn, body[data-theme="western-wanted"] .pin-button,
+body[data-theme="western-wanted"] .filter-field select, body[data-theme="western-wanted"] .filter-field input,
+body[data-theme="western-wanted"] .bike-controls input, body[data-theme="western-wanted"] .bike-controls select,
+body[data-theme="western-wanted"] .side-meta, body[data-theme="western-wanted"] .dropdown-menu { border-radius: var(--radius-sm); }

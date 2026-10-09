@@ -1,0 +1,63 @@
+/* googie theme: every selector is scoped to body[data-theme="googie"] */
+body[data-theme="googie"] {
+  --bg: #fdf6e3;
+  --bg-2: linear-gradient(180deg,#e8f7f5 0%,#fdf6e3 100%);
+  --surface: rgba(255,255,255,0.92);
+  --surface-strong: #ffffff;
+  --surface-muted: rgba(255,247,225,0.95);
+  --surface-deep: #fbeccb;
+  --text: #1f3a4d;
+  --text-muted: #4a6678;
+  --border: rgba(255,107,74,0.35);
+  --accent: #ff6b4a;
+  --accent-2: #1fb5ad;
+  --distance: #1fb5ad;
+  --time: #ffb627;
+  --elevation: #7cc576;
+  --danger: #ff4d6d;
+  --success: #3ddc97;
+  --warning: #ffb347;
+  --shadow: 0 6px 0 rgba(31,58,77,0.12);
+  --shadow-soft: 0 6px 0 rgba(31,58,77,0.12);
+  --radius: 24px 6px;
+  --radius-sm: 10px 4px;
+  --glass: none;
+}
+
+body[data-theme="googie"] {
+  font-family: "Trebuchet MS", system-ui, sans-serif;
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+
+body[data-theme="googie"] .side-rail { border-right: 4px solid var(--accent); }
+body[data-theme="googie"] h1 { letter-spacing: 0.02em; font-style: italic; }
+
+/* Chart legibility: no gradient behind text, explicit text colors, solid fills distinct from the track */
+body[data-theme="googie"] .hero-main::before { background: radial-gradient(circle, rgba(31,181,173,0.16), transparent 60%); }
+body[data-theme="googie"] .spinner-wheel { border-color: var(--border); border-top-color: var(--accent); }
+body[data-theme="googie"] .hero-stat { background: var(--surface-strong); }
+body[data-theme="googie"] .bar-track,
+body[data-theme="googie"] .stack-list-track { background: #ffffff; border: 1px solid var(--border); }
+body[data-theme="googie"] .bar-fill,
+body[data-theme="googie"] .stack-list-fill { background: var(--accent); }
+body[data-theme="googie"] .bar-label { color: var(--text); }
+body[data-theme="googie"] .bar-value { color: var(--text-muted); }
+body[data-theme="googie"] .timeline-bars-wrap,
+body[data-theme="googie"] .annual-strip-chart,
+body[data-theme="googie"] .timeline-bars-wrap.tone-distance,
+body[data-theme="googie"] .timeline-bars-wrap.tone-time,
+body[data-theme="googie"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="googie"] .timeline-bar-track,
+body[data-theme="googie"] .annual-strip-track { background: #ffffff; border: 1px solid var(--border); box-sizing: border-box; }
+body[data-theme="googie"] .timeline-bar-fill,
+body[data-theme="googie"] .annual-strip-fill { background: var(--accent); }
+body[data-theme="googie"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: #1fb5ad; }
+body[data-theme="googie"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: #ffb627; }
+body[data-theme="googie"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: #7cc576; }
+body[data-theme="googie"] .timeline-bar-value,
+body[data-theme="googie"] .annual-strip-top,
+body[data-theme="googie"] .timeline-bar-label,
+body[data-theme="googie"] .annual-strip-label { color: var(--text); }
+body[data-theme="googie"] .annual-strip-sub { color: var(--text-muted); }

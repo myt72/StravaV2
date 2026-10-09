@@ -1,0 +1,57 @@
+body[data-theme="lcars-modern"] {
+  --bg: #11131e; --bg-2: linear-gradient(135deg, #171a29, #10121c 70%);
+  --surface: #1a1d2b; --surface-strong: #222638; --surface-muted: #202334; --surface-deep: #10121b;
+  --text: #f6f2e8; --text-muted: #d1cfcb; --border: #595d6e;
+  --accent: #e8ae73; --accent-2: #bda0d8; --distance: #e8ae73; --time: #c2abd9; --elevation: #e3cf9d;
+  --danger: #ed8c81; --success: #a5d3ad; --warning: #f3cb87; --shadow: 0 8px 22px #0007; --shadow-soft: 0 3px 10px #0005;
+  --radius: 18px; --radius-sm: 12px; --glass: none; --t-on-accent: #221c17; --t-track: #3b3e4b;
+  --t-fill-distance: #e8ae73; --t-fill-time: #c2abd9; --t-fill-elevation: #e3cf9d;
+  font-family: "Arial Narrow", "Trebuchet MS", Arial, sans-serif; background: var(--bg-2); color: var(--text);
+}
+body[data-theme="lcars-modern"] .side-rail { background: #171a29; border-right: 0; }
+body[data-theme="lcars-modern"] .brand-orb { background: #e8ae73; border-radius: 2px 18px 18px 2px; box-shadow: none; }
+body[data-theme="lcars-modern"] .menu-trigger, body[data-theme="lcars-modern"] .segmented-btn.active,
+body[data-theme="lcars-modern"] .annual-breakdown-mode-btn.active, body[data-theme="lcars-modern"] .pin-button.pinned { background: #e8ae73; color: #221c17; border: 0; border-radius: 999px; }
+body[data-theme="lcars-modern"] .secondary-trigger, body[data-theme="lcars-modern"] .dropdown-menu,
+body[data-theme="lcars-modern"] #theme-manager, body[data-theme="lcars-modern"] #bike-gallery { background: #1a1d2b; color: #f6f2e8; border: 1px solid #595d6e; border-radius: 14px; }
+body[data-theme="lcars-modern"] .dropdown-item { color: #f6f2e8; }
+body[data-theme="lcars-modern"] .accent-bar { background: linear-gradient(90deg, #bda0d8 0 30%, #e8ae73 30% 70%, #e3cf9d 70%); border-radius: 999px; }
+body[data-theme="lcars-modern"] .hero-main::before { background: repeating-linear-gradient(0deg, transparent 0 23px, #bda0d811 24px 25px); }
+body[data-theme="lcars-modern"] .kpi-card::after { display: none; }
+body[data-theme="lcars-modern"] .status-bar, body[data-theme="lcars-modern"] .hero-main,
+body[data-theme="lcars-modern"] .chart-card, body[data-theme="lcars-modern"] .kpi-card, body[data-theme="lcars-modern"] .hero-stat,
+body[data-theme="lcars-modern"] .record-card, body[data-theme="lcars-modern"] .highlight-card,
+body[data-theme="lcars-modern"] .featured-activity-card, body[data-theme="lcars-modern"] .comparison-mobile-card,
+body[data-theme="lcars-modern"] .bike-insight-card { background: #1a1d2b; color: #f6f2e8; --text: #f6f2e8; --text-muted: #d1cfcb; border: 1px solid #45495b; box-shadow: var(--shadow-soft); }
+body[data-theme="lcars-modern"] .bar-track, body[data-theme="lcars-modern"] .stack-list-track,
+body[data-theme="lcars-modern"] .timeline-bar-track, body[data-theme="lcars-modern"] .annual-strip-track { background: #3b3e4b; border: 1px solid #595d6e; border-radius: 999px; }
+body[data-theme="lcars-modern"] .bar-fill, body[data-theme="lcars-modern"] .stack-list-fill,
+body[data-theme="lcars-modern"] .timeline-bar-fill, body[data-theme="lcars-modern"] .annual-strip-fill { background: #e8ae73; border-radius: 999px; }
+body[data-theme="lcars-modern"] .timeline-bars-wrap, body[data-theme="lcars-modern"] .annual-strip-chart,
+body[data-theme="lcars-modern"] .timeline-bars-wrap.tone-distance, body[data-theme="lcars-modern"] .timeline-bars-wrap.tone-time,
+body[data-theme="lcars-modern"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="lcars-modern"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="lcars-modern"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="lcars-modern"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="lcars-modern"] .bar-label, body[data-theme="lcars-modern"] .bar-value, body[data-theme="lcars-modern"] .timeline-bar-value,
+body[data-theme="lcars-modern"] .timeline-bar-label, body[data-theme="lcars-modern"] .annual-strip-top,
+body[data-theme="lcars-modern"] .annual-strip-label { color: #f6f2e8; }
+body[data-theme="lcars-modern"] .annual-strip-sub { color: #d1cfcb; }
+body[data-theme="lcars-modern"] .spinner-wheel { border-color: #3b3e4b; border-top-color: #e8ae73; }
+body[data-theme="lcars-modern"] h1, body[data-theme="lcars-modern"] h2, body[data-theme="lcars-modern"] h3 { text-transform: uppercase; letter-spacing: .07em; }
+body[data-theme="lcars-modern"] .side-nav a { border-radius: 2px 16px 16px 2px; text-transform: uppercase; letter-spacing: .08em; }
+body[data-theme="lcars-modern"] .side-nav a:nth-child(3n + 1) { background: #bda0d8; color: #241b2e; }
+body[data-theme="lcars-modern"] .side-nav a:nth-child(3n + 2) { background: #e8ae73; color: #2b2118; }
+body[data-theme="lcars-modern"] .side-nav a:nth-child(3n) { background: #e3cf9d; color: #29251a; }
+body[data-theme="lcars-modern"] .side-nav a:hover { filter: brightness(1.08); }
+@media (max-width: 720px) { body[data-theme="lcars-modern"] .hero-period-stats { grid-template-columns: 1fr; } }
+body[data-theme="lcars-modern"] .status-bar, body[data-theme="lcars-modern"] .hero-main, body[data-theme="lcars-modern"] .kpi-card,
+body[data-theme="lcars-modern"] .chart-card, body[data-theme="lcars-modern"] .hero-stat, body[data-theme="lcars-modern"] .record-card,
+body[data-theme="lcars-modern"] .highlight-card, body[data-theme="lcars-modern"] .featured-activity-card,
+body[data-theme="lcars-modern"] .comparison-mobile-card, body[data-theme="lcars-modern"] .bike-insight-card,
+body[data-theme="lcars-modern"] #theme-manager, body[data-theme="lcars-modern"] #bike-gallery { border-radius: var(--radius); }
+body[data-theme="lcars-modern"] .segmented-control, body[data-theme="lcars-modern"] .segmented-btn,
+body[data-theme="lcars-modern"] .annual-breakdown-mode-btn, body[data-theme="lcars-modern"] .pin-button,
+body[data-theme="lcars-modern"] .filter-field select, body[data-theme="lcars-modern"] .filter-field input,
+body[data-theme="lcars-modern"] .bike-controls input, body[data-theme="lcars-modern"] .bike-controls select,
+body[data-theme="lcars-modern"] .side-meta, body[data-theme="lcars-modern"] .dropdown-menu { border-radius: var(--radius-sm); }

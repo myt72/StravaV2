@@ -1,0 +1,104 @@
+/* nyt-data theme: every selector is scoped to body[data-theme="nyt-data"] */
+body[data-theme="nyt-data"] {
+  --bg: #ffffff;
+  --bg-2: #ffffff;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-muted: #f7f7f7;
+  --surface-deep: #eeeeee;
+  --text: #121212;
+  --text-muted: #5a5a5a;
+  --border: #dfdfdf;
+  --accent: #326891;
+  --accent-2: #6b8fb3;
+  --distance: #326891;
+  --time: #6b6b6b;
+  --elevation: #4a7059;
+  --danger: #c60b1e;
+  --success: #2e6b4a;
+  --warning: #8a6500;
+  --shadow: none;
+  --shadow-soft: none;
+  --radius: 0;
+  --radius-sm: 0;
+  --glass: none;
+  --t-on-accent: #ffffff;
+  --t-track: #e6e6e6;
+  --t-fill-distance: #326891;
+  --t-fill-time: #9a9a9a;
+  --t-fill-elevation: #7fa08d;
+  font-family: "Franklin Gothic Medium", "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+/* Replace Default's hard-coded colors so nothing leaks */
+body[data-theme="nyt-data"] .side-rail { background: #f7f7f7; backdrop-filter: none; border-right: 1px solid var(--border); }
+body[data-theme="nyt-data"] .brand-orb { background: var(--accent); box-shadow: 0 0 0 3px var(--surface-strong), 0 0 0 4px var(--accent-2); }
+body[data-theme="nyt-data"] .dropdown-menu { backdrop-filter: none; border-radius: var(--radius-sm); }
+body[data-theme="nyt-data"] .menu-trigger { background: var(--accent); color: var(--t-on-accent); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-soft); }
+body[data-theme="nyt-data"] .secondary-trigger { background: var(--surface-strong); color: var(--text); border: 1px solid var(--border); }
+body[data-theme="nyt-data"] .segmented-btn.active,
+body[data-theme="nyt-data"] .annual-breakdown-mode-btn.active,
+body[data-theme="nyt-data"] .pin-button.pinned { background: var(--accent); color: var(--t-on-accent); }
+body[data-theme="nyt-data"] .accent-bar { background: var(--accent); }
+body[data-theme="nyt-data"] .hero-main::before { background: none; }
+body[data-theme="nyt-data"] .hero-stat { background: var(--surface-strong); }
+body[data-theme="nyt-data"] .kpi-card::after { display: none; }
+body[data-theme="nyt-data"] .status-bar,
+body[data-theme="nyt-data"] .hero-main,
+body[data-theme="nyt-data"] .kpi-card { border-radius: var(--radius); }
+body[data-theme="nyt-data"] .chart-card,
+body[data-theme="nyt-data"] .hero-stat,
+body[data-theme="nyt-data"] .record-card,
+body[data-theme="nyt-data"] .highlight-card,
+body[data-theme="nyt-data"] .featured-activity-card,
+body[data-theme="nyt-data"] .comparison-mobile-card,
+body[data-theme="nyt-data"] .bike-insight-card,
+body[data-theme="nyt-data"] .segmented-control,
+body[data-theme="nyt-data"] .segmented-btn,
+body[data-theme="nyt-data"] .annual-breakdown-mode-btn,
+body[data-theme="nyt-data"] .pin-button,
+body[data-theme="nyt-data"] .filter-field select,
+body[data-theme="nyt-data"] .filter-field input,
+body[data-theme="nyt-data"] .side-meta { border-radius: var(--radius-sm); }
+body[data-theme="nyt-data"] .spinner-wheel { border-color: var(--border); border-top-color: var(--accent); }
+
+/* Charts: explicit fills, tracks and text colors (AA contrast on --surface-muted) */
+body[data-theme="nyt-data"] .bar-track,
+body[data-theme="nyt-data"] .stack-list-track { background: var(--t-track); }
+body[data-theme="nyt-data"] .bar-fill,
+body[data-theme="nyt-data"] .stack-list-fill { background: var(--accent); }
+body[data-theme="nyt-data"] .bar-label { color: var(--text); }
+body[data-theme="nyt-data"] .bar-value { color: var(--text-muted); }
+body[data-theme="nyt-data"] .timeline-bars-wrap,
+body[data-theme="nyt-data"] .annual-strip-chart,
+body[data-theme="nyt-data"] .timeline-bars-wrap.tone-distance,
+body[data-theme="nyt-data"] .timeline-bars-wrap.tone-time,
+body[data-theme="nyt-data"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="nyt-data"] .timeline-bar-track,
+body[data-theme="nyt-data"] .annual-strip-track { background: var(--t-track); border: 1px solid var(--border); box-sizing: border-box; border-radius: var(--radius-sm); }
+body[data-theme="nyt-data"] .timeline-bar-fill,
+body[data-theme="nyt-data"] .annual-strip-fill { background: var(--accent); border-radius: 0; }
+body[data-theme="nyt-data"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="nyt-data"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="nyt-data"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="nyt-data"] .timeline-bar-value,
+body[data-theme="nyt-data"] .annual-strip-top { color: var(--text); }
+body[data-theme="nyt-data"] .timeline-bar-label,
+body[data-theme="nyt-data"] .annual-strip-label { color: var(--text); }
+body[data-theme="nyt-data"] .annual-strip-sub { color: var(--text-muted); }
+
+body[data-theme="nyt-data"] h1, body[data-theme="nyt-data"] h2, body[data-theme="nyt-data"] h3, body[data-theme="nyt-data"] .hero-main h2, body[data-theme="nyt-data"] .kpi-value, body[data-theme="nyt-data"] .hero-stat-value { font-family: Georgia, "Times New Roman", serif; font-weight: 700; }
+body[data-theme="nyt-data"] .card { border: none; border-top: 1px solid #121212; border-bottom: 1px solid #dfdfdf; padding: 28px 8px; margin-bottom: 36px; }
+body[data-theme="nyt-data"] .glass-card { box-shadow: none; }
+body[data-theme="nyt-data"] .chart-card, body[data-theme="nyt-data"] .kpi-card, body[data-theme="nyt-data"] .record-card, body[data-theme="nyt-data"] .hero-stat { border: none; border-top: 1px solid #dfdfdf; border-radius: 0; }
+body[data-theme="nyt-data"] .eyebrow, body[data-theme="nyt-data"] .card-kicker, body[data-theme="nyt-data"] .hero-kicker { color: #5a5a5a; }
+body[data-theme="nyt-data"] .bar-track, body[data-theme="nyt-data"] .stack-list-track { height: 6px; border-radius: 0; }
+body[data-theme="nyt-data"] .bar-fill, body[data-theme="nyt-data"] .stack-list-fill { background: #326891; border-radius: 0; }
+body[data-theme="nyt-data"] .annual-strip-fill { background: #326891; }
+body[data-theme="nyt-data"] .annual-strip-top, body[data-theme="nyt-data"] .hero-stat-delta.negative { color: #c60b1e; }
+body[data-theme="nyt-data"] .timeline-bar-track, body[data-theme="nyt-data"] .annual-strip-track { border: none; border-bottom: 1px solid #121212; border-radius: 0; }
+body[data-theme="nyt-data"] .menu-trigger { background: #121212; color: #ffffff; border-color: #121212; }
+body[data-theme="nyt-data"] .secondary-trigger { background: #ffffff; color: #121212; border: 1px solid #121212; }
+body[data-theme="nyt-data"] #main { max-width: 1280px; padding: 40px; }

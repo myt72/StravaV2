@@ -1,0 +1,3 @@
+public/images/bikes/*
+!public/images/bikes/.gitkeep
+settings.json

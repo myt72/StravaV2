@@ -1,0 +1,76 @@
+/* Financial trading terminal: dense data, precise rules, no gradients or shadows */
+body[data-theme="trading-terminal"] {
+  --bg: #12161f;
+  --bg-2: #12161f;
+  --surface: #171c25;
+  --surface-strong: #1d242e;
+  --surface-muted: #171c25;
+  --surface-deep: #10141b;
+  --text: #f2f5f7;
+  --text-muted: #c1cbd4;
+  --border: #46515c;
+  --accent: #00d2ff;
+  --accent-2: #c6f5ff;
+  --distance: #00d2ff;
+  --time: #ffd166;
+  --elevation: #6be4a7;
+  --danger: #ff5967;
+  --success: #36db86;
+  --warning: #ffd166;
+  --shadow: none;
+  --shadow-soft: none;
+  --radius: 0;
+  --radius-sm: 0;
+  --glass: none;
+  --t-on-accent: #07151b;
+  --t-track: #313b46;
+  --t-fill-distance: #00d2ff;
+  --t-fill-time: #ffd166;
+  --t-fill-elevation: #6be4a7;
+  font-family: "SFMono-Regular", "Roboto Mono", Consolas, "Courier New", monospace;
+  background: #12161f;
+  color: var(--text);
+}
+body[data-theme="trading-terminal"] .side-rail { background: #10141b; backdrop-filter: none; border-right: 1px solid #46515c; }
+body[data-theme="trading-terminal"] .brand-orb { background: #00d2ff; box-shadow: none; border-radius: 0; }
+body[data-theme="trading-terminal"] .dropdown-menu { background: #1d242e; backdrop-filter: none; border-radius: 0; }
+body[data-theme="trading-terminal"] .menu-trigger { background: #00d2ff; color: #07151b; border: 1px solid #00d2ff; border-radius: 0; box-shadow: none; }
+body[data-theme="trading-terminal"] .secondary-trigger { background: #1d242e; color: #00d2ff; border: 1px solid #46515c; }
+body[data-theme="trading-terminal"] .segmented-btn.active, body[data-theme="trading-terminal"] .annual-breakdown-mode-btn.active, body[data-theme="trading-terminal"] .pin-button.pinned { background: #00d2ff; color: #07151b; }
+body[data-theme="trading-terminal"] .accent-bar { background: #00d2ff; border-radius: 0; }
+body[data-theme="trading-terminal"] .hero-main::before { background: none; }
+body[data-theme="trading-terminal"] .kpi-card::after { display: none; }
+body[data-theme="trading-terminal"] .status-bar, body[data-theme="trading-terminal"] .hero-main, body[data-theme="trading-terminal"] .kpi-card,
+body[data-theme="trading-terminal"] .chart-card, body[data-theme="trading-terminal"] .hero-stat, body[data-theme="trading-terminal"] .record-card,
+body[data-theme="trading-terminal"] .highlight-card, body[data-theme="trading-terminal"] .featured-activity-card,
+body[data-theme="trading-terminal"] .comparison-mobile-card, body[data-theme="trading-terminal"] .bike-insight-card { border-radius: 0; box-shadow: none; }
+body[data-theme="trading-terminal"] .kpi-grid, body[data-theme="trading-terminal"] .training-grid { gap: 0; }
+body[data-theme="trading-terminal"] .kpi-card, body[data-theme="trading-terminal"] .hero-stat, body[data-theme="trading-terminal"] .chart-card,
+body[data-theme="trading-terminal"] .record-card, body[data-theme="trading-terminal"] .highlight-card,
+body[data-theme="trading-terminal"] .featured-activity-card, body[data-theme="trading-terminal"] .comparison-mobile-card,
+body[data-theme="trading-terminal"] .bike-insight-card { border: 0; border-right: 1px solid #46515c; border-bottom: 1px solid #46515c; }
+body[data-theme="trading-terminal"] .bar-track, body[data-theme="trading-terminal"] .stack-list-track { height: 3px; background: #313b46; border-radius: 0; }
+body[data-theme="trading-terminal"] .bar-fill, body[data-theme="trading-terminal"] .stack-list-fill { background: #00d2ff; border-radius: 0; }
+body[data-theme="trading-terminal"] .timeline-bars-wrap, body[data-theme="trading-terminal"] .annual-strip-chart,
+body[data-theme="trading-terminal"] .timeline-bars-wrap.tone-distance, body[data-theme="trading-terminal"] .timeline-bars-wrap.tone-time,
+body[data-theme="trading-terminal"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="trading-terminal"] .timeline-bar-track, body[data-theme="trading-terminal"] .annual-strip-track { background: #313b46; border: 0; border-radius: 0; }
+body[data-theme="trading-terminal"] .timeline-bar-fill, body[data-theme="trading-terminal"] .annual-strip-fill { background: #00d2ff; border-radius: 0; }
+body[data-theme="trading-terminal"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="trading-terminal"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="trading-terminal"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="trading-terminal"] .bar-label, body[data-theme="trading-terminal"] .bar-value, body[data-theme="trading-terminal"] .timeline-bar-value,
+body[data-theme="trading-terminal"] .timeline-bar-label, body[data-theme="trading-terminal"] .annual-strip-top,
+body[data-theme="trading-terminal"] .annual-strip-label, body[data-theme="trading-terminal"] .annual-strip-sub { color: #f2f5f7; }
+body[data-theme="trading-terminal"] .trend-up, body[data-theme="trading-terminal"] .hero-stat-delta.positive { color: #36db86; }
+body[data-theme="trading-terminal"] .trend-down, body[data-theme="trading-terminal"] .hero-stat-delta.negative { color: #ff5967; }
+body[data-theme="trading-terminal"] .spinner-wheel { border-color: #46515c; border-top-color: #00d2ff; border-radius: 0; }
+body[data-theme="trading-terminal"] .segmented-control, body[data-theme="trading-terminal"] .segmented-btn,
+body[data-theme="trading-terminal"] .annual-breakdown-mode-btn, body[data-theme="trading-terminal"] .pin-button,
+body[data-theme="trading-terminal"] .filter-field select, body[data-theme="trading-terminal"] .filter-field input,
+body[data-theme="trading-terminal"] .bike-controls input, body[data-theme="trading-terminal"] .bike-controls select { border-radius: 0; }
+body[data-theme="trading-terminal"] .chart-card, body[data-theme="trading-terminal"] .kpi-card { padding: 12px; }
+body[data-theme="trading-terminal"] #theme-manager, body[data-theme="trading-terminal"] #bike-gallery { background: #1d242e; color: #f2f5f7; border-radius: 0; }
+body[data-theme="trading-terminal"] #theme-manager p, body[data-theme="trading-terminal"] #theme-manager legend { color: #c1cbd4; }
+body[data-theme="trading-terminal"] #theme-manager button { border-radius: 0; }
+@media (max-width: 720px) { body[data-theme="trading-terminal"] .hero-period-stats { grid-template-columns: 1fr; } }

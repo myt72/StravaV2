@@ -1,0 +1,106 @@
+/* comic-letters theme: every selector is scoped to body[data-theme="comic-letters"] */
+body[data-theme="comic-letters"] {
+  --bg: #fff7d6;
+  --bg-2: radial-gradient(circle, rgba(236,0,140,0.28) 1.6px, transparent 2px) 0 0/14px 14px, radial-gradient(circle, rgba(0,174,239,0.22) 1.6px, transparent 2px) 7px 7px/14px 14px, #fff7d6;
+  --surface: #ffffff;
+  --surface-strong: #ffffff;
+  --surface-muted: #fffdf0;
+  --surface-deep: #ffe97a;
+  --text: #111111;
+  --text-muted: #333333;
+  --border: #111111;
+  --accent: #c8006b;
+  --accent-2: #0077c8;
+  --distance: #00689c;
+  --time: #7a5c00;
+  --elevation: #b0006b;
+  --danger: #c00000;
+  --success: #007a3d;
+  --warning: #7a5c00;
+  --shadow: 5px 5px 0 #111111;
+  --shadow-soft: 3px 3px 0 #111111;
+  --radius: 4px;
+  --radius-sm: 2px;
+  --glass: none;
+  --t-on-accent: #ffffff;
+  --t-track: #ffffff;
+  --t-fill-distance: #00aeef;
+  --t-fill-time: #ffed00;
+  --t-fill-elevation: #ec008c;
+  font-family: "Comic Sans MS", "Comic Neue", Bangers, "Chalkboard SE", sans-serif;
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+/* Replace Default's hard-coded colors so nothing leaks */
+body[data-theme="comic-letters"] .side-rail { background: #ffed00; backdrop-filter: none; border-right: 1px solid var(--border); }
+body[data-theme="comic-letters"] .brand-orb { background: var(--accent); box-shadow: 0 0 0 3px var(--surface-strong), 0 0 0 4px var(--accent-2); }
+body[data-theme="comic-letters"] .dropdown-menu { backdrop-filter: none; border-radius: var(--radius-sm); }
+body[data-theme="comic-letters"] .menu-trigger { background: var(--accent); color: var(--t-on-accent); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-soft); }
+body[data-theme="comic-letters"] .secondary-trigger { background: var(--surface-strong); color: var(--text); border: 1px solid var(--border); }
+body[data-theme="comic-letters"] .segmented-btn.active,
+body[data-theme="comic-letters"] .annual-breakdown-mode-btn.active,
+body[data-theme="comic-letters"] .pin-button.pinned { background: var(--accent); color: var(--t-on-accent); }
+body[data-theme="comic-letters"] .accent-bar { background: var(--accent); }
+body[data-theme="comic-letters"] .hero-main::before { background: none; }
+body[data-theme="comic-letters"] .hero-stat { background: var(--surface-strong); }
+body[data-theme="comic-letters"] .kpi-card::after { display: none; }
+body[data-theme="comic-letters"] .status-bar,
+body[data-theme="comic-letters"] .hero-main,
+body[data-theme="comic-letters"] .kpi-card { border-radius: var(--radius); }
+body[data-theme="comic-letters"] .chart-card,
+body[data-theme="comic-letters"] .hero-stat,
+body[data-theme="comic-letters"] .record-card,
+body[data-theme="comic-letters"] .highlight-card,
+body[data-theme="comic-letters"] .featured-activity-card,
+body[data-theme="comic-letters"] .comparison-mobile-card,
+body[data-theme="comic-letters"] .bike-insight-card,
+body[data-theme="comic-letters"] .segmented-control,
+body[data-theme="comic-letters"] .segmented-btn,
+body[data-theme="comic-letters"] .annual-breakdown-mode-btn,
+body[data-theme="comic-letters"] .pin-button,
+body[data-theme="comic-letters"] .filter-field select,
+body[data-theme="comic-letters"] .filter-field input,
+body[data-theme="comic-letters"] .side-meta { border-radius: var(--radius-sm); }
+body[data-theme="comic-letters"] .spinner-wheel { border-color: var(--border); border-top-color: var(--accent); }
+
+/* Charts: explicit fills, tracks and text colors (AA contrast on --surface-muted) */
+body[data-theme="comic-letters"] .bar-track,
+body[data-theme="comic-letters"] .stack-list-track { background: var(--t-track); }
+body[data-theme="comic-letters"] .bar-fill,
+body[data-theme="comic-letters"] .stack-list-fill { background: var(--accent); }
+body[data-theme="comic-letters"] .bar-label { color: var(--text); }
+body[data-theme="comic-letters"] .bar-value { color: var(--text-muted); }
+body[data-theme="comic-letters"] .timeline-bars-wrap,
+body[data-theme="comic-letters"] .annual-strip-chart,
+body[data-theme="comic-letters"] .timeline-bars-wrap.tone-distance,
+body[data-theme="comic-letters"] .timeline-bars-wrap.tone-time,
+body[data-theme="comic-letters"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="comic-letters"] .timeline-bar-track,
+body[data-theme="comic-letters"] .annual-strip-track { background: var(--t-track); border: 1px solid var(--border); box-sizing: border-box; border-radius: var(--radius-sm); }
+body[data-theme="comic-letters"] .timeline-bar-fill,
+body[data-theme="comic-letters"] .annual-strip-fill { background: var(--accent); border-radius: 0; }
+body[data-theme="comic-letters"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="comic-letters"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="comic-letters"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="comic-letters"] .timeline-bar-value,
+body[data-theme="comic-letters"] .annual-strip-top { color: var(--text); }
+body[data-theme="comic-letters"] .timeline-bar-label,
+body[data-theme="comic-letters"] .annual-strip-label { color: var(--text); }
+body[data-theme="comic-letters"] .annual-strip-sub { color: var(--text-muted); }
+
+body[data-theme="comic-letters"] h1, body[data-theme="comic-letters"] h2, body[data-theme="comic-letters"] .kpi-value, body[data-theme="comic-letters"] .hero-stat-value, body[data-theme="comic-letters"] .record-title { font-family: Bangers, "Comic Sans MS", "Comic Neue", "Chalkboard SE", Impact, sans-serif; letter-spacing: 0.04em; font-weight: 700; }
+body[data-theme="comic-letters"] h1 { font-size: 48px; text-shadow: 3px 3px 0 #00aeef; }
+body[data-theme="comic-letters"] .card, body[data-theme="comic-letters"] .glass-card, body[data-theme="comic-letters"] .chart-card, body[data-theme="comic-letters"] .kpi-card, body[data-theme="comic-letters"] .hero-stat, body[data-theme="comic-letters"] .record-card, body[data-theme="comic-letters"] .dropdown-menu { border: 3px solid #111111; }
+body[data-theme="comic-letters"] .side-rail { border-right: 4px solid #111111; }
+body[data-theme="comic-letters"] .kpi-card { box-shadow: 4px 4px 0 #ec008c; }
+body[data-theme="comic-letters"] .chart-card { box-shadow: 4px 4px 0 #00aeef; }
+body[data-theme="comic-letters"] .record-card { box-shadow: 4px 4px 0 #ffed00; }
+body[data-theme="comic-letters"] .bar-track, body[data-theme="comic-letters"] .stack-list-track, body[data-theme="comic-letters"] .timeline-bar-track, body[data-theme="comic-letters"] .annual-strip-track { border: 3px solid #111111; border-radius: 0; }
+body[data-theme="comic-letters"] .bar-track, body[data-theme="comic-letters"] .stack-list-track { height: 18px; }
+body[data-theme="comic-letters"] .bar-fill, body[data-theme="comic-letters"] .stack-list-fill { background: #ec008c; border-radius: 0; border-right: 3px solid #111111; box-shadow: 3px 0 0 #00aeef; }
+body[data-theme="comic-letters"] .timeline-bar-fill, body[data-theme="comic-letters"] .annual-strip-fill { border-top: 3px solid #111111; box-shadow: -4px 0 0 #00aeef; }
+body[data-theme="comic-letters"] .annual-strip-fill { background: #ec008c; }
+body[data-theme="comic-letters"] .menu-trigger { border: 3px solid #111111; box-shadow: 3px 3px 0 #111111; }
+body[data-theme="comic-letters"] .brand-orb { border: 3px solid #111111; box-shadow: 3px 3px 0 #ec008c; }
+body[data-theme="comic-letters"] .eyebrow, body[data-theme="comic-letters"] .card-kicker, body[data-theme="comic-letters"] .hero-kicker { color: #111111; background: #ffed00; display: inline-block; padding: 1px 6px; border: 2px solid #111111; }

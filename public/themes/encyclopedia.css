@@ -1,0 +1,53 @@
+body[data-theme="encyclopedia"] {
+  --bg: #e8e2d4; --bg-2: radial-gradient(ellipse at center, #fdfbf7 0, #f5f0e5 70%, #e2d8c6);
+  --surface: #fdfbf7; --surface-strong: #fffefa; --surface-muted: #f2eee5; --surface-deep: #e6dfd2;
+  --text: #292923; --text-muted: #514e46; --border: #817664;
+  --accent: #36556c; --accent-2: #785c3d; --distance: #36556c; --time: #785c3d; --elevation: #435a48;
+  --danger: #8a3430; --success: #435a48; --warning: #77551d; --shadow: 0 5px 16px #463e3020; --shadow-soft: 0 2px 8px #463e3018;
+  --radius: 2px; --radius-sm: 1px; --glass: none; --t-on-accent: #fff; --t-track: #d7d1c5;
+  --t-fill-distance: #36556c; --t-fill-time: #785c3d; --t-fill-elevation: #435a48;
+  font-family: Baskerville, "Times New Roman", Georgia, serif; background: var(--bg-2); color: var(--text);
+}
+body[data-theme="encyclopedia"] .side-rail { background: #eee8dc; border-right: 1px double #817664; }
+body[data-theme="encyclopedia"] .brand-orb { background: #36556c; box-shadow: 0 0 0 3px #fdfbf7, 0 0 0 4px #817664; }
+body[data-theme="encyclopedia"] .menu-trigger, body[data-theme="encyclopedia"] .segmented-btn.active,
+body[data-theme="encyclopedia"] .annual-breakdown-mode-btn.active, body[data-theme="encyclopedia"] .pin-button.pinned { background: #36556c; color: #fff; border: 1px solid #817664; }
+body[data-theme="encyclopedia"] .secondary-trigger, body[data-theme="encyclopedia"] .dropdown-menu,
+body[data-theme="encyclopedia"] #theme-manager, body[data-theme="encyclopedia"] #bike-gallery { background: #fdfbf7; color: #292923; border: 1px double #817664; }
+body[data-theme="encyclopedia"] .dropdown-item { color: #292923; }
+body[data-theme="encyclopedia"] .accent-bar { background: repeating-linear-gradient(90deg, #36556c 0 1px, transparent 1px 4px, #785c3d 4px 5px, transparent 5px 8px); }
+body[data-theme="encyclopedia"] .hero-main::before { background: repeating-linear-gradient(135deg, transparent 0 20px, #36556c0b 21px 22px); }
+body[data-theme="encyclopedia"] .kpi-card::after { display: none; }
+body[data-theme="encyclopedia"] .status-bar, body[data-theme="encyclopedia"] .hero-main,
+body[data-theme="encyclopedia"] .chart-card, body[data-theme="encyclopedia"] .kpi-card, body[data-theme="encyclopedia"] .hero-stat,
+body[data-theme="encyclopedia"] .record-card, body[data-theme="encyclopedia"] .highlight-card,
+body[data-theme="encyclopedia"] .featured-activity-card, body[data-theme="encyclopedia"] .comparison-mobile-card,
+body[data-theme="encyclopedia"] .bike-insight-card { background: #fdfbf7; color: #292923; --text: #292923; --text-muted: #514e46; border: 3px double #817664; box-shadow: var(--shadow-soft); }
+body[data-theme="encyclopedia"] .bar-track, body[data-theme="encyclopedia"] .stack-list-track,
+body[data-theme="encyclopedia"] .timeline-bar-track, body[data-theme="encyclopedia"] .annual-strip-track { background: #e0dbd1; border: 1px solid #817664; }
+body[data-theme="encyclopedia"] .bar-fill, body[data-theme="encyclopedia"] .stack-list-fill,
+body[data-theme="encyclopedia"] .timeline-bar-fill, body[data-theme="encyclopedia"] .annual-strip-fill { background: repeating-linear-gradient(135deg, #36556c 0 2px, #f2eee5 2px 5px); }
+body[data-theme="encyclopedia"] .timeline-bars-wrap, body[data-theme="encyclopedia"] .annual-strip-chart,
+body[data-theme="encyclopedia"] .timeline-bars-wrap.tone-distance, body[data-theme="encyclopedia"] .timeline-bars-wrap.tone-time,
+body[data-theme="encyclopedia"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="encyclopedia"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: repeating-linear-gradient(135deg, #36556c 0 2px, #f2eee5 2px 5px); }
+body[data-theme="encyclopedia"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: repeating-linear-gradient(135deg, #785c3d 0 2px, #f2eee5 2px 5px); }
+body[data-theme="encyclopedia"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: repeating-linear-gradient(135deg, #435a48 0 2px, #f2eee5 2px 5px); }
+body[data-theme="encyclopedia"] .bar-label, body[data-theme="encyclopedia"] .bar-value, body[data-theme="encyclopedia"] .timeline-bar-value,
+body[data-theme="encyclopedia"] .timeline-bar-label, body[data-theme="encyclopedia"] .annual-strip-top,
+body[data-theme="encyclopedia"] .annual-strip-label { color: #292923; }
+body[data-theme="encyclopedia"] .annual-strip-sub { color: #514e46; }
+body[data-theme="encyclopedia"] .spinner-wheel { border-color: #d7d1c5; border-top-color: #36556c; }
+body[data-theme="encyclopedia"] h1, body[data-theme="encyclopedia"] h2, body[data-theme="encyclopedia"] h3 { font-variant: small-caps; letter-spacing: .035em; }
+body[data-theme="encyclopedia"] .chart-card-subtitle, body[data-theme="encyclopedia"] .annual-strip-sub { font-style: italic; }
+@media (max-width: 720px) { body[data-theme="encyclopedia"] .hero-period-stats { grid-template-columns: 1fr; } }
+body[data-theme="encyclopedia"] .status-bar, body[data-theme="encyclopedia"] .hero-main, body[data-theme="encyclopedia"] .kpi-card,
+body[data-theme="encyclopedia"] .chart-card, body[data-theme="encyclopedia"] .hero-stat, body[data-theme="encyclopedia"] .record-card,
+body[data-theme="encyclopedia"] .highlight-card, body[data-theme="encyclopedia"] .featured-activity-card,
+body[data-theme="encyclopedia"] .comparison-mobile-card, body[data-theme="encyclopedia"] .bike-insight-card,
+body[data-theme="encyclopedia"] #theme-manager, body[data-theme="encyclopedia"] #bike-gallery { border-radius: var(--radius); }
+body[data-theme="encyclopedia"] .segmented-control, body[data-theme="encyclopedia"] .segmented-btn,
+body[data-theme="encyclopedia"] .annual-breakdown-mode-btn, body[data-theme="encyclopedia"] .pin-button,
+body[data-theme="encyclopedia"] .filter-field select, body[data-theme="encyclopedia"] .filter-field input,
+body[data-theme="encyclopedia"] .bike-controls input, body[data-theme="encyclopedia"] .bike-controls select,
+body[data-theme="encyclopedia"] .side-meta, body[data-theme="encyclopedia"] .dropdown-menu { border-radius: var(--radius-sm); }

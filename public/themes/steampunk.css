@@ -1,0 +1,53 @@
+body[data-theme="steampunk"] {
+  --bg: #0b131f; --bg-2: radial-gradient(ellipse at 50% 0, #23313c, #0b131f 70%);
+  --surface: #17232d; --surface-strong: #202e37; --surface-muted: #1b2932; --surface-deep: #0c151d;
+  --text: #f1e1bd; --text-muted: #d1bd91; --border: #8f7042;
+  --accent: #d9b56e; --accent-2: #73a17c; --distance: #e0bd77; --time: #cb9064; --elevation: #8abd91;
+  --danger: #da8174; --success: #8abd91; --warning: #e0bd77; --shadow: 0 8px 22px #0009; --shadow-soft: 0 4px 12px #0007;
+  --radius: 10px; --radius-sm: 6px; --glass: none; --t-on-accent: #15130f; --t-track: #3a4548;
+  --t-fill-distance: #e0bd77; --t-fill-time: #cb9064; --t-fill-elevation: #8abd91;
+  font-family: Rockwell, "Courier New", Georgia, serif; background: var(--bg-2); color: var(--text);
+}
+body[data-theme="steampunk"] .side-rail { background: #0c151d; border-right: 2px solid #8f7042; }
+body[data-theme="steampunk"] .brand-orb { background: radial-gradient(circle at 35% 30%, #f3d99c, #a47838 62%, #49351f 64%); box-shadow: 0 0 0 3px #202e37; }
+body[data-theme="steampunk"] .menu-trigger, body[data-theme="steampunk"] .segmented-btn.active,
+body[data-theme="steampunk"] .annual-breakdown-mode-btn.active, body[data-theme="steampunk"] .pin-button.pinned { background: #d9b56e; color: #15130f; border: 1px solid #f1e1bd; }
+body[data-theme="steampunk"] .secondary-trigger, body[data-theme="steampunk"] .dropdown-menu,
+body[data-theme="steampunk"] #theme-manager, body[data-theme="steampunk"] #bike-gallery { background: #17232d; color: #f1e1bd; border: 1px solid #8f7042; }
+body[data-theme="steampunk"] .dropdown-item { color: #f1e1bd; }
+body[data-theme="steampunk"] .accent-bar { background: linear-gradient(90deg, #4a3925, #d9b56e, #73a17c); }
+body[data-theme="steampunk"] .hero-main::before { background: radial-gradient(circle at 92% 10%, #d9b56e22, transparent 30%); }
+body[data-theme="steampunk"] .kpi-card::after { display: none; }
+body[data-theme="steampunk"] .status-bar, body[data-theme="steampunk"] .hero-main,
+body[data-theme="steampunk"] .chart-card, body[data-theme="steampunk"] .kpi-card, body[data-theme="steampunk"] .hero-stat,
+body[data-theme="steampunk"] .record-card, body[data-theme="steampunk"] .highlight-card,
+body[data-theme="steampunk"] .featured-activity-card, body[data-theme="steampunk"] .comparison-mobile-card,
+body[data-theme="steampunk"] .bike-insight-card { background: #17232d; color: #f1e1bd; --text: #f1e1bd; --text-muted: #d1bd91; border: 2px solid #8f7042; box-shadow: inset 0 0 0 2px #17232d, inset 0 0 0 3px #493d2d, var(--shadow-soft); }
+body[data-theme="steampunk"] .card, body[data-theme="steampunk"] .chart-card, body[data-theme="steampunk"] .kpi-card { position: relative; }
+body[data-theme="steampunk"] .card::before, body[data-theme="steampunk"] .chart-card::before, body[data-theme="steampunk"] .kpi-card::before { content: ""; position: absolute; inset: 5px 7px auto auto; width: 6px; height: 6px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f3d99c, #72552c 68%); box-shadow: -1px 1px 1px #000; pointer-events: none; }
+body[data-theme="steampunk"] .bar-track, body[data-theme="steampunk"] .stack-list-track,
+body[data-theme="steampunk"] .timeline-bar-track, body[data-theme="steampunk"] .annual-strip-track { background: #3a4548; border: 1px solid #8f7042; }
+body[data-theme="steampunk"] .bar-fill, body[data-theme="steampunk"] .stack-list-fill,
+body[data-theme="steampunk"] .timeline-bar-fill, body[data-theme="steampunk"] .annual-strip-fill { background: linear-gradient(90deg, #9a7947, #e0bd77); }
+body[data-theme="steampunk"] .timeline-bars-wrap, body[data-theme="steampunk"] .annual-strip-chart,
+body[data-theme="steampunk"] .timeline-bars-wrap.tone-distance, body[data-theme="steampunk"] .timeline-bars-wrap.tone-time,
+body[data-theme="steampunk"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="steampunk"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="steampunk"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="steampunk"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="steampunk"] .bar-label, body[data-theme="steampunk"] .bar-value, body[data-theme="steampunk"] .timeline-bar-value,
+body[data-theme="steampunk"] .timeline-bar-label, body[data-theme="steampunk"] .annual-strip-top,
+body[data-theme="steampunk"] .annual-strip-label { color: #f1e1bd; }
+body[data-theme="steampunk"] .annual-strip-sub { color: #d1bd91; }
+body[data-theme="steampunk"] .spinner-wheel { border-color: #3a4548; border-top-color: #d9b56e; }
+@media (max-width: 720px) { body[data-theme="steampunk"] .hero-period-stats { grid-template-columns: 1fr; } }
+body[data-theme="steampunk"] .status-bar, body[data-theme="steampunk"] .hero-main, body[data-theme="steampunk"] .kpi-card,
+body[data-theme="steampunk"] .chart-card, body[data-theme="steampunk"] .hero-stat, body[data-theme="steampunk"] .record-card,
+body[data-theme="steampunk"] .highlight-card, body[data-theme="steampunk"] .featured-activity-card,
+body[data-theme="steampunk"] .comparison-mobile-card, body[data-theme="steampunk"] .bike-insight-card,
+body[data-theme="steampunk"] #theme-manager, body[data-theme="steampunk"] #bike-gallery { border-radius: var(--radius); }
+body[data-theme="steampunk"] .segmented-control, body[data-theme="steampunk"] .segmented-btn,
+body[data-theme="steampunk"] .annual-breakdown-mode-btn, body[data-theme="steampunk"] .pin-button,
+body[data-theme="steampunk"] .filter-field select, body[data-theme="steampunk"] .filter-field input,
+body[data-theme="steampunk"] .bike-controls input, body[data-theme="steampunk"] .bike-controls select,
+body[data-theme="steampunk"] .side-meta, body[data-theme="steampunk"] .dropdown-menu { border-radius: var(--radius-sm); }

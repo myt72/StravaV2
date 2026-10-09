@@ -1,0 +1,53 @@
+body[data-theme="art-deco-1920s"] {
+  --bg: #111; --bg-2: radial-gradient(ellipse at 50% 0, #273b39 0, #111 58%);
+  --surface: #191a18; --surface-strong: #20221f; --surface-muted: #222420; --surface-deep: #10110f;
+  --text: #f4e7bd; --text-muted: #d3c396; --border: #98782b;
+  --accent: #e3c35c; --accent-2: #82c8b6; --distance: #e3c35c; --time: #84c8b6; --elevation: #e6ab62;
+  --danger: #f28a7e; --success: #84c8b6; --warning: #e3c35c; --shadow: 0 8px 24px #0009; --shadow-soft: 0 3px 10px #0008;
+  --radius: 2px; --radius-sm: 1px; --glass: none; --t-on-accent: #151511; --t-track: #414039;
+  --t-fill-distance: #e3c35c; --t-fill-time: #84c8b6; --t-fill-elevation: #e6ab62;
+  font-family: "Copperplate", "Century Gothic", Georgia, serif; background: var(--bg-2); color: var(--text);
+}
+body[data-theme="art-deco-1920s"] .side-rail { background: #10110f; border-right: 1px solid #98782b; }
+body[data-theme="art-deco-1920s"] .brand-orb { background: #e3c35c; box-shadow: 0 0 0 2px #111, 0 0 0 3px #98782b; border-radius: 2px; transform: rotate(45deg); }
+body[data-theme="art-deco-1920s"] .menu-trigger, body[data-theme="art-deco-1920s"] .segmented-btn.active,
+body[data-theme="art-deco-1920s"] .annual-breakdown-mode-btn.active, body[data-theme="art-deco-1920s"] .pin-button.pinned { background: #e3c35c; color: #151511; border: 1px solid #f4e7bd; }
+body[data-theme="art-deco-1920s"] .secondary-trigger, body[data-theme="art-deco-1920s"] .dropdown-menu,
+body[data-theme="art-deco-1920s"] #theme-manager, body[data-theme="art-deco-1920s"] #bike-gallery { background: #191a18; color: #f4e7bd; border: 1px solid #98782b; }
+body[data-theme="art-deco-1920s"] .dropdown-item { color: #f4e7bd; }
+body[data-theme="art-deco-1920s"] .accent-bar { background: linear-gradient(90deg, #98782b, #e3c35c, #98782b); }
+body[data-theme="art-deco-1920s"] .hero-main::before { background: repeating-conic-gradient(from 45deg at 50% 0, transparent 0 8deg, #98782b22 8deg 9deg, transparent 9deg 18deg); }
+body[data-theme="art-deco-1920s"] .kpi-card::after { display: none; }
+body[data-theme="art-deco-1920s"] .status-bar, body[data-theme="art-deco-1920s"] .hero-main,
+body[data-theme="art-deco-1920s"] .chart-card, body[data-theme="art-deco-1920s"] .kpi-card, body[data-theme="art-deco-1920s"] .hero-stat,
+body[data-theme="art-deco-1920s"] .record-card, body[data-theme="art-deco-1920s"] .highlight-card,
+body[data-theme="art-deco-1920s"] .featured-activity-card, body[data-theme="art-deco-1920s"] .comparison-mobile-card,
+body[data-theme="art-deco-1920s"] .bike-insight-card { background: #191a18; color: #f4e7bd; --text: #f4e7bd; --text-muted: #d3c396; border: 1px solid #98782b; box-shadow: inset 0 0 0 3px #191a18, inset 0 0 0 4px #665323; }
+body[data-theme="art-deco-1920s"] .bar-track, body[data-theme="art-deco-1920s"] .stack-list-track,
+body[data-theme="art-deco-1920s"] .timeline-bar-track, body[data-theme="art-deco-1920s"] .annual-strip-track { background: #414039; border: 1px solid #98782b; }
+body[data-theme="art-deco-1920s"] .bar-fill, body[data-theme="art-deco-1920s"] .stack-list-fill,
+body[data-theme="art-deco-1920s"] .timeline-bar-fill, body[data-theme="art-deco-1920s"] .annual-strip-fill { background: repeating-linear-gradient(135deg, #e3c35c 0 8px, #927630 8px 12px); }
+body[data-theme="art-deco-1920s"] .timeline-bars-wrap, body[data-theme="art-deco-1920s"] .annual-strip-chart,
+body[data-theme="art-deco-1920s"] .timeline-bars-wrap.tone-distance, body[data-theme="art-deco-1920s"] .timeline-bars-wrap.tone-time,
+body[data-theme="art-deco-1920s"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="art-deco-1920s"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="art-deco-1920s"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="art-deco-1920s"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="art-deco-1920s"] .bar-label, body[data-theme="art-deco-1920s"] .bar-value, body[data-theme="art-deco-1920s"] .timeline-bar-value,
+body[data-theme="art-deco-1920s"] .timeline-bar-label, body[data-theme="art-deco-1920s"] .annual-strip-top,
+body[data-theme="art-deco-1920s"] .annual-strip-label { color: #f4e7bd; }
+body[data-theme="art-deco-1920s"] .annual-strip-sub { color: #d3c396; }
+body[data-theme="art-deco-1920s"] .spinner-wheel { border-color: #414039; border-top-color: #e3c35c; }
+body[data-theme="art-deco-1920s"] h1, body[data-theme="art-deco-1920s"] h2, body[data-theme="art-deco-1920s"] h3 { text-transform: uppercase; letter-spacing: .14em; }
+body[data-theme="art-deco-1920s"] .chart-card, body[data-theme="art-deco-1920s"] .kpi-card { clip-path: polygon(0 0, 96% 0, 100% 12%, 100% 100%, 4% 100%, 0 88%); }
+@media (max-width: 720px) { body[data-theme="art-deco-1920s"] .hero-period-stats { grid-template-columns: 1fr; } }
+body[data-theme="art-deco-1920s"] .status-bar, body[data-theme="art-deco-1920s"] .hero-main, body[data-theme="art-deco-1920s"] .kpi-card,
+body[data-theme="art-deco-1920s"] .chart-card, body[data-theme="art-deco-1920s"] .hero-stat, body[data-theme="art-deco-1920s"] .record-card,
+body[data-theme="art-deco-1920s"] .highlight-card, body[data-theme="art-deco-1920s"] .featured-activity-card,
+body[data-theme="art-deco-1920s"] .comparison-mobile-card, body[data-theme="art-deco-1920s"] .bike-insight-card,
+body[data-theme="art-deco-1920s"] #theme-manager, body[data-theme="art-deco-1920s"] #bike-gallery { border-radius: var(--radius); }
+body[data-theme="art-deco-1920s"] .segmented-control, body[data-theme="art-deco-1920s"] .segmented-btn,
+body[data-theme="art-deco-1920s"] .annual-breakdown-mode-btn, body[data-theme="art-deco-1920s"] .pin-button,
+body[data-theme="art-deco-1920s"] .filter-field select, body[data-theme="art-deco-1920s"] .filter-field input,
+body[data-theme="art-deco-1920s"] .bike-controls input, body[data-theme="art-deco-1920s"] .bike-controls select,
+body[data-theme="art-deco-1920s"] .side-meta, body[data-theme="art-deco-1920s"] .dropdown-menu { border-radius: var(--radius-sm); }

@@ -1,0 +1,105 @@
+/* blueprint theme: every selector is scoped to body[data-theme="blueprint"] */
+body[data-theme="blueprint"] {
+  --bg: #0a2540;
+  --bg-2: linear-gradient(rgba(120,220,255,0.16) 1px, transparent 1px) 0 0/24px 24px, linear-gradient(90deg, rgba(120,220,255,0.16) 1px, transparent 1px) 0 0/24px 24px, linear-gradient(rgba(255,255,255,0.12) 1px, transparent 1px) 0 0/120px 120px, linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px) 0 0/120px 120px, #0a2540;
+  --surface: #0d2d4d;
+  --surface-strong: #0f3358;
+  --surface-muted: #0b2a47;
+  --surface-deep: #081f36;
+  --text: #e8f6ff;
+  --text-muted: #9fd8f0;
+  --border: #4fc3e8;
+  --accent: #5fe3ff;
+  --accent-2: #ffffff;
+  --distance: #5fe3ff;
+  --time: #ffe08a;
+  --elevation: #9bf0c8;
+  --danger: #ff9a9a;
+  --success: #8ff0b8;
+  --warning: #ffd37a;
+  --shadow: none;
+  --shadow-soft: none;
+  --radius: 0;
+  --radius-sm: 0;
+  --glass: none;
+  --t-on-accent: #0a2540;
+  --t-track: rgba(95,227,255,0.08);
+  --t-fill-distance: #5fe3ff;
+  --t-fill-time: #ffe08a;
+  --t-fill-elevation: #9bf0c8;
+  font-family: "Consolas", "Lucida Console", "Arial Narrow", monospace;
+  background: var(--bg-2);
+  color: var(--text);
+}
+
+/* Replace Default's hard-coded colors so nothing leaks */
+body[data-theme="blueprint"] .side-rail { background: #081f36; backdrop-filter: none; border-right: 1px solid var(--border); }
+body[data-theme="blueprint"] .brand-orb { background: var(--accent); box-shadow: 0 0 0 3px var(--surface-strong), 0 0 0 4px var(--accent-2); }
+body[data-theme="blueprint"] .dropdown-menu { backdrop-filter: none; border-radius: var(--radius-sm); }
+body[data-theme="blueprint"] .menu-trigger { background: var(--accent); color: var(--t-on-accent); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-soft); }
+body[data-theme="blueprint"] .secondary-trigger { background: var(--surface-strong); color: var(--text); border: 1px solid var(--border); }
+body[data-theme="blueprint"] .segmented-btn.active,
+body[data-theme="blueprint"] .annual-breakdown-mode-btn.active,
+body[data-theme="blueprint"] .pin-button.pinned { background: var(--accent); color: var(--t-on-accent); }
+body[data-theme="blueprint"] .accent-bar { background: var(--accent); }
+body[data-theme="blueprint"] .hero-main::before { background: none; }
+body[data-theme="blueprint"] .hero-stat { background: var(--surface-strong); }
+body[data-theme="blueprint"] .kpi-card::after { display: none; }
+body[data-theme="blueprint"] .status-bar,
+body[data-theme="blueprint"] .hero-main,
+body[data-theme="blueprint"] .kpi-card { border-radius: var(--radius); }
+body[data-theme="blueprint"] .chart-card,
+body[data-theme="blueprint"] .hero-stat,
+body[data-theme="blueprint"] .record-card,
+body[data-theme="blueprint"] .highlight-card,
+body[data-theme="blueprint"] .featured-activity-card,
+body[data-theme="blueprint"] .comparison-mobile-card,
+body[data-theme="blueprint"] .bike-insight-card,
+body[data-theme="blueprint"] .segmented-control,
+body[data-theme="blueprint"] .segmented-btn,
+body[data-theme="blueprint"] .annual-breakdown-mode-btn,
+body[data-theme="blueprint"] .pin-button,
+body[data-theme="blueprint"] .filter-field select,
+body[data-theme="blueprint"] .filter-field input,
+body[data-theme="blueprint"] .side-meta { border-radius: var(--radius-sm); }
+body[data-theme="blueprint"] .spinner-wheel { border-color: var(--border); border-top-color: var(--accent); }
+
+/* Charts: explicit fills, tracks and text colors (AA contrast on --surface-muted) */
+body[data-theme="blueprint"] .bar-track,
+body[data-theme="blueprint"] .stack-list-track { background: var(--t-track); }
+body[data-theme="blueprint"] .bar-fill,
+body[data-theme="blueprint"] .stack-list-fill { background: var(--accent); }
+body[data-theme="blueprint"] .bar-label { color: var(--text); }
+body[data-theme="blueprint"] .bar-value { color: var(--text-muted); }
+body[data-theme="blueprint"] .timeline-bars-wrap,
+body[data-theme="blueprint"] .annual-strip-chart,
+body[data-theme="blueprint"] .timeline-bars-wrap.tone-distance,
+body[data-theme="blueprint"] .timeline-bars-wrap.tone-time,
+body[data-theme="blueprint"] .timeline-bars-wrap.tone-elevation { background: none; }
+body[data-theme="blueprint"] .timeline-bar-track,
+body[data-theme="blueprint"] .annual-strip-track { background: var(--t-track); border: 1px solid var(--border); box-sizing: border-box; border-radius: var(--radius-sm); }
+body[data-theme="blueprint"] .timeline-bar-fill,
+body[data-theme="blueprint"] .annual-strip-fill { background: var(--accent); border-radius: 0; }
+body[data-theme="blueprint"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { background: var(--t-fill-distance); }
+body[data-theme="blueprint"] .timeline-bars-wrap.tone-time .timeline-bar-fill { background: var(--t-fill-time); }
+body[data-theme="blueprint"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { background: var(--t-fill-elevation); }
+body[data-theme="blueprint"] .timeline-bar-value,
+body[data-theme="blueprint"] .annual-strip-top { color: var(--text); }
+body[data-theme="blueprint"] .timeline-bar-label,
+body[data-theme="blueprint"] .annual-strip-label { color: var(--text); }
+body[data-theme="blueprint"] .annual-strip-sub { color: var(--text-muted); }
+
+body[data-theme="blueprint"] h1, body[data-theme="blueprint"] h2, body[data-theme="blueprint"] .eyebrow, body[data-theme="blueprint"] .card-kicker { text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+body[data-theme="blueprint"] .card, body[data-theme="blueprint"] .chart-card, body[data-theme="blueprint"] .kpi-card, body[data-theme="blueprint"] .hero-stat, body[data-theme="blueprint"] .record-card { border: 1px solid #4fc3e8; }
+body[data-theme="blueprint"] .card { position: relative; }
+body[data-theme="blueprint"] .card::before { content: ""; position: absolute; left: 22px; right: 22px; top: 8px; height: 6px; border-left: 1px solid var(--accent); border-right: 1px solid var(--accent); background: linear-gradient(var(--accent), var(--accent)) 0 50%/100% 1px no-repeat; pointer-events: none; opacity: 0.7; }
+body[data-theme="blueprint"] .card { padding-top: 32px; }
+body[data-theme="blueprint"] .bar-fill, body[data-theme="blueprint"] .stack-list-fill { border-radius: 0; background: repeating-linear-gradient(45deg, rgba(95,227,255,0.75) 0 2px, transparent 2px 6px); border: 1px solid #5fe3ff; box-sizing: border-box; }
+body[data-theme="blueprint"] .bar-track, body[data-theme="blueprint"] .stack-list-track { border-radius: 0; border: 1px solid rgba(95,227,255,0.4); }
+body[data-theme="blueprint"] .timeline-bar-fill, body[data-theme="blueprint"] .annual-strip-fill { border: 1px solid #5fe3ff; box-sizing: border-box; background: repeating-linear-gradient(45deg, rgba(95,227,255,0.75) 0 2px, transparent 2px 6px); }
+body[data-theme="blueprint"] .timeline-bars-wrap.tone-distance .timeline-bar-fill { border-color: #5fe3ff; background: repeating-linear-gradient(45deg, rgba(95,227,255,0.75) 0 2px, transparent 2px 6px); }
+body[data-theme="blueprint"] .timeline-bars-wrap.tone-time .timeline-bar-fill { border-color: #ffe08a; background: repeating-linear-gradient(45deg, rgba(255,224,138,0.75) 0 2px, transparent 2px 6px); }
+body[data-theme="blueprint"] .timeline-bars-wrap.tone-elevation .timeline-bar-fill { border-color: #9bf0c8; background: repeating-linear-gradient(45deg, rgba(155,240,200,0.75) 0 2px, transparent 2px 6px); }
+body[data-theme="blueprint"] .menu-trigger, body[data-theme="blueprint"] .secondary-trigger { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+body[data-theme="blueprint"] .segmented-btn.active, body[data-theme="blueprint"] .annual-breakdown-mode-btn.active, body[data-theme="blueprint"] .pin-button.pinned { background: var(--accent); color: #0a2540; }
+body[data-theme="blueprint"] .dropdown-menu { background: #0f3358; }
