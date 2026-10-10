@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useAppData } from "../context/AppData.jsx";
+import { filenameOf, focusPosition, useAppData } from "../context/AppData.jsx";
 import {
   comma, feet, formatDate, formatDayDifference, formatDuration, formatShortDate, formatSpeed, getMondayForIsoWeek, miles
 } from "../lib/format.js";
@@ -59,16 +59,17 @@ function BikeStats({ total, gid, name }) {
   );
 }
 
-function Thumb({ urls, alt }) {
+function Thumb({ gid, alt }) {
+  const { getCoverPhoto } = useAppData();
+  const { url, focus } = getCoverPhoto(gid);
   return (
     <div className="bike-thumb">
-      {urls?.length ? <img src={urls[0]} alt={alt} loading="lazy" /> : <Icon name="bike" size={40} className="" />}
+      {url ? <img src={url} alt={alt} loading="lazy" style={{ objectPosition: focusPosition(focus) }} /> : <Icon name="bike" size={40} className="" />}
     </div>
   );
 }
 
 function GarageList({ bikes }) {
-  const { bikeImages } = useAppData();
   const [search, setSearch] = usePersistentState("bikeSearch", "");
   const [sort, setSort] = usePersistentState("bikeSort", "distance-desc");
 
@@ -92,7 +93,7 @@ function GarageList({ bikes }) {
   const renderCard = r => (
     <Card key={r.gid} className="bike-card">
       <button type="button" style={{ all: "unset", cursor: "pointer", display: "block" }} onClick={() => navigate(`/garage/${r.gid}`)} aria-label={`Open ${r.name}`}>
-        <Thumb urls={bikeImages[r.gid]} alt="" />
+        <Thumb gid={r.gid} alt="" />
       </button>
       <a className="bike-title" href={`#/garage/${encodeURIComponent(r.gid)}`}>{r.name}</a>
       <BikeStats total={r.total} gid={r.gid} name={r.name} />
@@ -193,9 +194,10 @@ function YearRow({ gid, year, y }) {
 }
 
 function BikeDetail({ bike, bikes }) {
-  const { insights, bikeImages, setBikeImages } = useAppData();
+  const { insights, bikeImages, setBikeImages, bikePhotoPrefs, getCoverPhoto } = useAppData();
   const [galleryAt, setGalleryAt] = useState(null);
   const urls = bikeImages[bike.gid] || [];
+  const cover = getCoverPhoto(bike.gid);
   const ins = insights.perBike[bike.gid] || {};
   const chart = [...bike.years].reverse().map(y => ({ label: y, value: miles(bike.bikeYearStats[y].distance) }));
 
@@ -255,7 +257,7 @@ function BikeDetail({ bike, bikes }) {
           {urls.length ? (
             <div className="photo-grid">
               {urls.slice(0, 6).map((u, i) => (
-                <button key={u} type="button" aria-label={`Open photo ${i + 1} of ${urls.length}`} onClick={() => setGalleryAt(i)}><img src={u} alt="" loading="lazy" /></button>
+                <button key={u} type="button" aria-label={`Open photo ${i + 1} of ${urls.length}`} onClick={() => setGalleryAt(i)}><img src={u} alt="" loading="lazy" style={{ objectPosition: focusPosition(bikePhotoPrefs[bike.gid]?.focus?.[filenameOf(u)]) }} />{u === cover.url && urls.length > 1 && <span className="cover-badge">★ Cover</span>}</button>
               ))}
             </div>
           ) : <p className="muted">No photos yet.</p>}

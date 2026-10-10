@@ -1437,4 +1437,76 @@ app.put("/api/settings/hidden-themes", (req, res) => {
   }
 });
 
+const MAX_FOCUS_ENTRIES = 50;
+const clamp01 = n => Math.min(1, Math.max(0, n));
+
+function sanitizeBikePhotoPrefs(input) {
+  const out = {};
+  if (!input || typeof input !== "object" || Array.isArray(input)) return out;
+  if (typeof input.cover === "string" && FILENAME_RE.test(input.cover)) out.cover = input.cover;
+  const focus = {};
+  if (input.focus && typeof input.focus === "object" && !Array.isArray(input.focus)) {
+    Object.keys(input.focus).forEach(name => {
+      const pt = input.focus[name];
+      if (!FILENAME_RE.test(name) || !pt || typeof pt !== "object") return;
+      if (typeof pt.x !== "number" || typeof pt.y !== "number" || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
+      focus[name] = { x: clamp01(pt.x), y: clamp01(pt.y) };
+    });
+  }
+  if (Object.keys(focus).length) out.focus = focus;
+  return out;
+}
+
+app.get("/api/bike-photo-prefs", (req, res) => {
+  const stored = loadSettings().bikePhotoPrefs;
+  const out = {};
+  if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+    Object.keys(stored).forEach(gid => {
+      if (!GEAR_ID_RE.test(gid)) return;
+      const prefs = sanitizeBikePhotoPrefs(stored[gid]);
+      if (prefs.cover || prefs.focus) out[gid] = prefs;
+    });
+  }
+  res.json(out);
+});
+
+app.put("/api/bike-photo-prefs/:gearId", (req, res) => {
+  const gearId = req.params.gearId;
+  const body = req.body;
+  if (!GEAR_ID_RE.test(gearId)) return res.status(400).json({ error: "Invalid gear id" });
+  if (!body || typeof body !== "object" || Array.isArray(body)) return res.status(400).json({ error: "Body must be a JSON object" });
+  const prefs = {};
+  if (body.cover !== undefined && body.cover !== null) {
+    if (typeof body.cover !== "string" || !FILENAME_RE.test(body.cover)) return res.status(400).json({ error: "cover must be null or a valid image filename" });
+    prefs.cover = body.cover;
+  }
+  if (body.focus !== undefined) {
+    const focus = body.focus;
+    if (!focus || typeof focus !== "object" || Array.isArray(focus)) return res.status(400).json({ error: "focus must be an object keyed by image filename" });
+    const names = Object.keys(focus);
+    if (names.length > MAX_FOCUS_ENTRIES) return res.status(400).json({ error: `focus may have at most ${MAX_FOCUS_ENTRIES} entries` });
+    const clean = {};
+    for (const name of names) {
+      const pt = focus[name];
+      if (!FILENAME_RE.test(name)) return res.status(400).json({ error: "focus keys must be valid image filenames" });
+      if (!pt || typeof pt !== "object" || typeof pt.x !== "number" || typeof pt.y !== "number" || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) {
+        return res.status(400).json({ error: "focus values must be { x, y } with finite numbers" });
+      }
+      clean[name] = { x: clamp01(pt.x), y: clamp01(pt.y) };
+    }
+    if (names.length) prefs.focus = clean;
+  }
+  try {
+    const settings = loadSettings();
+    const all = settings.bikePhotoPrefs && typeof settings.bikePhotoPrefs === "object" && !Array.isArray(settings.bikePhotoPrefs) ? settings.bikePhotoPrefs : {};
+    if (prefs.cover || prefs.focus) all[gearId] = prefs; else delete all[gearId];
+    settings.bikePhotoPrefs = all;
+    saveSettings(settings);
+    res.json({ gearId, prefs });
+  } catch (err) {
+    console.error("Failed to save bike photo prefs:", err);
+    res.status(500).json({ error: "Failed to save settings" });
+  }
+});
+
 app.listen(port, "0.0.0.0", () => console.log(`Server running on port ${port}`));
