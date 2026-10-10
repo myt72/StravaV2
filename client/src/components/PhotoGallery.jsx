@@ -78,9 +78,13 @@ export default function PhotoGallery({ gid, name, urls, startIndex = 0, onImages
 
   const savePrefs = (cover, focus, list) => setBikePhotoPrefs(gid, buildPrefs(cover, focus, list));
 
-  function setAsCover() {
+  const SAVE_FAILED = "Could not save photo settings. Please try again.";
+
+  async function setAsCover() {
     if (!url || count < 2 || isCover) return;
-    savePrefs(filenameOf(url), prefs.focus, names);
+    setStatus("");
+    const ok = await savePrefs(filenameOf(url), prefs.focus, names);
+    setStatus(ok ? "Cover saved." : SAVE_FAILED);
   }
 
   function startFocus() {
@@ -89,11 +93,13 @@ export default function PhotoGallery({ gid, name, urls, startIndex = 0, onImages
     setFocusDraft(savedFocus ? { x: savedFocus.x, y: savedFocus.y } : { x: 0.5, y: 0.5 });
   }
 
-  function saveFocus() {
+  async function saveFocus() {
     if (!focusDraft || !url) return;
     const point = { x: Number(clamp01(focusDraft.x).toFixed(4)), y: Number(clamp01(focusDraft.y).toFixed(4)) };
-    savePrefs(prefs.cover, { ...prefs.focus, [filenameOf(url)]: point }, names);
-    setFocusDraft(null);
+    setStatus("");
+    const ok = await savePrefs(prefs.cover, { ...prefs.focus, [filenameOf(url)]: point }, names);
+    if (ok) setFocusDraft(null);
+    setStatus(ok ? "Focus saved." : SAVE_FAILED);
   }
 
   function placeFromPointer(e) {
@@ -191,9 +197,9 @@ export default function PhotoGallery({ gid, name, urls, startIndex = 0, onImages
         if (newName && newName !== oldName && (current.cover === oldName || current.focus?.[oldName])) {
           const focus = { ...current.focus };
           if (focus[oldName]) { focus[newName] = focus[oldName]; delete focus[oldName]; }
-          savePrefs(current.cover === oldName ? newName : current.cover, focus, newNames);
+          if (!(await savePrefs(current.cover === oldName ? newName : current.cover, focus, newNames))) message = SAVE_FAILED;
         } else if (current.cover || Object.keys(current.focus || {}).length) {
-          savePrefs(current.cover, current.focus, newNames);
+          if (!(await savePrefs(current.cover, current.focus, newNames))) message = SAVE_FAILED;
         }
       }
     } finally {
@@ -208,8 +214,8 @@ export default function PhotoGallery({ gid, name, urls, startIndex = 0, onImages
     try {
       const data = await apply("DELETE", filenameOf(url));
       const current = prefsRef.current;
-      if (current.cover || Object.keys(current.focus || {}).length) savePrefs(current.cover, current.focus, data.images.map(filenameOf));
-      setStatus("");
+      const ok = !(current.cover || Object.keys(current.focus || {}).length) || await savePrefs(current.cover, current.focus, data.images.map(filenameOf));
+      setStatus(ok ? "" : SAVE_FAILED);
     } catch (err) {
       setStatus(err.message);
     }

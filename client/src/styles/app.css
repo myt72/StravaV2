@@ -225,8 +225,8 @@ button.period-tile:focus-visible { outline: 3px solid var(--focus); outline-offs
 .garage-grid .bike-card { padding: 12px; }
 .garage-grid .metrics { font-size: 0.82rem; gap: 2px 10px; }
 .bike-card { display: flex; flex-direction: column; gap: 10px; }
-.bike-thumb { aspect-ratio: 16 / 9; border-radius: var(--radius-sm); background: var(--surface-2); overflow: hidden; display: grid; place-items: center; color: var(--text-muted); }
-.bike-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.bike-thumb { position: relative; aspect-ratio: 16 / 9; border-radius: var(--radius-sm); background: var(--surface-2); overflow: hidden; display: grid; place-items: center; color: var(--text-muted); }
+.bike-thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .bike-title { font-weight: 700; font-size: 1.05rem; overflow-wrap: anywhere; }
 .metrics { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.9rem; }
 .metrics span { white-space: nowrap; }
@@ -235,7 +235,7 @@ button.period-tile:focus-visible { outline: 3px solid var(--focus); outline-offs
 .check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
 .photo-grid button { position: relative; border: 0; padding: 0; background: var(--surface-2); border-radius: var(--radius-sm); overflow: hidden; aspect-ratio: 4 / 3; }
-.photo-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-grid img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
 .week-list { padding: 4px 0 8px 24px; font-size: 0.9rem; }
 .week-row { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 3px 0; }
 .week-row > span:first-child { min-width: 90px; font-weight: 600; }
@@ -306,7 +306,7 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
 .focus-marker { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border: 3px solid var(--accent); border-radius: 50%; background: var(--accent-soft); box-shadow: 0 0 0 2px var(--surface); pointer-events: none; }
 .focus-marker.subtle { width: 18px; height: 18px; margin: -9px 0 0 -9px; border-width: 2px; background: transparent; opacity: 0.65; }
 .focus-editor { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; align-items: start; }
-.focus-area { position: relative; display: block; line-height: 0; background: #000; border-radius: var(--radius-sm); cursor: crosshair; touch-action: none; justify-self: center; max-width: 100%; }
+.focus-area { position: relative; display: block; line-height: 0; background: #000; border-radius: var(--radius-sm); cursor: crosshair; touch-action: none; justify-self: center; width: fit-content; max-width: 100%; }
 .focus-area img { max-width: 100%; max-height: 55vh; display: block; user-select: none; }
 .focus-area:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .focus-preview { display: grid; gap: 6px; }
