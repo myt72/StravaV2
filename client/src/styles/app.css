@@ -234,7 +234,7 @@ button.period-tile:focus-visible { outline: 3px solid var(--focus); outline-offs
 .check { display: inline-flex; align-items: center; gap: 6px; }
 .check input { width: 18px; height: 18px; accent-color: var(--accent); }
 .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
-.photo-grid button { border: 0; padding: 0; background: var(--surface-2); border-radius: var(--radius-sm); overflow: hidden; aspect-ratio: 4 / 3; }
+.photo-grid button { position: relative; border: 0; padding: 0; background: var(--surface-2); border-radius: var(--radius-sm); overflow: hidden; aspect-ratio: 4 / 3; }
 .photo-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .week-list { padding: 4px 0 8px 24px; font-size: 0.9rem; }
 .week-row { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 3px 0; }
@@ -300,3 +300,14 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
 @media (prefers-reduced-motion: reduce) {
   .skeleton, .nav-badge.pulse { animation: none; }
 }
+
+.cover-badge { position: absolute; top: 6px; left: 6px; z-index: 1; font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--accent); color: var(--accent-contrast); }
+.gallery-img-wrap { position: relative; display: block; line-height: 0; }
+.focus-marker { position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; border: 3px solid var(--accent); border-radius: 50%; background: var(--accent-soft); box-shadow: 0 0 0 2px var(--surface); pointer-events: none; }
+.focus-marker.subtle { width: 18px; height: 18px; margin: -9px 0 0 -9px; border-width: 2px; background: transparent; opacity: 0.65; }
+.focus-editor { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.focus-area { position: relative; display: block; line-height: 0; background: #000; border-radius: var(--radius-sm); cursor: crosshair; touch-action: none; justify-self: center; max-width: 100%; }
+.focus-area img { max-width: 100%; max-height: 55vh; display: block; user-select: none; }
+.focus-area:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.focus-preview { display: grid; gap: 6px; }
+@media (max-width: 640px) { .focus-editor { grid-template-columns: 1fr; } }

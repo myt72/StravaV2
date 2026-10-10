@@ -5,6 +5,8 @@ import { usePersistentState } from "../lib/storage.js";
 import { getGearName } from "../lib/format.js";
 
 const Ctx = createContext(null);
+export const filenameOf = url => String(url).split("?")[0].split("/").pop();
+export const focusPosition = focus => (focus ? `${focus.x * 100}% ${focus.y * 100}%` : "50% 50%");
 export const useAppData = () => useContext(Ctx);
 
 export const DATE_RANGES = [
@@ -37,6 +39,8 @@ export function AppDataProvider({ children }) {
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
   const [bikeImages, setBikeImages] = useState({});
+  const [bikePhotoPrefs, setBikePhotoPrefsState] = useState({});
+  const prefsRef = useRef({});
 
   const pollTimer = useRef(null);
   const wasActive = useRef(false);
@@ -77,6 +81,11 @@ export function AppDataProvider({ children }) {
     mounted.current = true;
     load();
     api.fetchBikeImages().then(m => mounted.current && setBikeImages(m));
+    api.fetchBikePhotoPrefs().then(p => {
+      if (!mounted.current) return;
+      prefsRef.current = p;
+      setBikePhotoPrefsState(p);
+    });
     return () => {
       mounted.current = false;
       clearTimeout(pollTimer.current);
@@ -182,6 +191,34 @@ export function AppDataProvider({ children }) {
     setBike("all");
   }, [setDateRange, setActivityType, setBike]);
 
+  const setBikePhotoPrefs = useCallback(async (gid, prefs) => {
+    const previous = prefsRef.current;
+    const next = { ...previous };
+    if (prefs && (prefs.cover || Object.keys(prefs.focus || {}).length)) next[gid] = prefs; else delete next[gid];
+    prefsRef.current = next;
+    setBikePhotoPrefsState(next);
+    try {
+      await api.saveBikePhotoPrefs(gid, { cover: prefs?.cover || null, focus: prefs?.focus || {} });
+      return true;
+    } catch (err) {
+      if (!mounted.current) return false;
+      const reverted = { ...prefsRef.current };
+      if (previous[gid]) reverted[gid] = previous[gid]; else delete reverted[gid];
+      prefsRef.current = reverted;
+      setBikePhotoPrefsState(reverted);
+      setNotice({ type: "error", text: `Could not save photo settings: ${err.message}` });
+      return false;
+    }
+  }, []);
+
+  const getCoverPhoto = useCallback(gid => {
+    const urls = bikeImages[gid] || [];
+    if (!urls.length) return { url: null, focus: null };
+    const prefs = bikePhotoPrefs[gid] || {};
+    const url = urls.find(u => filenameOf(u) === prefs.cover) || urls[0];
+    return { url, focus: prefs.focus?.[filenameOf(url)] || null };
+  }, [bikeImages, bikePhotoPrefs]);
+
   const value = {
     raw, filtered, insights, status, error, serverMessage, lastSync, reload: load,
     filters, setDateRange, setActivityType, setBike, filtersActive, resetFilters, activityTypes, bikes,
@@ -190,7 +227,7 @@ export function AppDataProvider({ children }) {
     excludeSegment: id => setExcludedSegments(prev => (prev.includes(String(id)) ? prev : [...prev, String(id)])),
     restoreSegment: id => setExcludedSegments(prev => prev.filter(x => x !== String(id))),
     prBackfill, backfillActive: active, busy, notice, setNotice, pull, startBackfill, stopBackfill,
-    bikeImages, setBikeImages,
+    bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

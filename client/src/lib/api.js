@@ -95,3 +95,28 @@ export async function bikeImageRequest(method, gid, filename, file) {
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }
+
+/* Bike photo prefs (cover + focal point), stored server-side in settings.json. */
+export const BIKE_PHOTO_PREFS_API = "/api/bike-photo-prefs";
+
+export async function fetchBikePhotoPrefs() {
+  try {
+    const res = await fetch(BIKE_PHOTO_PREFS_API);
+    const data = res.ok ? await res.json() : {};
+    return data && typeof data === "object" && !Array.isArray(data) ? data : {};
+  } catch (err) {
+    console.warn("Could not load bike photo prefs", err);
+    return {};
+  }
+}
+
+export async function saveBikePhotoPrefs(gid, prefs) {
+  const res = await fetch(`${BIKE_PHOTO_PREFS_API}/${encodeURIComponent(gid)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(prefs)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
