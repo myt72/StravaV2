@@ -1,5 +1,5 @@
 // Settings are read from (in priority order):
-//   1. Environment variables: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, PORT
+//   1. Environment variables: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, ADMIN_PASSWORD, PORT
 //   2. config.local.js (gitignored - copy config.local.example.js to create it)
 // Never put the client secret in this file.
 
@@ -13,6 +13,7 @@ try {
 const port = Number(process.env.PORT || local.port || 5001);
 const client_id = process.env.STRAVA_CLIENT_ID || local.client_id;
 const client_secret = process.env.STRAVA_CLIENT_SECRET || local.client_secret;
+const admin_password = process.env.ADMIN_PASSWORD || local.ADMIN_PASSWORD || "";
 
 if (!client_id || !client_secret) {
   console.error(
@@ -25,6 +26,7 @@ if (!client_id || !client_secret) {
 module.exports = {
   client_id,
   client_secret,
+  admin_password,
   port,
   redirect_uri: `http://localhost:${port}/exchange_token`
 };

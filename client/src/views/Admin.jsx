@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { isBackfillActive, useAppData } from "../context/AppData.jsx";
 import { comma, formatDateTime } from "../lib/format.js";
 import { Card, ConfirmDialog, PageHead } from "../components/ui.jsx";
@@ -8,8 +8,37 @@ function Row({ label, children }) {
 }
 
 export default function Admin() {
-  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill } = useAppData();
+  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin } = useAppData();
   const [confirmFull, setConfirmFull] = useState(false);
+  const [auth, setAuth] = useState({ state: "checking", message: "" });
+
+  const unlock = useCallback(async () => {
+    setAuth({ state: "checking", message: "" });
+    try {
+      await unlockAdmin();
+      setAuth({ state: "ok", message: "" });
+    } catch (err) {
+      setAuth({ state: "locked", message: err.message || "Could not unlock." });
+    }
+  }, [unlockAdmin]);
+
+  useEffect(() => { unlock(); }, [unlock]);
+
+  if (auth.state !== "ok") {
+    return (
+      <div className="content">
+        <PageHead title="Data & Admin">This page is password protected.</PageHead>
+        {auth.state === "checking"
+          ? <p className="muted" role="status">Checking password…</p>
+          : (
+            <>
+              {auth.message && <div className="notice error" role="alert">{auth.message}</div>}
+              <div className="toolbar"><button type="button" className="btn primary" onClick={unlock}>Enter password</button></div>
+            </>
+          )}
+      </div>
+    );
+  }
 
   const isActive = isBackfillActive(prBackfill);
   const processed = prBackfill ? (prBackfill.processed ?? Math.max(0, (prBackfill.totalEligible || 0) - (prBackfill.remaining || 0))) : 0;

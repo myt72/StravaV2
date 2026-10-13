@@ -1,7 +1,7 @@
 import { useAppData } from "./context/AppData.jsx";
 import { useRoute } from "./lib/router.js";
 import { useTheme } from "./lib/theme.js";
-import { FilterBar, NAV, Sidebar } from "./components/Shell.jsx";
+import { FilterBar, NAV, Sidebar, useNavCollapsed } from "./components/Shell.jsx";
 import { StateMessage, ViewSkeleton } from "./components/ui.jsx";
 import Overview from "./views/Overview.jsx";
 import Trends from "./views/Trends.jsx";
@@ -49,14 +49,15 @@ function Gate({ viewId, children }) {
 export default function App() {
   const route = useRoute();
   const themeState = useTheme();
+  const [navCollapsed, toggleNav] = useNavCollapsed();
   const viewId = VIEWS[route.segments[0]] ? route.segments[0] : "overview";
   const View = VIEWS[viewId];
   const title = NAV.find(n => n.id === viewId)?.label;
 
   return (
-    <div className="shell">
+    <div className={`shell${navCollapsed ? " nav-collapsed" : ""}`}>
       <a className="skip-link" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById("main-content")?.focus(); }}>Skip to content</a>
-      <Sidebar current={viewId} themeState={themeState} />
+      <Sidebar current={viewId} themeState={themeState} collapsed={navCollapsed} onToggleNav={toggleNav} />
       <div className="main">
         <FilterBar />
         <main id="main-content" tabIndex={-1} aria-label={title} style={{ outline: "none" }}>

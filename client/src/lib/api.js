@@ -8,11 +8,34 @@ export class ApiError extends Error {
   }
 }
 
-async function request(url, options) {
+const ADMIN_PW_KEY = "adminPw";
+
+/** fetch() for Data / Admin endpoints: sends the shared admin password (prompted once, kept in localStorage). */
+export async function adminFetch(url, options = {}) {
+  let pw = null;
+  try { pw = localStorage.getItem(ADMIN_PW_KEY); } catch { /* storage unavailable */ }
+  if (!pw) {
+    pw = window.prompt("Admin password:");
+    if (!pw) throw new ApiError("Admin password required.", { status: 401 });
+    try { localStorage.setItem(ADMIN_PW_KEY, pw); } catch { /* storage unavailable */ }
+  }
+  const res = await fetch(url, { ...options, headers: { ...(options.headers || {}), "x-admin-password": pw } });
+  if (res.status === 401) {
+    const body = await res.clone().json().catch(() => null);
+    if (body?.error === "Unauthorized") {
+      try { localStorage.removeItem(ADMIN_PW_KEY); } catch { /* ignore */ }
+      throw new ApiError("Wrong password", { status: 401 });
+    }
+  }
+  return res;
+}
+
+async function request(url, options, fetcher = fetch) {
   let res;
   try {
-    res = await fetch(url, options);
+    res = await fetcher(url, options);
   } catch (err) {
+    if (err instanceof ApiError) throw err;
     throw new ApiError("Could not reach the server. Is `node server.js` running?");
   }
   let data = null;
@@ -21,6 +44,7 @@ async function request(url, options) {
   } catch {
     /* non-JSON body */
   }
+  if (res.status === 429) throw new ApiError(data?.error || "Too many attempts", { status: 429 });
   if (res.status === 401) throw new ApiError(data?.error || "Not authenticated", { status: 401, unauthenticated: true });
   if (!res.ok && !data) throw new ApiError(`Request failed (${res.status})`, { status: res.status });
   return { data: data || {}, ok: res.ok, status: res.status };
@@ -38,24 +62,24 @@ export const PULLS = {
 };
 
 export async function runPull(kind) {
-  const { data } = await request(PULLS[kind]);
+  const { data } = await request(PULLS[kind], undefined, adminFetch);
   if (data.error) throw new ApiError(data.error);
   return data;
 }
 
 export async function fetchPrBackfillStatus() {
-  const { data } = await request("/api/pr-backfill/status");
+  const { data } = await request("/api/pr-backfill/status", undefined, adminFetch);
   return data.prBackfill;
 }
 
 export async function startPrBackfill() {
-  const { data } = await request("/api/pr-backfill/start", { method: "POST" });
+  const { data } = await request("/api/pr-backfill/start", { method: "POST" }, adminFetch);
   if (data.error) throw new ApiError(data.error);
   return data;
 }
 
 export async function stopPrBackfill() {
-  const { data } = await request("/api/pr-backfill/stop", { method: "POST" });
+  const { data } = await request("/api/pr-backfill/stop", { method: "POST" }, adminFetch);
   return data;
 }
 
