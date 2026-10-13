@@ -2,7 +2,8 @@ const express = require("express");
 const fetch = require("node-fetch");
 const cors = require("cors");
 const fs = require("fs");
-const { client_id, client_secret, redirect_uri, port} = require("./config");
+const crypto = require("crypto");
+const { client_id, client_secret, admin_password, redirect_uri, port} = require("./config");
 
 const app = express();
 app.use(cors());
@@ -39,6 +40,48 @@ let prBackfillJob = {
   reserve: 25,
   idlePasses: 0
 };
+
+/* ----------------- ADMIN PASSWORD PROTECTION ----------------- */
+const ADMIN_FAIL_LIMIT = 10;
+const ADMIN_FAIL_WINDOW_MS = 15 * 60 * 1000;
+const adminFailures = new Map(); // ip -> { count, resetAt }
+
+function safeEqual(a, b) {
+  const ha = crypto.createHash("sha256").update(String(a)).digest();
+  const hb = crypto.createHash("sha256").update(String(b)).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+
+function requireAdmin(req, res, next) {
+  const ip = req.ip || (req.socket && req.socket.remoteAddress) || "unknown";
+  const now = Date.now();
+  let entry = adminFailures.get(ip);
+  if (entry && entry.resetAt <= now) {
+    adminFailures.delete(ip);
+    entry = null;
+  }
+  if (entry && entry.count >= ADMIN_FAIL_LIMIT) {
+    res.set("Retry-After", String(Math.ceil((entry.resetAt - now) / 1000)));
+    return res.status(429).json({ error: "Too many failed attempts. Try again later." });
+  }
+
+  const supplied = req.get("x-admin-password") || "";
+  if (!admin_password || !safeEqual(supplied, admin_password)) {
+    if (!entry) {
+      entry = { count: 0, resetAt: now + ADMIN_FAIL_WINDOW_MS };
+      adminFailures.set(ip, entry);
+    }
+    entry.count += 1;
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  adminFailures.delete(ip);
+  next();
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, e] of adminFailures) if (e.resetAt <= now) adminFailures.delete(ip);
+}, ADMIN_FAIL_WINDOW_MS).unref();
 
 /* ----------------- CACHE BUSTING MIDDLEWARE ----------------- */
 app.use((req, res, next) => {
@@ -897,7 +940,7 @@ app.get("/api/analytics/auto", async (req, res) => {
   });
 });
 
-app.post("/api/pr-backfill/start", async (req, res) => {
+app.post("/api/pr-backfill/start", requireAdmin, async (req, res) => {
   if (!access_token) return res.status(401).json({ error: "Not authenticated" });
 
   const cache = ensureCacheShape(loadCache());
@@ -943,7 +986,7 @@ app.post("/api/pr-backfill/start", async (req, res) => {
   });
 });
 
-app.post("/api/pr-backfill/stop", async (req, res) => {
+app.post("/api/pr-backfill/stop", requireAdmin, async (req, res) => {
   prBackfillJob.stopRequested = true;
   return res.json({
     ok: true,
@@ -952,14 +995,14 @@ app.post("/api/pr-backfill/stop", async (req, res) => {
   });
 });
 
-app.get("/api/pr-backfill/status", async (req, res) => {
+app.get("/api/pr-backfill/status", requireAdmin, async (req, res) => {
   return res.json({
     ok: true,
     prBackfill: getPrBackfillStatus()
   });
 });
 
-app.get("/api/analytics", async (req, res) => {
+app.get("/api/analytics", requireAdmin, async (req, res) => {
   if (!access_token) return res.status(401).json({ error: "Not authenticated" });
 
   const full = req.query.full === "1";

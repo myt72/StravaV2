@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PROFILE } from "../lib/profile.js";
 import { THEMES } from "../lib/theme.js";
 import { DATE_RANGES, useAppData } from "../context/AppData.jsx";
+import { readStored, writeStored } from "../lib/storage.js";
 import { Icon } from "./ui.jsx";
 
 export const NAV = [
@@ -32,17 +33,46 @@ function ProfileLink() {
   );
 }
 
-export function Sidebar({ current, themeState }) {
+const NAV_COLLAPSE_QUERY = "(max-width: 1099px)";
+
+/** Collapsed nav state: a saved choice always wins, otherwise auto-collapse on narrow (tablet landscape) viewports. */
+export function useNavCollapsed() {
+  const [saved, setSaved] = useState(() => {
+    const v = readStored("navCollapsed", null);
+    return typeof v === "boolean" ? v : null;
+  });
+  const [narrow, setNarrow] = useState(() => window.matchMedia(NAV_COLLAPSE_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(NAV_COLLAPSE_QUERY);
+    const onChange = e => setNarrow(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  const collapsed = saved ?? narrow;
+  const toggle = useCallback(() => {
+    setSaved(!collapsed);
+    writeStored("navCollapsed", !collapsed);
+  }, [collapsed]);
+  return [collapsed, toggle];
+}
+
+export function Sidebar({ current, themeState, collapsed, onToggleNav }) {
   const { themeId, setThemeId, colorMode, toggleColorMode, theme } = themeState;
   const { backfillActive, prBackfill } = useAppData();
   return (
     <aside className="sidebar">
+      <button type="button" className="nav-toggle" onClick={onToggleNav} aria-expanded={!collapsed}
+        aria-controls="main-nav" aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
+        title={collapsed ? "Expand navigation" : "Collapse navigation"}>
+        <Icon name="menu" />
+      </button>
       <ProfileLink />
-      <nav className="nav" aria-label="Main">
+      <nav className="nav" id="main-nav" aria-label="Main">
         {NAV.map(item => (
-          <a key={item.id} href={`#/${item.id}`} className="nav-link" aria-current={current === item.id ? "page" : undefined}>
+          <a key={item.id} href={`#/${item.id}`} className="nav-link" aria-label={item.label} title={item.label}
+            aria-current={current === item.id ? "page" : undefined}>
             <Icon name={item.id === "admin" ? "admin" : item.id} />
-            <span>{item.label}</span>
+            <span className="nav-label">{item.label}</span>
             {item.id === "admin" && backfillActive && (
               <span className="nav-badge pulse" title={prBackfill?.message || "PR backfill running"}>
                 PR<span className="sr-only"> backfill running</span>
@@ -60,7 +90,8 @@ export function Sidebar({ current, themeState }) {
         </label>
         {theme.supportsMode && (
           <button type="button" className="nav-link mode-toggle" onClick={toggleColorMode}
-            aria-label={`Switch to ${colorMode === "dark" ? "light" : "dark"} mode`}>
+            aria-label={`Switch to ${colorMode === "dark" ? "light" : "dark"} mode`}
+            title={`Switch to ${colorMode === "dark" ? "light" : "dark"} mode`}>
             <Icon name={colorMode === "light" ? "moon" : "sun"} />
             <span className="btn-label">{colorMode === "dark" ? "Light mode" : "Dark mode"}</span>
           </button>

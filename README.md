@@ -21,6 +21,24 @@ Open `http://localhost:5001/dashboard`. On first use, log in with Strava via
 `http://localhost:5001/auth` once; the token is kept in the server's memory, so
 log in again after restarting the server.
 
+## Admin password (Data tab)
+
+The Data & Admin tab and the endpoints behind it (`/api/analytics`, `/api/pr-backfill/*`)
+are protected by one shared password checked on the server. Set `ADMIN_PASSWORD`
+as an environment variable or in `config.local.js` (gitignored); the environment
+variable wins. If it is not set, those endpoints always return `401`. The browser
+asks for the password once and keeps it in `localStorage` (`adminPw`); a wrong
+password clears it so you are asked again. After 10 failed attempts from one IP
+in 15 minutes the server answers `429`. Use HTTPS if the server is reachable
+over the internet, since the password is sent in a request header.
+
+## Collapsible navigation
+
+The left navigation has a toggle button at the top that switches between
+icons + labels and a narrow icons-only rail (labels become tooltips). The choice
+is saved in `localStorage` (`stravaV2:navCollapsed`). With no saved choice the nav
+auto-collapses on viewports narrower than 1100px; a saved choice always wins.
+
 ## Frontend (Vite + React)
 
 The UI lives in `client/` and is built into `client/dist/` (gitignored), which

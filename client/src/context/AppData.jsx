@@ -105,6 +105,12 @@ export function AppDataProvider({ children }) {
     }
   }, []);
 
+  /* Verifies the admin password by fetching backfill status; throws on failure. */
+  const unlockAdmin = useCallback(async () => {
+    const s = await api.fetchPrBackfillStatus();
+    if (mounted.current) setPrBackfill(s);
+  }, []);
+
   const active = isBackfillActive(prBackfill);
   useEffect(() => {
     if (active && !wasActive.current) pollPrBackfill();
@@ -226,7 +232,7 @@ export function AppDataProvider({ children }) {
     excludedSegments, excludedSet, minEfforts, setMinEfforts,
     excludeSegment: id => setExcludedSegments(prev => (prev.includes(String(id)) ? prev : [...prev, String(id)])),
     restoreSegment: id => setExcludedSegments(prev => prev.filter(x => x !== String(id))),
-    prBackfill, backfillActive: active, busy, notice, setNotice, pull, startBackfill, stopBackfill,
+    prBackfill, backfillActive: active, busy, notice, setNotice, pull, startBackfill, stopBackfill, unlockAdmin,
     bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)
   };
