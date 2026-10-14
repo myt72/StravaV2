@@ -146,6 +146,7 @@ function diagnosticMetrics(a, b, config) {
     direction: comparison.direction || (best && best.direction) || null,
     hausdorff: comparison.hausdorff ?? (best && best.hausdorff) ?? null,
     dtw: comparison.dtw ?? (best && best.dtw) ?? null,
+    overlap: comparison.overlap ?? null,
     segmentJaccard: jac,
     score: comparison.score,
     match: comparison.match,
@@ -165,19 +166,23 @@ function rideDetails(activity, diagnostic) {
     score: diagnostic.score,
     hausdorff: diagnostic.hausdorff,
     dtw: diagnostic.dtw,
+    overlap: diagnostic.overlap ?? null,
     segmentJaccard: diagnostic.segmentJaccard,
     method: diagnostic.method,
     match: diagnostic.match
   };
 }
 
+function isCalibrationEligible(activity, config) {
+  return !!activity && activity.id != null &&
+    !!routeMatching.sportGroupOf(activity.sport_type) &&
+    (!config.SPORT_TYPES.length || config.SPORT_TYPES.includes(activity.sport_type)) &&
+    (activity.summary_polyline !== undefined || activity.start_latlng !== undefined);
+}
+
 function prepareRides(cache, config) {
   const activities = Array.isArray(cache.activities) ? cache.activities : [];
-  const eligible = activities.filter(activity =>
-    activity && activity.id != null &&
-    (!config.SPORT_TYPES.length || config.SPORT_TYPES.includes(activity.sport_type)) &&
-    (activity.summary_polyline !== undefined || activity.start_latlng !== undefined)
-  );
+  const eligible = activities.filter(activity => isCalibrationEligible(activity, { ...routeMatching.DEFAULT_MATCH_CONFIG, ...config }));
   return new Map(eligible.map(activity => [
     String(activity.id),
     routeMatching.prepareRide(activity, cache.segmentData || {}, config)
@@ -185,10 +190,13 @@ function prepareRides(cache, config) {
 }
 
 function analyzeSeed(seed, cache, config = {}, preparedRides = null) {
-  const cfg = { ...routeMatching.DEFAULT_MATCH_CONFIG, ...config };
   const activities = Array.isArray(cache.activities) ? cache.activities : [];
   const seedActivity = activities.find(activity => String(activity.id) === String(seed.activityId));
   if (!seedActivity) return { activityId: String(seed.activityId), skipped: "Seed activity is missing from cache.json" };
+  const sportGroup = routeMatching.sportGroupOf(seedActivity.sport_type);
+  if (!sportGroup) return { activityId: String(seed.activityId), skipped: `Sport type ${seedActivity.sport_type} is not route-matched (Ride and Walk/Hike only)` };
+  // Per-sport-group thresholds; `config` holds overrides only.
+  const cfg = routeMatching.resolveGroupConfig(sportGroup, config);
   if (!seedActivity.summary_polyline || !Array.isArray(seedActivity.start_latlng) || !Array.isArray(seedActivity.end_latlng)) {
     return {
       activityId: String(seed.activityId),
@@ -198,11 +206,9 @@ function analyzeSeed(seed, cache, config = {}, preparedRides = null) {
 
   const prepared = preparedRides || prepareRides(cache, cfg);
   const seedRide = prepared.get(String(seedActivity.id)) || routeMatching.prepareRide(seedActivity, cache.segmentData || {}, cfg);
+  // Matches never cross sport groups.
   const eligible = activities.filter(activity =>
-    activity && activity.id != null &&
-    (!cfg.SPORT_TYPES.length || cfg.SPORT_TYPES.includes(activity.sport_type)) &&
-    (activity.summary_polyline !== undefined || activity.start_latlng !== undefined)
-  );
+    isCalibrationEligible(activity, cfg) && routeMatching.sportGroupOf(activity.sport_type) === sportGroup);
   const funnel = {
     eligible: eligible.length,
     startFinish: 0,
@@ -264,9 +270,15 @@ function analyzeSeed(seed, cache, config = {}, preparedRides = null) {
   };
   return {
     activityId: String(seed.activityId),
+    sportGroup,
     expectedCount: seed.expectedCount,
     includesSelf: seed.includesSelf,
     counts,
+    perActivity: {
+      directMatches: counts.withSelf.actual,
+      expected: counts.withSelf.expected,
+      absoluteError: Math.abs(counts.withSelf.delta)
+    },
     funnel,
     sameDirection: rows.filter(row => row.direction === "same"),
     reverseDirection: rows.filter(row => row.direction === "reverse"),
@@ -279,16 +291,25 @@ function analyzeSeed(seed, cache, config = {}, preparedRides = null) {
 function buildSweepGrid(baseConfig = {}) {
   const base = { ...routeMatching.DEFAULT_MATCH_CONFIG, ...baseConfig };
   const variants = {
-    START_END_RADIUS_M: [100, base.START_END_RADIUS_M],
+    START_END_RADIUS_M: [100, base.START_END_RADIUS_M, 300],
     DISTANCE_TOLERANCE: [0.05, base.DISTANCE_TOLERANCE],
     HAUSDORFF_THRESHOLD_M: [100, base.HAUSDORFF_THRESHOLD_M],
     HAUSDORFF_PERCENTILE: [0.95, 1],
     DTW_THRESHOLD_M: [50, base.DTW_THRESHOLD_M],
     WEIGHT_JACCARD: [0.1, base.WEIGHT_JACCARD],
+    OVERLAP_MIN_FRACTION: [base.OVERLAP_MIN_FRACTION, 0.8, 0.9],
+    OVERLAP_DISTANCE_M: [base.OVERLAP_DISTANCE_M, 60],
     ALLOW_REVERSE: [false, true]
   };
-  return Object.entries(variants).reduce((configs, [key, values]) =>
-    configs.flatMap(config => values.map(value => ({ ...config, [key]: value }))), [{ ...base }]);
+  const seen = new Set();
+  return Object.entries(variants)
+    .reduce((configs, [key, values]) => configs.flatMap(config => values.map(value => ({ ...config, [key]: value }))), [{ ...base }])
+    // The overlap distance only matters when the overlap match is enabled.
+    .filter(config => config.OVERLAP_MIN_FRACTION > 0 || config.OVERLAP_DISTANCE_M === base.OVERLAP_DISTANCE_M)
+    .filter((config, index, all) => {
+      const key = JSON.stringify(config);
+      return !seen.has(key) && seen.add(key);
+    });
 }
 
 function rankSweep(results) {
@@ -299,25 +320,82 @@ function rankSweep(results) {
   );
 }
 
+/**
+ * Score one config: total absolute error of the per-activity direct match counts across all seeds
+ * (the figure comparable to Strava's number), then mean F1 when matched-ID lists exist.
+ */
 function makeSweepResult(seeds, cache, config, preparedRides = null) {
+  const activities = Array.isArray(cache.activities) ? cache.activities : [];
+  const prepared = preparedRides || prepareRides(cache, config);
   let totalAbsoluteError = 0;
   const f1Scores = [];
+  const perSeed = [];
   for (const seed of seeds) {
-    const result = analyzeSeed(seed, cache, config, preparedRides);
-    if (result.skipped) continue;
-    totalAbsoluteError += Math.abs(result.counts.withSelf.delta);
-    if (result.listScore) f1Scores.push(result.listScore.f1);
+    const seedActivity = activities.find(activity => String(activity.id) === String(seed.activityId));
+    if (!seedActivity || !seedActivity.summary_polyline) continue;
+    const matches = routeMatching.matchesFor(seed.activityId, activities, cache.segmentData || {}, config, { prepared });
+    const matchedIds = [String(seed.activityId), ...matches.map(match => String(match.id))];
+    const counts = countInterpretations(matchedIds, seed);
+    totalAbsoluteError += Math.abs(counts.withSelf.delta);
+    perSeed.push({ activityId: String(seed.activityId), count: counts.withSelf.actual, expected: counts.withSelf.expected });
+    if (seed.expectedMatchedIds && seed.expectedMatchedIds.length) {
+      f1Scores.push(scoreMatchedIds(matchedIds, resolveActivityIds(seed.expectedMatchedIds, activities)).f1);
+    }
   }
   return {
     config,
     totalAbsoluteError,
+    perSeed,
     meanF1: f1Scores.length ? f1Scores.reduce((sum, score) => sum + score, 0) / f1Scores.length : null
   };
 }
 
 function sweep(seeds, cache, baseConfig = {}) {
-  const preparedRides = prepareRides(cache, { ...routeMatching.DEFAULT_MATCH_CONFIG, ...baseConfig });
+  const preparedRides = prepareRides(cache, baseConfig);
   return rankSweep(buildSweepGrid(baseConfig).map(config => makeSweepResult(seeds, cache, config, preparedRides)));
+}
+
+/**
+ * Split detection: where do the rides that directly match the seed live in the clustering?
+ * Returns { routeId, clusterSize, inSeedCluster, unclustered, others: [{ routeId, count, clusterSize, representativeId, name }] }
+ * `others` lists the other clusters holding rides that match the seed directly, largest first. A fragmented
+ * route has large `others` counts.
+ */
+function splitDetection(seed, matchedIds, routeClusters) {
+  const clusters = (routeClusters && routeClusters.clusters) || [];
+  const index = (routeClusters && routeClusters.index) || {};
+  const byRoute = new Map(clusters.map(cluster => [cluster.routeId, cluster]));
+  const seedRoute = index[String(seed.activityId)] || null;
+  const seedCluster = seedRoute ? byRoute.get(seedRoute) : null;
+  const counts = new Map();
+  let inSeedCluster = 0;
+  let unclustered = 0;
+  for (const id of matchedIds) {
+    if (String(id) === String(seed.activityId)) continue;
+    const routeId = index[String(id)];
+    if (!routeId) unclustered++;
+    else if (routeId === seedRoute) inSeedCluster++;
+    else counts.set(routeId, (counts.get(routeId) || 0) + 1);
+  }
+  const others = [...counts.entries()]
+    .map(([routeId, count]) => {
+      const cluster = byRoute.get(routeId) || {};
+      return {
+        routeId,
+        count,
+        clusterSize: (cluster.activityIds || []).length,
+        representativeId: cluster.representativeId == null ? null : String(cluster.representativeId),
+        name: cluster.name || null
+      };
+    })
+    .sort((a, b) => b.count - a.count || a.routeId.localeCompare(b.routeId));
+  return {
+    routeId: seedRoute,
+    clusterSize: seedCluster ? seedCluster.activityIds.length : 0,
+    inSeedCluster,
+    unclustered,
+    others
+  };
 }
 
 module.exports = {
@@ -330,5 +408,6 @@ module.exports = {
   buildSweepGrid,
   rankSweep,
   makeSweepResult,
-  sweep
+  sweep,
+  splitDetection
 };

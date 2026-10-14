@@ -48,11 +48,14 @@ function distanceBetweenRepresentatives(a, b, config) {
   return { hausdorff, dtw };
 }
 
-function clusterChecks(seeds, cache, config) {
+function clusterChecks(seeds, cache, config, overrides, seedResults) {
   const activities = Array.isArray(cache.activities) ? cache.activities : [];
-  const clusters = cache.routeClusters && Array.isArray(cache.routeClusters.clusters)
+  // Cached clusters are only trusted when they are current and no threshold override is being tested.
+  const useCached = !Object.keys(overrides).length && cache.routeClusters &&
+    cache.routeClusters.version === routeMatching.ROUTE_CLUSTER_VERSION && Array.isArray(cache.routeClusters.clusters);
+  const clusters = useCached
     ? cache.routeClusters
-    : routeMatching.buildRouteClusters(activities, cache.segmentData || {}, null, config);
+    : routeMatching.buildRouteClusters(activities, cache.segmentData || {}, null, overrides);
   const activityById = new Map(activities.map(activity => [String(activity.id), activity]));
   const clusterByRoute = new Map(clusters.clusters.map(cluster => [cluster.routeId, cluster]));
   const perSeed = seeds.map(seed => {
@@ -65,7 +68,11 @@ function clusterChecks(seeds, cache, config) {
       clusterSize: cluster ? cluster.activityIds.length : 0,
       expectedCount: seed.expectedCount,
       sizeDelta: cluster ? cluster.activityIds.length - seed.expectedCount : null,
-      clusterMergesSeeds: false
+      clusterMergesSeeds: false,
+      split: (() => {
+        const result = seedResults.find(r => r.activityId === String(seed.activityId));
+        return result && !result.skipped ? calibration.splitDetection(seed, result.matchedIds, clusters) : null;
+      })()
     };
   });
   const pairs = [];
@@ -107,6 +114,7 @@ function printReadable(report) {
       console.log(`  SKIPPED: ${result.skipped}`);
       continue;
     }
+    console.log(`  Per-activity direct matches (compare with Strava; overlap allowed): ${result.perActivity.directMatches} / ${result.perActivity.expected} (abs error ${result.perActivity.absoluteError}) [${result.sportGroup}]`);
     console.log(`  Count incl. self: ${result.counts.withSelf.actual} / ${result.counts.withSelf.expected} (delta ${result.counts.withSelf.delta >= 0 ? "+" : ""}${result.counts.withSelf.delta})`);
     console.log(`  Count excl. self: ${result.counts.withoutSelf.actual} / ${result.counts.withoutSelf.expected} (delta ${result.counts.withoutSelf.delta >= 0 ? "+" : ""}${result.counts.withoutSelf.delta})`);
     const f = result.funnel;
@@ -125,14 +133,22 @@ function printReadable(report) {
   console.log("\nCluster checks");
   for (const cluster of report.clusterChecks.perSeed) {
     console.log(`  ${cluster.activityId}: cluster size ${cluster.clusterSize}, expected ${cluster.expectedCount}, size delta ${cluster.sizeDelta ?? "n/a"}${cluster.clusterMergesSeeds ? " [MERGES SEEDS]" : ""}`);
+    if (cluster.split) {
+      const split = cluster.split;
+      console.log(`    Split detection: ${split.inSeedCluster} directly matching rides are in the seed's cluster; ${split.others.reduce((sum, o) => sum + o.count, 0)} are in other clusters; ${split.unclustered} are in no cluster`);
+      for (const other of split.others.slice(0, 10)) {
+        console.log(`      ${other.count} in cluster ${other.routeId} (size ${other.clusterSize}, representative ${other.representativeId}, "${other.name || ""}")`);
+      }
+    }
   }
   for (const pair of report.clusterChecks.pairs) {
     console.log(`  Pair ${pair.activityIds.join(" / ")}: same cluster ${pair.sameCluster}; representative Hausdorff ${pair.hausdorff ?? "n/a"} m, DTW ${pair.dtw ?? "n/a"} m`);
   }
   if (report.sweep && report.sweep.length) {
-    console.log("\nSweep leaders (absolute count error; then mean F1)");
+    console.log("\nSweep leaders (total absolute error of per-activity counts across seeds; then mean F1)");
     for (const row of report.sweep.slice(0, 15)) {
-      console.log(`  error ${row.totalAbsoluteError}, F1 ${row.meanF1 == null ? "n/a" : row.meanF1.toFixed(3)} | ${JSON.stringify(row.config)}`);
+      const counts = (row.perSeed || []).map(seed => `${seed.count}/${seed.expected}`).join(" ");
+      console.log(`  error ${row.totalAbsoluteError} [${counts}], F1 ${row.meanF1 == null ? "n/a" : row.meanF1.toFixed(3)} | ${JSON.stringify(row.config)}`);
     }
   }
 }
@@ -153,19 +169,20 @@ function main() {
   }
   const cache = loadJson(CACHE_FILE);
   const config = { ...routeMatching.DEFAULT_MATCH_CONFIG, ...configOverrides };
-  const results = seeds.map(seed => calibration.analyzeSeed(seed, cache, config));
+  // Library calls take overrides only so each sport group keeps its own default thresholds.
+  const results = seeds.map(seed => calibration.analyzeSeed(seed, cache, configOverrides));
   const allSeeds = checkedSeeds.seeds;
   const report = {
     generatedAt: new Date().toISOString(),
     config,
     seeds: results,
-    clusterChecks: clusterChecks(allSeeds, cache, config),
+    clusterChecks: clusterChecks(allSeeds, cache, config, configOverrides, results),
     sweep: null
   };
   if (options.sweep) {
     report.sweep = calibration.sweep(allSeeds, cache, configOverrides);
     const best = report.sweep[0];
-    if (best && allSeeds.some(seed => !calibration.analyzeSeed(seed, cache, config).skipped)) {
+    if (best && allSeeds.some(seed => !calibration.analyzeSeed(seed, cache, configOverrides).skipped)) {
       const recommendedFile = path.join(ROOT, "calibration", "recommended-thresholds.json");
       fs.writeFileSync(recommendedFile, JSON.stringify({
         thresholds: best.config,

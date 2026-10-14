@@ -55,8 +55,14 @@ function MatchedRides() {
   const [period, setPeriod] = usePersistentState("matchedPeriod", "all");
   const [year, setYear] = usePersistentState("matchedYear", null);
   const [month, setMonth] = usePersistentState("matchedMonth", new Date().getMonth() + 1);
-  const [kind, setKind] = usePersistentState("matchedKind", "routes");
+  const [savedKind, setKind] = usePersistentState("matchedKind", "routes");
   const [open, setOpen] = useState(() => new Set());
+
+  // The card follows the global activity-type filter; segments only exist for rides.
+  const hasRides = useMemo(() => filtered.activities.some(a => a.sport_type === "Ride"), [filtered.activities]);
+  const hasFoot = useMemo(() => filtered.activities.some(a => a.sport_type === "Walk" || a.sport_type === "Hike"), [filtered.activities]);
+  const kind = hasRides ? savedKind : "routes";
+  const noun = hasFoot && !hasRides ? "Walked" : hasFoot ? "Done" : "Ridden";
 
   const years = useMemo(() => activityYears(filtered.activities), [filtered.activities]);
   const activeYear = years.includes(year) ? year : years[0] ?? null;
@@ -89,8 +95,8 @@ function MatchedRides() {
     },
     ...(kind === "routes" ? [{ key: "thumb", label: "Shape", sortable: false, render: r => <RouteThumb polyline={r.polyline} name={r.name} />, renderChild: none }] : []),
     { key: "count", label: "Rides", align: "r", render: r => comma(r.count), renderChild: none },
-    { key: "firstRidden", label: "First ridden", value: r => new Date(r.firstRidden).getTime(), render: r => formatDate(r.firstRidden), renderChild: c => formatDate(c.activity.start_date) },
-    { key: "lastRidden", label: "Last ridden", value: r => new Date(r.lastRidden).getTime(), render: r => formatDate(r.lastRidden), renderChild: none },
+    { key: "firstRidden", label: `First ${noun.toLowerCase()}`, value: r => new Date(r.firstRidden).getTime(), render: r => formatDate(r.firstRidden), renderChild: c => formatDate(c.activity.start_date) },
+    { key: "lastRidden", label: `Last ${noun.toLowerCase()}`, value: r => new Date(r.lastRidden).getTime(), render: r => formatDate(r.lastRidden), renderChild: none },
     { key: "distance", label: "Distance", align: "r", render: r => (r.distance ? fmtMiles(r.distance) : "—"), renderChild: c => fmtMiles(c.activity.distance) },
     { key: "elevation", label: "Elevation", align: "r", render: r => (r.elevation ? fmtFeet(r.elevation) : "—"), renderChild: c => fmtFeet(c.activity.total_elevation_gain) }
   ];
@@ -98,7 +104,7 @@ function MatchedRides() {
   return (
     <Card title="Matched rides" right={
       <div className="toolbar">
-        <Segmented label="Leaderboard type" value={kind} options={KIND_OPTIONS} onChange={setKind} />
+        {hasRides && <Segmented label="Leaderboard type" value={kind} options={KIND_OPTIONS} onChange={setKind} />}
         <Segmented label="Rows" value={limit} options={LIMIT_OPTIONS} onChange={setLimit} />
         <Segmented label="Period" value={period} options={PERIOD_OPTIONS} onChange={setPeriod} />
         {period !== "all" && (
@@ -131,8 +137,8 @@ function MatchedRides() {
           }} />
       )}
       <p className="hint">
-        Routes are matched from GPS summaries (start/finish, Hausdorff, DTW and shared segments); reversed rides count as a different route.
-        Counts follow the global filters above. Expand a row to see its rides.
+        Routes are matched from GPS summaries (start/finish, Hausdorff, DTW, overlap and, for rides, shared segments); reversed rides count as a different route.
+        Rides, and Walks + Hikes, are matched separately. Counts follow the global filters above, including the activity type. Expand a row to see its rides.
       </p>
     </Card>
   );

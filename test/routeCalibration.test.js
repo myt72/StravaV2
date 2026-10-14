@@ -71,7 +71,10 @@ test("sweep ranking prefers absolute count error, then F1", () => {
     { config: { id: "tie" }, totalAbsoluteError: 0, meanF1: 0.9 }
   ]);
   assert.deepEqual(ranked.map(row => row.config.id), ["tie", "f1", "error"]);
-  assert.equal(calibration.buildSweepGrid().length, 128);
+  const grid = calibration.buildSweepGrid();
+  assert.equal(grid.length, 960);
+  assert.ok(grid.some(config => config.OVERLAP_MIN_FRACTION === 0.9 && config.ALLOW_REVERSE === true));
+  assert.ok(grid.every(config => config.OVERLAP_MIN_FRACTION > 0 || config.OVERLAP_DISTANCE_M === routeMatching.DEFAULT_MATCH_CONFIG.OVERLAP_DISTANCE_M));
 });
 
 test("route-matching config is exported and validates bounded overrides", () => {
@@ -150,4 +153,38 @@ test("seed analysis gives actionable guidance when geo backfill fields are absen
     { activities: [{ id: "100", sport_type: "Ride" }], segmentData: {} }
   );
   assert.match(result.skipped, /run the geo backfill/i);
+});
+
+test("split detection lists other clusters holding rides that match the seed; sweep ranks per-activity count error", () => {
+  const { noisySameRoute } = fixture;
+  const activities = [
+    activity("200", noisySameRoute.reference),
+    activity("201", noisySameRoute.variant),
+    activity("202", noisySameRoute.variant),
+    activity("203", noisySameRoute.reference)
+  ];
+  const seed = { activityId: "200", expectedCount: 4, includesSelf: true, expectedMatchedIds: [], notMatchedIds: [] };
+  const cache = { activities, segmentData: {} };
+  const matched = routeMatching.matchesFor("200", activities, {}).map(match => String(match.id));
+  assert.equal(matched.length, 3);
+
+  // Hand-built fragmented clustering: the seed's cluster holds only one of its matches.
+  const fragmented = {
+    clusters: [
+      { routeId: "rA", representativeId: "200", name: "A", activityIds: ["200", "201"] },
+      { routeId: "rB", representativeId: "202", name: "B", activityIds: ["202", "203"] }
+    ],
+    index: { 200: "rA", 201: "rA", 202: "rB", 203: "rB" }
+  };
+  const split = calibration.splitDetection(seed, matched, fragmented);
+  assert.equal(split.clusterSize, 2);
+  assert.equal(split.inSeedCluster, 1);
+  assert.deepEqual(split.others, [{ routeId: "rB", count: 2, clusterSize: 2, representativeId: "202", name: "B" }]);
+
+  const result = calibration.analyzeSeed(seed, cache);
+  assert.equal(result.perActivity.directMatches, 4);
+  assert.equal(result.perActivity.absoluteError, 0);
+  const swept = calibration.makeSweepResult([seed], cache, {});
+  assert.equal(swept.totalAbsoluteError, 0);
+  assert.equal(swept.perSeed[0].count, 4);
 });

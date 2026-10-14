@@ -128,7 +128,10 @@ test("buildRouteClusters: groups, does not chain, is stable and incremental", ()
   assert.strictEqual(res.index["6"], undefined);
   assert.strictEqual(res.index["7"], undefined);
   assert.strictEqual(res.index["1"], res.index["2"]);
-  assert.strictEqual(res.index["1"], rm.routeIdFor(1));
+  const mainCluster = res.clusters.find(c => c.activityIds.length === 3);
+  assert.strictEqual(res.index["1"], mainCluster.routeId);
+  assert.strictEqual(mainCluster.routeId, rm.routeIdFor(mainCluster.representativeId));
+  assert.strictEqual(res.version, rm.ROUTE_CLUSTER_VERSION);
   assert.notStrictEqual(res.index["1"], res.index["4"]);
   assert.notStrictEqual(res.index["1"], res.index["5"]);
 
@@ -181,4 +184,145 @@ test("segmentLeaderboard: period filters and exclusions", () => {
   assert.strictEqual(rm.segmentLeaderboard(sd, { year: 2024, month: 2 }).length, 1);
   assert.strictEqual(rm.segmentLeaderboard(sd, { month: 1 }).length, 2);
   assert.deepStrictEqual(rm.segmentLeaderboard(sd, { excludedSegmentIds: ["10"] }).map(r => r.segmentId), ["11"]);
+});
+
+/* ---------- density clustering, per-activity matches, overlap, sport groups ---------- */
+
+const offsetNorth = (pts, m) => pts.map(p => [p[0] + m / M_PER_DEG, p[1]]);
+
+/** Same line, but the recorded start point differs (like riders who start a little before/after each other). */
+function startOffsetActivity(id, startOffsetM, extra = {}) {
+  const pts = makeRoute(BASE, lineA, { seed: id });
+  return activity(id, pts, { start_latlng: offsetNorth([pts[0]], startOffsetM)[0], ...extra });
+}
+
+const SPLIT_OFFSETS = { 1: 0, 2: 100, 3: 110, 4: 225, 5: 230, 6: 235 };
+const splitActivities = () => Object.entries(SPLIT_OFFSETS).map(([id, off]) => startOffsetActivity(Number(id), off));
+
+function leaderClusters(acts, config) {
+  const rides = acts.map(a => rm.prepareRide(a, {}, config));
+  const leaders = [];
+  for (const ride of rides) {
+    const home = leaders.find(l => rm.compareRoutes(l.leader, ride, config).match);
+    if (home) home.members.push(ride.id); else leaders.push({ leader: ride, members: [ride.id] });
+  }
+  return leaders.map(l => l.members);
+}
+
+test("density clustering does not split a route whose rides differ slightly at the start; leader clustering does", () => {
+  const acts = splitActivities();
+  const leader = leaderClusters(acts, {});
+  assert.deepStrictEqual(leader.map(m => m.length), [3, 3]);
+
+  const res = rm.buildRouteClusters(acts, {});
+  assert.strictEqual(res.clusters.length, 1);
+  assert.strictEqual(res.clusters[0].activityIds.length, 6);
+  // Representative is the medoid (most direct matches), not the earliest ride.
+  assert.notStrictEqual(String(res.clusters[0].representativeId), "1");
+  const rep = rm.prepareRide(acts.find(a => a.id === res.clusters[0].representativeId));
+  for (const a of acts) {
+    if (a.id !== rep.id) assert.strictEqual(rm.compareRoutes(rep, rm.prepareRide(a)).match, true);
+  }
+});
+
+test("cluster membership is independent of input order", () => {
+  const acts = splitActivities().concat([
+    activity(20, makeRoute(BASE, lineB, { seed: 20 })),
+    activity(21, makeRoute(BASE, lineB, { noiseM: 20, seed: 21 })),
+    activity(22, makeRoute(BASE, lineA, { seed: 22 }).reverse())
+  ]);
+  const signature = res => res.clusters
+    .map(c => `${c.representativeId}:${c.activityIds.map(String).sort().join(",")}`).sort().join("|");
+  const expected = signature(rm.buildRouteClusters(acts, {}));
+  const rand = rng(7);
+  for (let k = 0; k < 5; k++) {
+    const shuffled = acts.slice().sort(() => rand());
+    assert.strictEqual(signature(rm.buildRouteClusters(shuffled, {})), expected);
+  }
+});
+
+test("matchesFor: per-activity direct matches may overlap; clusters are exclusive", () => {
+  const acts = splitActivities();
+  const ids = id => rm.matchesFor(id, acts, {}).map(m => Number(m.id)).sort();
+  assert.deepStrictEqual(ids(1), [2, 3]);
+  assert.deepStrictEqual(ids(2), [1, 3, 4, 5, 6]);
+  assert.deepStrictEqual(ids(6), [2, 3, 4, 5]);
+  assert.deepStrictEqual(rm.matchesFor(999, acts, {}), []);
+});
+
+test("buildRouteClusters: version mismatch rebuilds; matching version keeps assignments", () => {
+  const acts = splitActivities();
+  const stale = { version: 1, clusters: [{ routeId: "rOld", representativeId: 1, name: "x", activityIds: [1, 2, 3] }], index: { 1: "rOld", 2: "rOld", 3: "rOld" } };
+  const rebuilt = rm.buildRouteClusters(acts, {}, stale);
+  assert.strictEqual(rebuilt.version, rm.ROUTE_CLUSTER_VERSION);
+  assert.ok(!rebuilt.clusters.some(c => c.routeId === "rOld"));
+  assert.strictEqual(rebuilt.clusters.length, 1);
+  const again = rm.buildRouteClusters(acts, {}, rebuilt);
+  assert.deepStrictEqual(again.index, rebuilt.index);
+});
+
+test("overlap match tolerates a small detour that Hausdorff/DTW reject", () => {
+  const detour = t => [t * 10000, t > 0.45 && t < 0.55 ? 400 : 0];
+  const a = rm.prepareRide(activity(1, makeRoute(BASE, t => [t * 10000, 0], { n: 120 })));
+  const b = rm.prepareRide(activity(2, makeRoute(BASE, detour, { n: 120 })));
+  assert.strictEqual(rm.compareRoutes(a, b).match, false);
+  const r = rm.compareRoutes(a, b, { OVERLAP_MIN_FRACTION: 0.8, OVERLAP_DISTANCE_M: 40 });
+  assert.strictEqual(r.match, true);
+  assert.ok(r.overlap >= 0.8 && r.overlap < 1);
+  assert.strictEqual(rm.compareRoutes(a, b, { OVERLAP_MIN_FRACTION: 0.98, OVERLAP_DISTANCE_M: 40 }).match, false);
+});
+
+test("sport groups: Walk+Hike cluster together, never with Rides; Runs are ignored", () => {
+  const pts = makeRoute(BASE, lineA, { seed: 1 });
+  const acts = [
+    activity(1, pts, { sport_type: "Walk" }),
+    activity(2, pts, { sport_type: "Hike" }),
+    activity(3, pts, { sport_type: "Ride" }),
+    activity(4, pts, { sport_type: "Ride" }),
+    activity(5, pts, { sport_type: "Run" })
+  ];
+  const res = rm.buildRouteClusters(acts, {});
+  assert.strictEqual(res.index["1"], res.index["2"]);
+  assert.strictEqual(res.index["3"], res.index["4"]);
+  assert.notStrictEqual(res.index["1"], res.index["3"]);
+  assert.strictEqual(res.index["5"], undefined);
+  assert.deepStrictEqual(res.clusters.map(c => c.sportGroup).sort(), ["Ride", "WalkHike"]);
+  assert.strictEqual(rm.matchesFor(1, acts, {}).length, 1);
+});
+
+test("Walk/Hike use tighter defaults and settings can override them per group", () => {
+  const wide = (id, type) => startOffsetActivity(id, id === 1 ? 0 : 120, { sport_type: type });
+  const walks = [wide(1, "Walk"), wide(2, "Hike")];
+  const rides = [wide(3, "Ride"), wide(4, "Ride")];
+  assert.strictEqual(rm.resolveGroupConfig("WalkHike").START_END_RADIUS_M, 75);
+  assert.strictEqual(rm.resolveGroupConfig("Ride").START_END_RADIUS_M, 150);
+  // Ride 120 m start offsets (the base ride is offset 0 vs 120) match with the ride defaults only.
+  assert.strictEqual(rm.matchesFor(3, rides, {}).length, 1);
+  assert.strictEqual(rm.matchesFor(1, walks, {}).length, 0);
+  const cfg = rm.validateMatchConfig({ GROUP_OVERRIDES: { WalkHike: { START_END_RADIUS_M: 150 } } });
+  assert.strictEqual(rm.resolveGroupConfig("WalkHike", cfg).START_END_RADIUS_M, 150);
+  assert.strictEqual(rm.matchesFor(1, walks, {}, cfg).length, 1);
+  assert.strictEqual(rm.resolveGroupConfig("Ride", cfg).START_END_RADIUS_M, 150);
+});
+
+test("validateMatchConfig: GROUP_OVERRIDES and overlap settings are validated and bounded", () => {
+  assert.throws(() => rm.validateMatchConfig({ GROUP_OVERRIDES: { Run: {} } }), /Unknown sport group/);
+  assert.throws(() => rm.validateMatchConfig({ GROUP_OVERRIDES: { WalkHike: { DTW_THRESHOLD_M: 9999 } } }), /between 5 and 500/);
+  assert.throws(() => rm.validateMatchConfig({ GROUP_OVERRIDES: { WalkHike: { SPORT_TYPES: ["Walk"] } } }), /per sport group/);
+  assert.throws(() => rm.validateMatchConfig({ GROUP_OVERRIDES: { WalkHike: { GROUP_OVERRIDES: {} } } }), /Unknown route-matching setting/);
+  assert.throws(() => rm.validateMatchConfig({ OVERLAP_MIN_FRACTION: 2 }), /between 0 and 1/);
+  assert.deepStrictEqual(rm.validateMatchConfig({ OVERLAP_MIN_FRACTION: 0.9, OVERLAP_DISTANCE_M: 30 }), { OVERLAP_MIN_FRACTION: 0.9, OVERLAP_DISTANCE_M: 30 });
+});
+
+test("segment overlap is never used for Walk/Hike scoring", () => {
+  const segs = [{ segment_id: 1 }, { segment_id: 2 }, { segment_id: 3 }];
+  const sd = { 1: segs, 2: segs };
+  const pts = makeRoute(BASE, lineA);
+  const walk = rm.prepareRide(activity(1, pts, { sport_type: "Walk" }), sd);
+  const ride = rm.prepareRide(activity(2, pts, { sport_type: "Ride" }), sd);
+  assert.strictEqual(walk.segIds.size, 0);
+  assert.strictEqual(ride.segIds.size, 3);
+  const other = rm.prepareRide(activity(3, pts, { sport_type: "Walk" }), sd);
+  assert.strictEqual(rm.compareRoutes(walk, other).jaccard, null);
+  assert.strictEqual(rm.compareRoutes(walk, other).match, true);
 });
