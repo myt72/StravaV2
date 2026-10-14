@@ -261,11 +261,22 @@ test("buildRouteClusters: version mismatch rebuilds; matching version keeps assi
   assert.deepStrictEqual(again.index, rebuilt.index);
 });
 
+test("defaults: overlap enabled at 0.8 and cluster version 3; version 2 caches are rebuilt", () => {
+  assert.strictEqual(rm.DEFAULT_MATCH_CONFIG.OVERLAP_MIN_FRACTION, 0.8);
+  assert.strictEqual(rm.ROUTE_CLUSTER_VERSION, 3);
+  const acts = splitActivities();
+  const stale = { version: 2, clusters: [{ routeId: "rOld", representativeId: 1, name: "x", activityIds: [1, 2, 3] }], index: { 1: "rOld", 2: "rOld", 3: "rOld" } };
+  const rebuilt = rm.buildRouteClusters(acts, {}, stale);
+  assert.strictEqual(rebuilt.version, 3);
+  assert.ok(!rebuilt.clusters.some(c => c.routeId === "rOld"));
+});
+
 test("overlap match tolerates a small detour that Hausdorff/DTW reject", () => {
   const detour = t => [t * 10000, t > 0.45 && t < 0.55 ? 400 : 0];
   const a = rm.prepareRide(activity(1, makeRoute(BASE, t => [t * 10000, 0], { n: 120 })));
   const b = rm.prepareRide(activity(2, makeRoute(BASE, detour, { n: 120 })));
-  assert.strictEqual(rm.compareRoutes(a, b).match, false);
+  assert.strictEqual(rm.compareRoutes(a, b, { OVERLAP_MIN_FRACTION: 0 }).match, false);
+  assert.strictEqual(rm.compareRoutes(a, b).match, true); // default config has overlap on
   const r = rm.compareRoutes(a, b, { OVERLAP_MIN_FRACTION: 0.8, OVERLAP_DISTANCE_M: 40 });
   assert.strictEqual(r.match, true);
   assert.ok(r.overlap >= 0.8 && r.overlap < 1);
@@ -296,6 +307,8 @@ test("Walk/Hike use tighter defaults and settings can override them per group", 
   const rides = [wide(3, "Ride"), wide(4, "Ride")];
   assert.strictEqual(rm.resolveGroupConfig("WalkHike").START_END_RADIUS_M, 75);
   assert.strictEqual(rm.resolveGroupConfig("Ride").START_END_RADIUS_M, 150);
+  assert.strictEqual(rm.resolveGroupConfig("WalkHike").DISTANCE_TOLERANCE, 0.25);
+  assert.strictEqual(rm.resolveGroupConfig("Ride").DISTANCE_TOLERANCE, 0.1);
   // Ride 120 m start offsets (the base ride is offset 0 vs 120) match with the ride defaults only.
   assert.strictEqual(rm.matchesFor(3, rides, {}).length, 1);
   assert.strictEqual(rm.matchesFor(1, walks, {}).length, 0);
