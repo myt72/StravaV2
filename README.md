@@ -70,9 +70,9 @@ How rides are matched (`lib/routeMatching.js`, defaults in `DEFAULT_MATCH_CONFIG
 4. DTW with a Sakoe-Chiba band (`DTW_BAND_FRACTION`), normalised by path length (mean offset), must be ≤ 75 m (`DTW_THRESHOLD_M`). The reversed route is also tried; reversed rides are reported as `direction: "reverse"` and are a different route unless `ALLOW_REVERSE` is true.
 5. Score = weighted mix of the above plus the Jaccard overlap of shared `segment_id`s (`WEIGHT_*`, `MIN_SCORE` 0.4). Rides without a polyline fall back to segment overlap alone (≥ 3 segments each, Jaccard ≥ 0.8).
 
-6. Optional **overlap match** (`OVERLAP_MIN_FRACTION`, default `0` = off, and `OVERLAP_DISTANCE_M`, default 40): a pair also matches when at least that fraction of *each* route's resampled points lies within `OVERLAP_DISTANCE_M` of the other route's polyline (point-to-segment, so Strava's low-resolution `summary_polyline` is handled). This tolerates small detours and slightly different starts/ends that Hausdorff/DTW reject; combine it with a larger `START_END_RADIUS_M`. It is off by default until `--sweep` shows it helps on your data.
+6. Optional **overlap match** (`OVERLAP_MIN_FRACTION`, default `0.8`; `0` turns it off; and `OVERLAP_DISTANCE_M`, default 40): a pair also matches when at least that fraction of *each* route's resampled points lies within `OVERLAP_DISTANCE_M` of the other route's polyline (point-to-segment, so Strava's low-resolution `summary_polyline` is handled). This tolerates small detours and slightly different starts/ends that Hausdorff/DTW reject; combine it with a larger `START_END_RADIUS_M`. It is on by default because calibration against Strava's matched-activity counts showed the Hausdorff/DTW gates undercounted rides that are clearly the same route.
 
-**Sport groups.** Matching is done per group and groups never merge: **Ride** (`Ride`) and **Walk/Hike** (`Walk` + `Hike` together). Runs are not matched. Walk/Hike use tighter defaults (`GROUP_DEFAULT_CONFIGS.WalkHike`: start/finish 75 m, Hausdorff 75 m, DTW 35 m, overlap distance 25 m). No segment efforts are fetched for walks/hikes and segment overlap is never used in their scoring (the Jaccard weight is dropped when there is no segment data). The geo fields (`summary_polyline`, `start_latlng`, `end_latlng`) are captured for every activity type by the same `/athlete/activities` paging, so the existing geo backfill covers Walk/Hike; an existing cache just needs that one re-page.
+**Sport groups.** Matching is done per group and groups never merge: **Ride** (`Ride`) and **Walk/Hike** (`Walk` + `Hike` together). Runs are not matched. Walk/Hike use tighter defaults (`GROUP_DEFAULT_CONFIGS.WalkHike`: distance tolerance 25% (Ride: 10%), start/finish 75 m, Hausdorff 75 m, DTW 35 m, overlap distance 25 m). No segment efforts are fetched for walks/hikes and segment overlap is never used in their scoring (the Jaccard weight is dropped when there is no segment data). The geo fields (`summary_polyline`, `start_latlng`, `end_latlng`) are captured for every activity type by the same `/athlete/activities` paging, so the existing geo backfill covers Walk/Hike; an existing cache just needs that one re-page.
 
 **Matched rides card and the global filter.** The card has no selector of its own: it counts only activities that pass the global filter bar. Filter to Rides to see ride routes, to Walk or Hike to see those (a Walk and a Hike on the same trail are one route), or leave it on All to see routes from every group, each route belonging to one group. The Routes/Segments toggle is hidden when the filter contains no Rides, because segments only exist for rides.
 
@@ -120,6 +120,22 @@ versus an out-and-back. They are for deterministic, CI-safe tests and contain no
 API: `GET /api/matched-rides?period=all|year|month&year=YYYY&month=M&limit=N[&type=routes|segments]`,
 `POST /api/matched-rides/recompute`, `POST /api/geo-backfill/start|stop` and `GET /api/geo-backfill/status`
 (the recompute and geo backfill endpoints require the admin password). Year/month filters on the server use UTC; the UI uses your local time zone.
+
+### Refreshing route matches after a matching change
+
+Clusters are stored in `cache.json` under `routeClusters` (with a `version` and the `config` used). `saveCache` calls
+`buildRouteClusters`, which keeps existing assignments only when the stored `version` equals `ROUTE_CLUSTER_VERSION`
+(now `3`); otherwise it rebuilds from scratch. Changing a threshold alone does not re-cluster rides that are already
+assigned, so after upgrading (the version bump) or editing the defaults:
+
+1. Restart the app. The next cache save (any sync) rebuilds clusters automatically if the stored version is older.
+2. To force a full rebuild without waiting, call `POST /api/matched-rides/recompute` (admin password required; the
+   client exposes it as `recomputeMatchedRides`). It clears `routeClusters` and rebuilds every cluster, and returns 409
+   while a geo backfill is running.
+3. Saving route-matching settings via `PUT /api/settings/route-matching` also resets and rebuilds the clusters.
+
+To get precision/recall/F1 and the exact missed rides from `scripts/calibrateRouteMatching.js`, add `expectedMatchedIds`
+and `notMatchedIds` to the seeds in `calibration/seeds.json`.
 
 Run the unit tests with `npm test`.
 
