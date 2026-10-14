@@ -123,7 +123,12 @@ function loadCache() {
 function saveCache(data, { skipClusters = false } = {}) {
   if (!skipClusters && data && Array.isArray(data.activities)) {
     try {
-      data.routeClusters = routeMatching.buildRouteClusters(data.activities, data.segmentData || {}, data.routeClusters);
+      data.routeClusters = routeMatching.buildRouteClusters(
+        data.activities,
+        data.segmentData || {},
+        data.routeClusters,
+        getRouteMatchingConfig()
+      );
     } catch (err) {
       console.error("[Routes] Incremental clustering failed:", err);
     }
@@ -1748,6 +1753,15 @@ function loadSettings() {
   }
 }
 
+function getRouteMatchingConfig() {
+  try {
+    return routeMatching.validateMatchConfig(loadSettings().routeMatching || {});
+  } catch (err) {
+    console.error("Invalid routeMatching settings; using defaults:", err.message);
+    return {};
+  }
+}
+
 function saveSettings(data) {
   const tmp = SETTINGS_FILE + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
@@ -1762,7 +1776,33 @@ app.get("/api/settings", (req, res) => {
   } else {
     out.hiddenThemes = [];
   }
-  res.json(Object.assign(out, { hasHiddenThemes: Array.isArray(settings.hiddenThemes) }));
+  res.json(Object.assign(out, {
+    hasHiddenThemes: Array.isArray(settings.hiddenThemes),
+    routeMatching: { ...routeMatching.DEFAULT_MATCH_CONFIG, ...getRouteMatchingConfig() }
+  }));
+});
+
+app.put("/api/settings/route-matching", (req, res) => {
+  let routeMatchingConfig;
+  try {
+    routeMatchingConfig = routeMatching.validateMatchConfig(req.body && req.body.routeMatching);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+  try {
+    const settings = loadSettings();
+    settings.routeMatching = routeMatchingConfig;
+    saveSettings(settings);
+    const cache = loadCache();
+    if (cache && Array.isArray(cache.activities)) {
+      cache.routeClusters = routeMatching.emptyRouteClusters(routeMatchingConfig);
+      saveCache(cache);
+    }
+    res.json({ routeMatching: { ...routeMatching.DEFAULT_MATCH_CONFIG, ...routeMatchingConfig } });
+  } catch (err) {
+    console.error("Failed to save route-matching settings:", err);
+    res.status(500).json({ error: "Failed to save route-matching settings" });
+  }
 });
 
 app.put("/api/settings/hidden-themes", (req, res) => {
