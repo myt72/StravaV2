@@ -5,4 +5,5 @@ config.local.js
 .env
 node_modules/
 cache.json
+/calibration/report.latest.json
 client/dist/

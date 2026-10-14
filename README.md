@@ -62,7 +62,7 @@ Refresh / Resume / Updated include the fields automatically and are added to rou
 Until the backfill is done the Patterns card shows a notice with a link to the Data page.
 The optional per-activity `/streams` refinement is not implemented; summary polylines are the only source.
 
-How rides are matched (`lib/routeMatching.js`, defaults in `DEFAULTS`):
+How rides are matched (`lib/routeMatching.js`, defaults in `DEFAULT_MATCH_CONFIG`):
 
 1. Start and end within 150 m (`START_END_RADIUS_M`, a grid hash limits comparisons) and distance within ±10% (`DISTANCE_TOLERANCE`).
 2. Both routes are resampled to 100 equidistant points (`RESAMPLE_POINTS`).
@@ -72,7 +72,39 @@ How rides are matched (`lib/routeMatching.js`, defaults in `DEFAULTS`):
 
 Only `Ride` activities are clustered (`SPORT_TYPES`). The earliest ride of a cluster is its representative
 and every member must match it directly, so routes cannot chain together through neighbours. Thresholds can be
-changed in `DEFAULTS`; then run *Recompute routes* on the Data page (`POST /api/matched-rides/recompute`).
+overridden by `settings.json`'s `routeMatching` key or `PUT /api/settings/route-matching`, then run
+*Recompute routes* on the Data page (`POST /api/matched-rides/recompute`). The settings endpoint rejects values
+outside the supported bounds; unlisted values keep their defaults.
+
+## Calibrating route matching
+
+The fixtures in `calibration/seeds.json` record four seed activities and the counts shown in Strava's
+**Matched Activities** panel. Those counts were read from the Strava website: the public API does not expose
+matched activity lists. Counts currently assume the seed is included (`includesSelf: true`); the report always
+shows predictions with and without the seed so this can be changed per fixture.
+
+1. Finish the geo backfill from the Data page first. It populates the local `cache.json` with each activity's
+   summary polyline and start/end coordinates. The calibration tool makes no network requests and will clearly
+   skip seeds whose GPS fields are absent.
+2. Run the tests with `npm test`, then run `node scripts/calibrateRouteMatching.js`. Use
+   `--seed 20547542160` to inspect one seed, `--json` for machine-readable output, or combine them.
+3. Read the funnel from start/finish candidates through distance, Hausdorff, DTW, and the final segment-overlap
+   weighted match decision. The report compares match counts to the expected count in both self-inclusion
+   interpretations. Without an ID list it prints the 15 closest accepted and rejected rides for manual review.
+4. To add ground truth, open the seed's Strava Matched Activities panel and copy the activity IDs into
+   `expectedMatchedIds`; put known non-matches in `notMatchedIds`. Dates in `YYYY-MM-DD` format are also accepted
+   and mapped to cache activity IDs using `start_date` (all rides on that date are included). Empty arrays mean
+   the list has not been collected yet. Once populated, the report includes precision, recall, F1, missed rides,
+   extra rides, and known non-matches.
+5. Run `node scripts/calibrateRouteMatching.js --sweep` to test a small threshold grid. The readable ranking
+   uses total absolute count error, then F1 when matched lists are available. It writes the best candidate to
+   `calibration/recommended-thresholds.json` and the full run to the gitignored
+   `calibration/report.latest.json`. Review the recommendation against the Strava panel before changing
+   `DEFAULT_MATCH_CONFIG`; the sweep does not silently change defaults. Supply a JSON config file with
+   `--thresholds path/to/overrides.json` to test a starting override.
+
+The committed synthetic fixtures cover noisy repeats, reverse direction, routes sharing a start, and a loop
+versus an out-and-back. They are for deterministic, CI-safe tests and contain no personal GPS data.
 
 API: `GET /api/matched-rides?period=all|year|month&year=YYYY&month=M&limit=N[&type=routes|segments]`,
 `POST /api/matched-rides/recompute`, `POST /api/geo-backfill/start|stop` and `GET /api/geo-backfill/status`
