@@ -42,12 +42,12 @@ Strava's own "Matched Activities" is not in the public API, so StravaV2 matches 
 **Matched rides** card on the Patterns page lists the top 10/20/50 routes by number of matched rides
 (all time, per year or per month; each row shows first/last ridden, distance, elevation and a route
 thumbnail), or the same leaderboard grouped by segment (from `segmentData`, honouring excluded segments).
-The card follows the global filters.
+The card follows the global filters, including the top-of-page **activity type** filter (see *Sport groups*).
 
 New fields in `cache.json`:
 
 - `activities[].summary_polyline` (Google-encoded, precision 5), `start_latlng`, `end_latlng` — `""` / `[]` when an activity has no GPS data.
-- `routeClusters` — `{ version, config, clusters: [{ routeId, representativeId, name, distance, elevation, activityIds }], index: { activityId: routeId }, computedAt }`. A cluster's polyline is taken from its representative activity.
+- `routeClusters` — `{ version, config, clusters: [{ routeId, sportGroup, representativeId, name, distance, elevation, activityIds }], index: { activityId: routeId }, computedAt }`. `version` is currently 2; a different version is discarded and rebuilt automatically. A cluster's polyline is taken from its representative activity.
 - `geoBackfill` — progress of the geo backfill (`nextPage`, `completed`, `lastRunAt`, `pagesDone`).
 
 Missing keys are defaulted, so existing `cache.json` files keep working.
@@ -70,11 +70,17 @@ How rides are matched (`lib/routeMatching.js`, defaults in `DEFAULT_MATCH_CONFIG
 4. DTW with a Sakoe-Chiba band (`DTW_BAND_FRACTION`), normalised by path length (mean offset), must be ≤ 75 m (`DTW_THRESHOLD_M`). The reversed route is also tried; reversed rides are reported as `direction: "reverse"` and are a different route unless `ALLOW_REVERSE` is true.
 5. Score = weighted mix of the above plus the Jaccard overlap of shared `segment_id`s (`WEIGHT_*`, `MIN_SCORE` 0.4). Rides without a polyline fall back to segment overlap alone (≥ 3 segments each, Jaccard ≥ 0.8).
 
-Only `Ride` activities are clustered (`SPORT_TYPES`). The earliest ride of a cluster is its representative
-and every member must match it directly, so routes cannot chain together through neighbours. Thresholds can be
-overridden by `settings.json`'s `routeMatching` key or `PUT /api/settings/route-matching`, then run
-*Recompute routes* on the Data page (`POST /api/matched-rides/recompute`). The settings endpoint rejects values
-outside the supported bounds; unlisted values keep their defaults.
+6. Optional **overlap match** (`OVERLAP_MIN_FRACTION`, default `0` = off, and `OVERLAP_DISTANCE_M`, default 40): a pair also matches when at least that fraction of *each* route's resampled points lies within `OVERLAP_DISTANCE_M` of the other route's polyline (point-to-segment, so Strava's low-resolution `summary_polyline` is handled). This tolerates small detours and slightly different starts/ends that Hausdorff/DTW reject; combine it with a larger `START_END_RADIUS_M`. It is off by default until `--sweep` shows it helps on your data.
+
+**Sport groups.** Matching is done per group and groups never merge: **Ride** (`Ride`) and **Walk/Hike** (`Walk` + `Hike` together). Runs are not matched. Walk/Hike use tighter defaults (`GROUP_DEFAULT_CONFIGS.WalkHike`: start/finish 75 m, Hausdorff 75 m, DTW 35 m, overlap distance 25 m). No segment efforts are fetched for walks/hikes and segment overlap is never used in their scoring (the Jaccard weight is dropped when there is no segment data). The geo fields (`summary_polyline`, `start_latlng`, `end_latlng`) are captured for every activity type by the same `/athlete/activities` paging, so the existing geo backfill covers Walk/Hike; an existing cache just needs that one re-page.
+
+**Matched rides card and the global filter.** The card has no selector of its own: it counts only activities that pass the global filter bar. Filter to Rides to see ride routes, to Walk or Hike to see those (a Walk and a Hike on the same trail are one route), or leave it on All to see routes from every group, each route belonging to one group. The Routes/Segments toggle is hidden when the filter contains no Rides, because segments only exist for rides.
+
+**Clustering.** Leader clustering (earliest ride is the representative) fragmented routes: a ride slightly off the earliest ride's line became its own cluster although it matched most other rides. Clusters are now built from density/degree: pairwise direct matches are computed with the blocking pre-filter (grid hash on start/end plus the distance tolerance), then the ride with the most direct matches is picked as the route's **medoid** (ties: best mean score to its matches, then lowest id), it and its direct matches form one cluster, they are removed, and this repeats. Members must still match the representative directly (no transitive chaining) and each ride is in exactly one cluster, so results do not depend on input order. Incremental updates keep existing clusters; a new ride joins the best-scoring route it matches, otherwise new rides are density-clustered among themselves. Changing the cluster `version` or the settings triggers a full rebuild.
+
+`matchesFor(activityId, activities, segmentData, config)` (exported from `lib/routeMatching.js`) returns every ride that matches an activity *directly* (overlapping sets are allowed). That per-activity count, not the cluster size, is comparable to Strava's "Matched Activities" number.
+
+Thresholds can be overridden by `settings.json`'s `routeMatching` key or `PUT /api/settings/route-matching`, then run *Recompute routes* on the Data page (`POST /api/matched-rides/recompute`). Top-level keys apply to every group; `GROUP_OVERRIDES` sets per-group values, e.g. `{ "OVERLAP_MIN_FRACTION": 0.9, "GROUP_OVERRIDES": { "WalkHike": { "START_END_RADIUS_M": 100 } } }`. Precedence: defaults < group defaults < top-level settings < `GROUP_OVERRIDES`. `SPORT_TYPES` (default `Ride`, `Walk`, `Hike`) limits which types are matched. The settings endpoint rejects values outside the supported bounds; unlisted values keep their defaults.
 
 ## Calibrating route matching
 
@@ -88,7 +94,10 @@ shows predictions with and without the seed so this can be changed per fixture.
    skip seeds whose GPS fields are absent.
 2. Run the tests with `npm test`, then run `node scripts/calibrateRouteMatching.js`. Use
    `--seed 20547542160` to inspect one seed, `--json` for machine-readable output, or combine them.
-3. Read the funnel from start/finish candidates through distance, Hausdorff, DTW, and the final segment-overlap
+3. Each seed reports **both** its per-activity direct match count (`matchesFor`, overlapping allowed; compare it
+   with Strava's number) and its **cluster size**. **Split detection** then lists, for each seed, the other
+   clusters that contain rides directly matching the seed, with counts: a large count means the route is
+   fragmented across clusters. Read the funnel from start/finish candidates through distance, Hausdorff, DTW, and the final segment-overlap
    weighted match decision. The report compares match counts to the expected count in both self-inclusion
    interpretations. Without an ID list it prints the 15 closest accepted and rejected rides for manual review.
 4. To add ground truth, open the seed's Strava Matched Activities panel and copy the activity IDs into
@@ -96,8 +105,10 @@ shows predictions with and without the seed so this can be changed per fixture.
    and mapped to cache activity IDs using `start_date` (all rides on that date are included). Empty arrays mean
    the list has not been collected yet. Once populated, the report includes precision, recall, F1, missed rides,
    extra rides, and known non-matches.
-5. Run `node scripts/calibrateRouteMatching.js --sweep` to test a small threshold grid. The readable ranking
-   uses total absolute count error, then F1 when matched lists are available. It writes the best candidate to
+5. Run `node scripts/calibrateRouteMatching.js --sweep` to test a threshold grid (start/finish radius, distance
+   tolerance, Hausdorff and DTW cutoffs, percentile, segment weight, `OVERLAP_MIN_FRACTION`, `OVERLAP_DISTANCE_M`
+   and `ALLOW_REVERSE`). The readable ranking uses the total absolute error of the per-activity counts across all
+   seeds, then F1 when matched lists are available. It writes the best candidate to
    `calibration/recommended-thresholds.json` and the full run to the gitignored
    `calibration/report.latest.json`. Review the recommendation against the Strava panel before changing
    `DEFAULT_MATCH_CONFIG`; the sweep does not silently change defaults. Supply a JSON config file with

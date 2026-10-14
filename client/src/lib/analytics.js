@@ -956,7 +956,7 @@ export function buildRouteLeaderboard(routeClusters, activities, { year = null, 
     const { first, last } = foldRides(rides);
     const rep = byId.get(String(c.representativeId)) || rides[0];
     rows.push({
-      key: c.routeId, name: c.name, count: rides.length, firstRidden: first, lastRidden: last,
+      key: c.routeId, group: c.sportGroup || "Ride", name: c.name, count: rides.length, firstRidden: first, lastRidden: last,
       distance: c.distance, elevation: c.elevation, polyline: rep.summary_polyline || "",
       rides: rides.slice().sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
     });
@@ -999,8 +999,10 @@ export const activityYears = activities =>
   [...new Set((activities || []).map(a => new Date(a.start_date).getFullYear()).filter(Number.isFinite))].sort((a, b) => b - a);
 
 /** How many rides already have GPS summaries (geo backfill progress). pending = not yet backfilled. */
-export function buildGeoCoverage(activities, rideType = "Ride") {
-  const rides = (activities || []).filter(a => a.sport_type === rideType);
+export const ROUTE_SPORT_TYPES = ["Ride", "Walk", "Hike"];
+
+export function buildGeoCoverage(activities, types = ROUTE_SPORT_TYPES) {
+  const rides = (activities || []).filter(a => types.includes(a.sport_type));
   return {
     total: rides.length,
     withGps: rides.filter(a => a.summary_polyline).length,

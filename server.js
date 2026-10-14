@@ -977,7 +977,7 @@ function isGeoPending(activity) {
 
 function getGeoBackfillStatus() {
   const cache = ensureCacheShape(loadCache());
-  const rides = cache.activities.filter(a => a.sport_type === "Ride");
+  const rides = cache.activities.filter(a => routeMatching.sportGroupOf(a.sport_type));
   const meta = cache.geoBackfill;
   return {
     running: geoBackfillJob.running,
