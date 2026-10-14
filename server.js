@@ -1480,6 +1480,32 @@ app.put("/api/settings/hidden-themes", (req, res) => {
   }
 });
 
+const SEGMENT_ID_RE = /^\d{1,15}$/;
+const MAX_EXCLUDED_SEGMENTS = 5000;
+
+app.get("/api/settings/excluded-segments", (req, res) => {
+  const stored = loadSettings().excludedSegments;
+  const list = Array.isArray(stored) ? stored.filter(id => typeof id === "string" && SEGMENT_ID_RE.test(id)) : [];
+  res.json({ excludedSegments: list });
+});
+
+app.put("/api/settings/excluded-segments", (req, res) => {
+  const list = req.body && req.body.excludedSegments;
+  if (!Array.isArray(list) || list.length > MAX_EXCLUDED_SEGMENTS ||
+      !list.every(id => typeof id === "string" && SEGMENT_ID_RE.test(id))) {
+    return res.status(400).json({ error: "excludedSegments must be an array of up to 5000 numeric segment ID strings" });
+  }
+  try {
+    const settings = loadSettings();
+    settings.excludedSegments = [...new Set(list)];
+    saveSettings(settings);
+    res.json({ excludedSegments: settings.excludedSegments });
+  } catch (err) {
+    console.error("Failed to save settings:", err);
+    res.status(500).json({ error: "Failed to save settings" });
+  }
+});
+
 const MAX_FOCUS_ENTRIES = 50;
 const clamp01 = n => Math.min(1, Math.max(0, n));
 

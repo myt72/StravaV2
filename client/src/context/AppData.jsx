@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "../lib/api.js";
 import { applyGlobalFilters, deriveRideInsights } from "../lib/analytics.js";
-import { usePersistentState } from "../lib/storage.js";
+import { readStored, usePersistentState } from "../lib/storage.js";
 import { getGearName } from "../lib/format.js";
 
 const Ctx = createContext(null);
@@ -32,7 +32,8 @@ export function AppDataProvider({ children }) {
   const [activityType, setActivityType] = usePersistentState("activityType", "all");
   const [bike, setBike] = usePersistentState("bike", "all");
   const [primaryMetric, setPrimaryMetric] = usePersistentState("primaryMetric", "distance");
-  const [excludedSegments, setExcludedSegments] = usePersistentState("excludedSegments", []);
+  const [excludedSegments, setExcludedSegmentsState] = useState([]);
+  const excludedRef = useRef([]);
   const [minEfforts, setMinEfforts] = usePersistentState("segmentMinEfforts", 10);
 
   const [prBackfill, setPrBackfill] = useState(null);
@@ -85,6 +86,28 @@ export function AppDataProvider({ children }) {
       if (!mounted.current) return;
       prefsRef.current = p;
       setBikePhotoPrefsState(p);
+    });
+    api.fetchExcludedSegments().then(async serverList => {
+      if (!mounted.current) return;
+      let list = serverList;
+      if (!serverList.length) {
+        const legacy = readStored("excludedSegments", []);
+        const migrated = Array.isArray(legacy)
+          ? [...new Set(legacy.map(String).filter(id => /^\d{1,15}$/.test(id)))]
+          : [];
+        if (migrated.length) {
+          try {
+            await api.saveExcludedSegments(migrated);
+            list = migrated;
+            try { localStorage.removeItem("stravaV2:excludedSegments"); } catch { /* ignore */ }
+          } catch (err) {
+            console.warn("Could not migrate excluded segments", err);
+          }
+        }
+      }
+      if (!mounted.current) return;
+      excludedRef.current = list;
+      setExcludedSegmentsState(list);
     });
     return () => {
       mounted.current = false;
@@ -217,6 +240,24 @@ export function AppDataProvider({ children }) {
     }
   }, []);
 
+  const updateExcluded = useCallback(async compute => {
+    const previous = excludedRef.current;
+    const next = compute(previous);
+    if (next === previous) return;
+    excludedRef.current = next;
+    setExcludedSegmentsState(next);
+    try {
+      await api.saveExcludedSegments(next);
+    } catch (err) {
+      if (!mounted.current) return;
+      excludedRef.current = previous;
+      setExcludedSegmentsState(previous);
+      setNotice({ type: "error", text: `Could not save excluded segments: ${err.message}` });
+    }
+  }, []);
+  const excludeSegment = useCallback(id => updateExcluded(prev => (prev.includes(String(id)) ? prev : [...prev, String(id)])), [updateExcluded]);
+  const restoreSegment = useCallback(id => updateExcluded(prev => (prev.includes(String(id)) ? prev.filter(x => x !== String(id)) : prev)), [updateExcluded]);
+
   const getCoverPhoto = useCallback(gid => {
     const urls = bikeImages[gid] || [];
     if (!urls.length) return { url: null, focus: null };
@@ -230,8 +271,7 @@ export function AppDataProvider({ children }) {
     filters, setDateRange, setActivityType, setBike, filtersActive, resetFilters, activityTypes, bikes,
     primaryMetric, setPrimaryMetric,
     excludedSegments, excludedSet, minEfforts, setMinEfforts,
-    excludeSegment: id => setExcludedSegments(prev => (prev.includes(String(id)) ? prev : [...prev, String(id)])),
-    restoreSegment: id => setExcludedSegments(prev => prev.filter(x => x !== String(id))),
+    excludeSegment, restoreSegment,
     prBackfill, backfillActive: active, busy, notice, setNotice, pull, startBackfill, stopBackfill, unlockAdmin,
     bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)

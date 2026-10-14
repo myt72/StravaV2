@@ -32,6 +32,10 @@ password clears it so you are asked again. After 10 failed attempts from one IP
 in 15 minutes the server answers `429`. Use HTTPS if the server is reachable
 over the internet, since the password is sent in a request header.
 
+## Excluded segments
+
+Segments excluded in the Records view (Segment summary / By distance / By elevation) are stored globally on the server in `settings.json` (gitignored), so they persist across browsers and sessions.
+
 ## Collapsible navigation
 
 The left navigation has a toggle button at the top that switches between
