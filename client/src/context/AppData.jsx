@@ -37,6 +37,7 @@ export function AppDataProvider({ children }) {
   const [minEfforts, setMinEfforts] = usePersistentState("segmentMinEfforts", 10);
 
   const [prBackfill, setPrBackfill] = useState(null);
+  const [geoBackfill, setGeoBackfill] = useState(null);
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
   const [bikeImages, setBikeImages] = useState({});
@@ -44,12 +45,15 @@ export function AppDataProvider({ children }) {
   const prefsRef = useRef({});
 
   const pollTimer = useRef(null);
+  const geoPollTimer = useRef(null);
+  const wasGeoActive = useRef(false);
   const wasActive = useRef(false);
   const mounted = useRef(true);
 
   /* ----- data loading ----- */
   const applyPayload = useCallback(data => {
     if (data.prBackfill) setPrBackfill(data.prBackfill);
+    if (data.geoBackfillStatus) setGeoBackfill(data.geoBackfillStatus);
     setServerMessage(data.message || "");
     if (Array.isArray(data.activities)) {
       setRaw(data);
@@ -112,6 +116,7 @@ export function AppDataProvider({ children }) {
     return () => {
       mounted.current = false;
       clearTimeout(pollTimer.current);
+      clearTimeout(geoPollTimer.current);
     };
   }, [load]);
 
@@ -123,6 +128,18 @@ export function AppDataProvider({ children }) {
       if (!mounted.current) return;
       setPrBackfill(s);
       if (isBackfillActive(s)) pollTimer.current = setTimeout(pollPrBackfill, POLL_MS);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const pollGeoBackfill = useCallback(async () => {
+    clearTimeout(geoPollTimer.current);
+    try {
+      const s = await api.fetchGeoBackfillStatus();
+      if (!mounted.current) return;
+      setGeoBackfill(s);
+      if (isBackfillActive(s)) geoPollTimer.current = setTimeout(pollGeoBackfill, POLL_MS);
     } catch (err) {
       console.error(err);
     }
@@ -140,6 +157,13 @@ export function AppDataProvider({ children }) {
     if (!active && wasActive.current) load({ quiet: true });
     wasActive.current = active;
   }, [active, pollPrBackfill, load]);
+
+  const geoActive = isBackfillActive(geoBackfill);
+  useEffect(() => {
+    if (geoActive && !wasGeoActive.current) pollGeoBackfill();
+    if (!geoActive && wasGeoActive.current) load({ quiet: true });
+    wasGeoActive.current = geoActive;
+  }, [geoActive, pollGeoBackfill, load]);
 
   /* ----- admin actions ----- */
   const pull = useCallback(async kind => {
@@ -188,6 +212,42 @@ export function AppDataProvider({ children }) {
       setBusy(null);
     }
   }, [pollPrBackfill]);
+
+  const runGeoAction = useCallback(async (start, pending, done, fail) => {
+    setBusy("geo");
+    setNotice({ type: "info", text: pending });
+    try {
+      const data = await start();
+      if (data.geoBackfill) setGeoBackfill(data.geoBackfill);
+      setNotice({ type: "success", text: data.message || done });
+      pollGeoBackfill();
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || fail });
+    } finally {
+      setBusy(null);
+    }
+  }, [pollGeoBackfill]);
+  const startGeoBackfill = useCallback(
+    () => runGeoAction(api.startGeoBackfill, "Starting geo backfill background job…", "Geo backfill started.", "Failed to start geo backfill."),
+    [runGeoAction]
+  );
+  const stopGeoBackfill = useCallback(
+    () => runGeoAction(api.stopGeoBackfill, "Stopping geo backfill…", "Geo backfill stop requested.", "Failed to stop geo backfill."),
+    [runGeoAction]
+  );
+  const recomputeRoutes = useCallback(async () => {
+    setBusy("routes");
+    setNotice({ type: "info", text: "Recomputing route clusters…" });
+    try {
+      const data = await api.recomputeMatchedRides();
+      setNotice({ type: "success", text: `${data.message}: ${data.clusters} routes, ${data.repeatedRoutes} ridden more than once.` });
+      await load({ quiet: true });
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || "Recompute failed." });
+    } finally {
+      setBusy(null);
+    }
+  }, [load]);
 
   /* ----- derived data ----- */
   const filters = useMemo(() => ({ dateRange, activityType, bike }), [dateRange, activityType, bike]);
@@ -273,6 +333,7 @@ export function AppDataProvider({ children }) {
     excludedSegments, excludedSet, minEfforts, setMinEfforts,
     excludeSegment, restoreSegment,
     prBackfill, backfillActive: active, busy, notice, setNotice, pull, startBackfill, stopBackfill, unlockAdmin,
+    geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes,
     bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)
   };

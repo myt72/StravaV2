@@ -1,11 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAppData } from "../context/AppData.jsx";
-import { METRICS, buildTimeOfDayBreakdown, buildWeekdayBreakdown } from "../lib/analytics.js";
-import { comma } from "../lib/format.js";
+import {
+  METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentLeaderboard,
+  buildTimeOfDayBreakdown, buildWeekdayBreakdown
+} from "../lib/analytics.js";
+import { comma, fmtFeet, fmtMiles, formatDate, MONTHS } from "../lib/format.js";
+import { polylineToSvgPath } from "../lib/polyline.js";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
-import { Card, ChartTip, Empty, PageHead, Segmented } from "../components/ui.jsx";
+import { Card, ChartTip, DataTable, Empty, PageHead, Segmented } from "../components/ui.jsx";
 
 const OPTIONS = [
   { value: "distance", label: "Miles" },
@@ -28,6 +32,109 @@ function PatternChart({ data, metric, color, paramKey, label }) {
         </BarChart>
       </ResponsiveContainer>
     </div>
+  );
+}
+
+const LIMIT_OPTIONS = [10, 20, 50].map(n => ({ value: n, label: String(n) }));
+const PERIOD_OPTIONS = [{ value: "all", label: "All time" }, { value: "year", label: "Year" }, { value: "month", label: "Month" }];
+const KIND_OPTIONS = [{ value: "routes", label: "Routes" }, { value: "segments", label: "Segments" }];
+
+function RouteThumb({ polyline, name }) {
+  const d = polylineToSvgPath(polyline);
+  if (!d) return <span className="muted small" aria-hidden="true">—</span>;
+  return (
+    <svg width="48" height="48" viewBox="0 0 48 48" role="img" aria-label={`Shape of ${name}`}>
+      <path d={d} fill="none" stroke="var(--chart-1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function MatchedRides() {
+  const { raw, filtered, excludedSet, status } = useAppData();
+  const [limit, setLimit] = usePersistentState("matchedLimit", 20);
+  const [period, setPeriod] = usePersistentState("matchedPeriod", "all");
+  const [year, setYear] = usePersistentState("matchedYear", null);
+  const [month, setMonth] = usePersistentState("matchedMonth", new Date().getMonth() + 1);
+  const [kind, setKind] = usePersistentState("matchedKind", "routes");
+  const [open, setOpen] = useState(() => new Set());
+
+  const years = useMemo(() => activityYears(filtered.activities), [filtered.activities]);
+  const activeYear = years.includes(year) ? year : years[0] ?? null;
+  const opts = useMemo(() => ({
+    limit,
+    year: period === "all" ? null : activeYear,
+    month: period === "month" ? month : null
+  }), [limit, period, activeYear, month]);
+
+  const coverage = useMemo(() => buildGeoCoverage(raw?.activities), [raw]);
+  const rows = useMemo(() => (
+    kind === "routes"
+      ? buildRouteLeaderboard(raw?.routeClusters, filtered.activities, opts)
+      : buildSegmentLeaderboard(raw?.segmentData, filtered.activities, excludedSet, opts)
+  ), [kind, raw, filtered.activities, excludedSet, opts]);
+  const toggle = key => setOpen(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+
+  const none = () => null;
+  const columns = [
+    { key: "rank", label: "#", sortable: false, render: r => rows.indexOf(r) + 1, renderChild: none },
+    {
+      key: "name", label: kind === "routes" ? "Route" : "Segment", wrap: true,
+      renderChild: c => (
+        <a href={c.activity.url} target="_blank" rel="noopener noreferrer">{c.activity.name || "Activity"}</a>
+      )
+    },
+    ...(kind === "routes" ? [{ key: "thumb", label: "Shape", sortable: false, render: r => <RouteThumb polyline={r.polyline} name={r.name} />, renderChild: none }] : []),
+    { key: "count", label: "Rides", align: "r", render: r => comma(r.count), renderChild: none },
+    { key: "firstRidden", label: "First ridden", value: r => new Date(r.firstRidden).getTime(), render: r => formatDate(r.firstRidden), renderChild: c => formatDate(c.activity.start_date) },
+    { key: "lastRidden", label: "Last ridden", value: r => new Date(r.lastRidden).getTime(), render: r => formatDate(r.lastRidden), renderChild: none },
+    { key: "distance", label: "Distance", align: "r", render: r => (r.distance ? fmtMiles(r.distance) : "—"), renderChild: c => fmtMiles(c.activity.distance) },
+    { key: "elevation", label: "Elevation", align: "r", render: r => (r.elevation ? fmtFeet(r.elevation) : "—"), renderChild: c => fmtFeet(c.activity.total_elevation_gain) }
+  ];
+
+  return (
+    <Card title="Matched rides" right={
+      <div className="toolbar">
+        <Segmented label="Leaderboard type" value={kind} options={KIND_OPTIONS} onChange={setKind} />
+        <Segmented label="Rows" value={limit} options={LIMIT_OPTIONS} onChange={setLimit} />
+        <Segmented label="Period" value={period} options={PERIOD_OPTIONS} onChange={setPeriod} />
+        {period !== "all" && (
+          <select aria-label="Year" value={activeYear ?? ""} onChange={e => setYear(Number(e.target.value))}>
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        )}
+        {period === "month" && (
+          <select aria-label="Month" value={month} onChange={e => setMonth(Number(e.target.value))}>
+            {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+          </select>
+        )}
+      </div>
+    }>
+      {kind === "routes" && coverage.pending > 0 && (
+        <div className="notice" role="status" style={{ marginBottom: 12 }}>
+          {comma(coverage.total - coverage.pending)} of {comma(coverage.total)} rides have been checked for GPS data
+          ({comma(coverage.withGps)} with a route). Route matching is incomplete until the geo backfill finishes.{" "}
+          <button type="button" className="cell-link" onClick={() => navigate("/admin")}>Open Data &amp; Admin</button>
+        </div>
+      )}
+      {status === "loading" ? <p className="muted" role="status">Loading…</p> : (
+        <DataTable columns={columns} rows={rows} rowKey={r => r.key} caption="Matched rides leaderboard"
+          empty={kind === "routes" ? "No matched routes for this period yet." : "No segment efforts for this period."}
+          expand={{
+            isOpen: r => open.has(r.key),
+            toggle: r => toggle(r.key),
+            label: r => `Show ${r.count} rides for ${r.name}`,
+            children: r => r.rides.map(a => ({ key: a.id, activity: a }))
+          }} />
+      )}
+      <p className="hint">
+        Routes are matched from GPS summaries (start/finish, Hausdorff, DTW and shared segments); reversed rides count as a different route.
+        Counts follow the global filters above. Expand a row to see its rides.
+      </p>
+    </Card>
   );
 }
 
@@ -69,6 +176,7 @@ export default function Patterns() {
               })}
             </div>
           </Card>
+          <MatchedRides />
         </>
       )}
     </div>

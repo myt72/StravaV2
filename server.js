@@ -4,6 +4,7 @@ const cors = require("cors");
 const fs = require("fs");
 const crypto = require("crypto");
 const { client_id, client_secret, admin_password, redirect_uri, port} = require("./config");
+const routeMatching = require("./lib/routeMatching");
 
 const app = express();
 app.use(cors());
@@ -39,6 +40,20 @@ let prBackfillJob = {
   batchSize: 25,
   reserve: 25,
   idlePasses: 0
+};
+
+/* Background geo backfill job state (re-pages /athlete/activities to add summary_polyline + start/end latlng) */
+let geoBackfillJob = {
+  running: false,
+  stopRequested: false,
+  startedAt: null,
+  lastRunAt: null,
+  nextRetryAt: null,
+  mode: "idle",
+  message: "Idle",
+  page: 1,
+  pagesDone: 0,
+  reserve: 25
 };
 
 /* ----------------- ADMIN PASSWORD PROTECTION ----------------- */
@@ -105,7 +120,14 @@ function loadCache() {
   }
 }
 
-function saveCache(data) {
+function saveCache(data, { skipClusters = false } = {}) {
+  if (!skipClusters && data && Array.isArray(data.activities)) {
+    try {
+      data.routeClusters = routeMatching.buildRouteClusters(data.activities, data.segmentData || {}, data.routeClusters);
+    } catch (err) {
+      console.error("[Routes] Incremental clustering failed:", err);
+    }
+  }
   const tmp = CACHE_FILE + ".tmp";
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
   fs.renameSync(tmp, CACHE_FILE);
@@ -120,6 +142,12 @@ function ensureCacheShape(cache) {
   if (!base.gearDetails || typeof base.gearDetails !== "object") base.gearDetails = {};
   if (!base.annualStats || typeof base.annualStats !== "object") base.annualStats = {};
   if (!base.bikeYearStats || typeof base.bikeYearStats !== "object") base.bikeYearStats = {};
+  if (!base.routeClusters || typeof base.routeClusters !== "object" || !Array.isArray(base.routeClusters.clusters)) {
+    base.routeClusters = routeMatching.emptyRouteClusters();
+  }
+  if (!base.geoBackfill || typeof base.geoBackfill !== "object") {
+    base.geoBackfill = { nextPage: 1, completed: false, lastRunAt: null, pagesDone: 0 };
+  }
   if (!base.segmentBackfill || typeof base.segmentBackfill !== "object") {
     base.segmentBackfill = {
       enabled: false,
@@ -306,12 +334,29 @@ function mapActivity(a) {
     moving_time: a.moving_time,
     total_elevation_gain: a.total_elevation_gain,
     start_date: a.start_date,
-    gear_id: a.gear_id
+    gear_id: a.gear_id,
+    ...mapGeoFields(a)
   };
 }
 
-function activitySignature(activity) {
+function mapLatLng(v) {
+  return Array.isArray(v) && v.length >= 2 && Number.isFinite(v[0]) && Number.isFinite(v[1]) ? [v[0], v[1]] : [];
+}
+
+/* Geo fields from a /athlete/activities item. Always strings/arrays (possibly empty) so "missing" means "not backfilled yet". */
+function mapGeoFields(a) {
+  return {
+    summary_polyline: (a.map && a.map.summary_polyline) || "",
+    start_latlng: mapLatLng(a.start_latlng),
+    end_latlng: mapLatLng(a.end_latlng)
+  };
+}
+
+function activitySignature(activity, { includeGeo = true } = {}) {
   if (!activity) return "";
+  const geo = includeGeo
+    ? { summary_polyline: activity.summary_polyline, start_latlng: activity.start_latlng, end_latlng: activity.end_latlng }
+    : {};
   return JSON.stringify({
     id: activity.id,
     name: activity.name,
@@ -320,7 +365,8 @@ function activitySignature(activity) {
     moving_time: activity.moving_time,
     total_elevation_gain: activity.total_elevation_gain,
     start_date: activity.start_date,
-    gear_id: activity.gear_id
+    gear_id: activity.gear_id,
+    ...geo
   });
 }
 
@@ -405,7 +451,9 @@ function findChangedActivities(incomingActivities, existingActivities) {
       continue;
     }
 
-    if (activitySignature(activity) !== activitySignature(existing)) {
+    // Legacy cached activities have no geo fields yet; don't treat that as a change (it would re-fetch segment data).
+    const includeGeo = existing.summary_polyline !== undefined;
+    if (activitySignature(activity, { includeGeo }) !== activitySignature(existing, { includeGeo })) {
       changed.push(activity);
     }
   }
@@ -916,6 +964,148 @@ function getPrBackfillStatus() {
   };
 }
 
+/* GEO BACKFILL (about ceil(activities / 200) API calls; no per-activity requests) */
+
+function isGeoPending(activity) {
+  return activity.summary_polyline === undefined;
+}
+
+function getGeoBackfillStatus() {
+  const cache = ensureCacheShape(loadCache());
+  const rides = cache.activities.filter(a => a.sport_type === "Ride");
+  const meta = cache.geoBackfill;
+  return {
+    running: geoBackfillJob.running,
+    stopRequested: geoBackfillJob.stopRequested,
+    startedAt: geoBackfillJob.startedAt,
+    lastRunAt: geoBackfillJob.lastRunAt || meta.lastRunAt || null,
+    nextRetryAt: geoBackfillJob.nextRetryAt,
+    mode: geoBackfillJob.mode,
+    message: geoBackfillJob.message,
+    nextPage: meta.nextPage || 1,
+    pagesDone: meta.pagesDone || 0,
+    estimatedPages: Math.ceil(cache.activities.length / 200),
+    totalRides: rides.length,
+    processed: rides.filter(a => !isGeoPending(a)).length,
+    withGps: rides.filter(a => a.summary_polyline).length,
+    completed: Boolean(meta.completed) && !rides.some(isGeoPending),
+    reserve: geoBackfillJob.reserve
+  };
+}
+
+async function runGeoBackfillJobLoop() {
+  if (geoBackfillJob.running) return;
+
+  geoBackfillJob.running = true;
+  geoBackfillJob.stopRequested = false;
+  geoBackfillJob.mode = "running";
+  geoBackfillJob.message = "Geo backfill running";
+
+  while (!geoBackfillJob.stopRequested) {
+    if (geoBackfillJob.nextRetryAt) {
+      const retryAt = new Date(geoBackfillJob.nextRetryAt).getTime();
+      if (retryAt > Date.now()) {
+        geoBackfillJob.mode = "waiting";
+        geoBackfillJob.message = `Waiting until ${new Date(geoBackfillJob.nextRetryAt).toLocaleString()} to retry`;
+        await sleep(Math.min(retryAt - Date.now(), 60000));
+        continue;
+      }
+      geoBackfillJob.nextRetryAt = null;
+      geoBackfillJob.mode = "running";
+    }
+
+    if (!access_token) {
+      geoBackfillJob.mode = "error";
+      geoBackfillJob.message = "Not authenticated";
+      break;
+    }
+
+    // Keep a safety reserve of the rate limit for other jobs.
+    if (rateLimitRemaining <= geoBackfillJob.reserve || rateLimitShortRemaining <= 2) {
+      const nextRetry = getNextRetryTime();
+      geoBackfillJob.nextRetryAt = nextRetry.toISOString();
+      geoBackfillJob.mode = "waiting";
+      geoBackfillJob.message = `Rate limit reserve reached. Waiting until ${nextRetry.toLocaleString()}`;
+      rateLimitRemaining = Math.max(rateLimitRemaining, geoBackfillJob.reserve + 1);
+      rateLimitShortRemaining = Math.max(rateLimitShortRemaining, 3);
+      continue;
+    }
+
+    const cache = ensureCacheShape(loadCache());
+    if (!cache.activities.length) {
+      geoBackfillJob.mode = "error";
+      geoBackfillJob.message = "No cache available. Run a full data pull first.";
+      break;
+    }
+
+    try {
+      const page = cache.geoBackfill.nextPage || 1;
+      requestCount = 0;
+      const res = await stravaFetch(`https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}`);
+
+      if (res.status === 429) {
+        const nextRetry = getNextRetryTime();
+        geoBackfillJob.nextRetryAt = nextRetry.toISOString();
+        geoBackfillJob.mode = "waiting";
+        geoBackfillJob.message = `Rate limited (429). Waiting until ${nextRetry.toLocaleString()}`;
+        continue;
+      }
+      if (!res.ok) throw new Error(`Strava responded ${res.status}`);
+
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error("Unexpected response from Strava");
+
+      const meta = cache.geoBackfill;
+      meta.lastRunAt = new Date().toISOString();
+      geoBackfillJob.lastRunAt = meta.lastRunAt;
+
+      if (data.length === 0) {
+        // End of the list. A second pass picks up anything shifted between pages; leftovers no longer exist on Strava.
+        const stillPending = cache.activities.filter(isGeoPending);
+        if (stillPending.length && !meta.secondPass) {
+          meta.secondPass = true;
+          meta.nextPage = 1;
+          saveCache(cache, { skipClusters: true });
+          continue;
+        }
+        for (const a of stillPending) Object.assign(a, { summary_polyline: "", start_latlng: [], end_latlng: [] });
+        meta.completed = true;
+        meta.secondPass = false;
+        cache.routeClusters = routeMatching.emptyRouteClusters();
+        saveCache(cache); // full route recompute now that geo data is complete
+        geoBackfillJob.mode = "complete";
+        geoBackfillJob.message = "Geo backfill complete";
+        geoBackfillJob.running = false;
+        return;
+      }
+
+      const byId = new Map(cache.activities.map(a => [String(a.id), a]));
+      for (const item of data) {
+        const existing = byId.get(String(item.id));
+        if (existing) Object.assign(existing, mapGeoFields(item));
+      }
+      meta.nextPage = page + 1;
+      meta.pagesDone = (meta.pagesDone || 0) + 1;
+      saveCache(cache, { skipClusters: true });
+      geoBackfillJob.mode = "running";
+      geoBackfillJob.message = `Processed page ${page} (${data.length} activities)`;
+      await sleep(1000);
+    } catch (err) {
+      console.error("[Geo Backfill Job] Error:", err);
+      const nextRetry = getNextQuarterHourUtc();
+      geoBackfillJob.nextRetryAt = nextRetry.toISOString();
+      geoBackfillJob.mode = "error";
+      geoBackfillJob.message = `Error encountered. Retrying at ${nextRetry.toLocaleString()}`;
+    }
+  }
+
+  geoBackfillJob.running = false;
+  if (geoBackfillJob.stopRequested) {
+    geoBackfillJob.mode = "stopped";
+    geoBackfillJob.message = "Geo backfill stopped";
+  }
+}
+
 /* API */
 
 app.get("/api/analytics/auto", async (req, res) => {
@@ -930,6 +1120,7 @@ app.get("/api/analytics/auto", async (req, res) => {
       cached: true,
       ...cache,
       prBackfill: getPrBackfillStatus(),
+      geoBackfillStatus: getGeoBackfillStatus(),
       message: "Loaded from local cache.json"
     });
   }
@@ -946,6 +1137,10 @@ app.post("/api/pr-backfill/start", requireAdmin, async (req, res) => {
   const cache = ensureCacheShape(loadCache());
   if (!cache || !cache.activities || cache.activities.length === 0) {
     return res.status(400).json({ error: "No cache available. Run a full data pull first." });
+  }
+
+  if (geoBackfillJob.running) {
+    return res.status(409).json({ error: "Geo backfill is running. Stop it before starting the PR backfill." });
   }
 
   if (prBackfillJob.running) {
@@ -999,6 +1194,113 @@ app.get("/api/pr-backfill/status", requireAdmin, async (req, res) => {
   return res.json({
     ok: true,
     prBackfill: getPrBackfillStatus()
+  });
+});
+
+app.post("/api/geo-backfill/start", requireAdmin, async (req, res) => {
+  if (!access_token) return res.status(401).json({ error: "Not authenticated" });
+
+  const cache = ensureCacheShape(loadCache());
+  if (!cache.activities.length) {
+    return res.status(400).json({ error: "No cache available. Run a full data pull first." });
+  }
+  if (geoBackfillJob.running) {
+    return res.json({ ok: true, alreadyRunning: true, geoBackfill: getGeoBackfillStatus(), message: "Geo backfill already running" });
+  }
+  if (prBackfillJob.running) {
+    return res.status(409).json({ error: "PR backfill is running. Stop it before starting the geo backfill." });
+  }
+
+  const restart = req.query.restart === "1" || (req.body && req.body.restart === true);
+  const status = getGeoBackfillStatus();
+  if (status.completed && !restart) {
+    return res.json({ ok: true, geoBackfill: status, message: "Geo backfill already complete" });
+  }
+  if (restart || status.completed) {
+    cache.geoBackfill = { nextPage: 1, completed: false, lastRunAt: cache.geoBackfill.lastRunAt, pagesDone: 0 };
+    saveCache(cache, { skipClusters: true });
+  }
+
+  const reserve = Number(req.query.reserve || (req.body && req.body.reserve) || 25);
+  geoBackfillJob = {
+    ...geoBackfillJob,
+    running: false,
+    stopRequested: false,
+    startedAt: new Date().toISOString(),
+    nextRetryAt: null,
+    mode: "starting",
+    message: "Geo backfill starting",
+    reserve: Number.isFinite(reserve) && reserve >= 0 ? reserve : 25
+  };
+
+  runGeoBackfillJobLoop();
+
+  return res.json({ ok: true, geoBackfill: getGeoBackfillStatus(), message: "Geo backfill started" });
+});
+
+app.post("/api/geo-backfill/stop", requireAdmin, async (req, res) => {
+  geoBackfillJob.stopRequested = true;
+  return res.json({ ok: true, geoBackfill: getGeoBackfillStatus(), message: "Geo backfill stop requested" });
+});
+
+app.get("/api/geo-backfill/status", requireAdmin, async (req, res) => {
+  return res.json({ ok: true, geoBackfill: getGeoBackfillStatus() });
+});
+
+/* MATCHED RIDES */
+
+app.get("/api/matched-rides", async (req, res) => {
+  if (!access_token) return res.status(401).json({ error: "Not authenticated" });
+
+  const period = req.query.period || "all";
+  if (!["all", "year", "month"].includes(period)) {
+    return res.status(400).json({ error: "period must be all, year or month" });
+  }
+  const type = req.query.type || "routes";
+  if (!["routes", "segments"].includes(type)) {
+    return res.status(400).json({ error: "type must be routes or segments" });
+  }
+  const limit = req.query.limit === undefined ? 20 : Number(req.query.limit);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 500) {
+    return res.status(400).json({ error: "limit must be an integer between 1 and 500" });
+  }
+
+  const opts = { limit };
+  if (period !== "all" && req.query.year !== undefined) {
+    const year = Number(req.query.year);
+    if (!Number.isInteger(year) || year < 1970 || year > 3000) return res.status(400).json({ error: "year must be a 4 digit year" });
+    opts.year = year;
+  }
+  if (period === "year" && opts.year === undefined) return res.status(400).json({ error: "year is required when period=year" });
+  if (period === "month") {
+    const month = Number(req.query.month);
+    if (!Number.isInteger(month) || month < 1 || month > 12) return res.status(400).json({ error: "month must be 1-12 when period=month" });
+    opts.month = month;
+  }
+
+  const cache = ensureCacheShape(loadCache());
+  const rows = type === "segments"
+    ? routeMatching.segmentLeaderboard(cache.segmentData, {
+        ...opts,
+        excludedSegmentIds: loadSettings().excludedSegments || []
+      })
+    : routeMatching.routeLeaderboard(cache.routeClusters, cache.activities, opts);
+  return res.json({ type, period, year: opts.year ?? null, month: opts.month ?? null, limit, rows, geoBackfill: getGeoBackfillStatus() });
+});
+
+app.post("/api/matched-rides/recompute", requireAdmin, async (req, res) => {
+  const cache = ensureCacheShape(loadCache());
+  if (!cache.activities.length) return res.status(400).json({ error: "No cache available. Run a full data pull first." });
+  if (geoBackfillJob.running) return res.status(409).json({ error: "Geo backfill is running. Try again when it finishes." });
+  cache.routeClusters = routeMatching.emptyRouteClusters();
+  saveCache(cache); // rebuilds every cluster from scratch
+  const clusters = cache.routeClusters.clusters;
+  return res.json({
+    ok: true,
+    clusters: clusters.length,
+    rides: Object.keys(cache.routeClusters.index).length,
+    repeatedRoutes: clusters.filter(c => c.activityIds.length > 1).length,
+    message: "Route clusters recomputed"
   });
 });
 

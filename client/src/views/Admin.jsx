@@ -8,7 +8,7 @@ function Row({ label, children }) {
 }
 
 export default function Admin() {
-  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin } = useAppData();
+  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes } = useAppData();
   const [confirmFull, setConfirmFull] = useState(false);
   const [auth, setAuth] = useState({ state: "checking", message: "" });
 
@@ -46,6 +46,10 @@ export default function Admin() {
   const pct = total > 0 ? Math.min(100, (processed / total) * 100) : 0;
   const stateLabel = !prBackfill ? "Idle" : prBackfill.completed ? "Complete" : (prBackfill.mode || "Idle");
   const working = Boolean(busy);
+  const geoTotal = geoBackfill?.totalRides || 0;
+  const geoDone = geoBackfill?.processed || 0;
+  const geoPct = geoTotal > 0 ? Math.min(100, (geoDone / geoTotal) * 100) : 0;
+  const geoState = !geoBackfill ? "Idle" : geoBackfill.completed ? "Complete" : (geoBackfill.mode || "Idle");
 
   return (
     <div className="content">
@@ -98,6 +102,30 @@ export default function Admin() {
             <button type="button" className="btn" disabled={working || !isActive} onClick={stopBackfill}>Stop</button>
           </div>
           {isActive && <p className="hint">Status refreshes every 15 seconds while the job is active.</p>}
+        </Card>
+      </div>
+
+      <div className="grid two">
+        <Card title="Geo backfill (matched rides)" right={geoActive && <span className="nav-badge pulse">Running</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Re-reads your activity list once to add route GPS summaries to cached rides (about {comma(geoBackfill?.estimatedPages || 0)} API
+            calls, 200 activities each — not one per ride). Needed once for existing caches.
+          </p>
+          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={geoTotal} aria-valuenow={geoDone} aria-label="Geo backfill progress"><div style={{ width: `${geoPct}%` }} /></div>
+          <div style={{ marginTop: 8 }}>
+            <Row label="Status">{geoState}</Row>
+            <Row label="Rides processed">{comma(geoDone)} / {comma(geoTotal)}</Row>
+            <Row label="Rides with GPS data">{comma(geoBackfill?.withGps || 0)}</Row>
+            <Row label="Pages fetched">{comma(geoBackfill?.pagesDone || 0)}</Row>
+            <Row label="Last run">{geoBackfill?.lastRunAt ? formatDateTime(geoBackfill.lastRunAt) : "—"}</Row>
+            <Row label="Next retry">{geoBackfill?.nextRetryAt ? formatDateTime(geoBackfill.nextRetryAt) : "—"}</Row>
+          </div>
+          <p className="hint">{geoBackfill?.message || "Idle"}</p>
+          <div className="toolbar" style={{ marginTop: 12 }}>
+            <button type="button" className="btn primary" disabled={working || geoActive || geoBackfill?.completed} onClick={startGeoBackfill}>Start geo backfill</button>
+            <button type="button" className="btn" disabled={working || !geoActive} onClick={stopGeoBackfill}>Stop</button>
+            <button type="button" className="btn" disabled={working || geoActive} onClick={recomputeRoutes}>Recompute routes</button>
+          </div>
         </Card>
       </div>
 
