@@ -144,3 +144,27 @@ export async function saveBikePhotoPrefs(gid, prefs) {
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }
+
+export const EXCLUDED_SEGMENTS_API = "/api/settings/excluded-segments";
+
+export async function fetchExcludedSegments() {
+  try {
+    const res = await fetch(EXCLUDED_SEGMENTS_API);
+    const data = res.ok ? await res.json() : {};
+    return Array.isArray(data.excludedSegments) ? data.excludedSegments : [];
+  } catch (err) {
+    console.warn("Could not load excluded segments", err);
+    return [];
+  }
+}
+
+export async function saveExcludedSegments(list) {
+  const res = await fetch(EXCLUDED_SEGMENTS_API, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ excludedSegments: list })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
