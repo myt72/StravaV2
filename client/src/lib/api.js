@@ -83,6 +83,28 @@ export async function stopPrBackfill() {
   return data;
 }
 
+export async function fetchGeoBackfillStatus() {
+  const { data } = await request("/api/geo-backfill/status", undefined, adminFetch);
+  return data.geoBackfill;
+}
+
+export async function startGeoBackfill() {
+  const { data } = await request("/api/geo-backfill/start", { method: "POST" }, adminFetch);
+  if (data.error) throw new ApiError(data.error);
+  return data;
+}
+
+export async function stopGeoBackfill() {
+  const { data } = await request("/api/geo-backfill/stop", { method: "POST" }, adminFetch);
+  return data;
+}
+
+export async function recomputeMatchedRides() {
+  const { data } = await request("/api/matched-rides/recompute", { method: "POST" }, adminFetch);
+  if (data.error) throw new ApiError(data.error);
+  return data;
+}
+
 export async function fetchFeaturedActivities() {
   try {
     const res = await fetch("/dashboard/featured-activities.json", { cache: "no-store" });

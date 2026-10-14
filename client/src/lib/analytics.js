@@ -920,3 +920,90 @@ export function buildSegmentElevationHighlights(data, excludedSegmentIds, minAtt
 }
 
 export { getGearName };
+
+/* ---------- matched rides (route / segment leaderboards) ---------- */
+
+const matchesPeriod = (dateStr, year, month) => {
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return false;
+  if (year != null && d.getFullYear() !== Number(year)) return false;
+  if (month != null && d.getMonth() + 1 !== Number(month)) return false;
+  return true;
+};
+
+const compareLeaderRows = (a, b) =>
+  b.count - a.count || new Date(b.lastRidden).getTime() - new Date(a.lastRidden).getTime() || String(a.name).localeCompare(String(b.name));
+
+function foldRides(rides) {
+  let first = rides[0].start_date, last = rides[0].start_date;
+  rides.forEach(r => {
+    if (new Date(r.start_date) < new Date(first)) first = r.start_date;
+    if (new Date(r.start_date) > new Date(last)) last = r.start_date;
+  });
+  return { first, last };
+}
+
+/**
+ * Top routes by matched-ride count among the given (already globally filtered) activities.
+ * Period uses the browser's local time zone like the rest of the Patterns page.
+ */
+export function buildRouteLeaderboard(routeClusters, activities, { year = null, month = null, limit = 20 } = {}) {
+  const byId = new Map((activities || []).map(a => [String(a.id), a]));
+  const rows = [];
+  (routeClusters?.clusters || []).forEach(c => {
+    const rides = c.activityIds.map(id => byId.get(String(id))).filter(a => a && a.start_date && matchesPeriod(a.start_date, year, month));
+    if (!rides.length) return;
+    const { first, last } = foldRides(rides);
+    const rep = byId.get(String(c.representativeId)) || rides[0];
+    rows.push({
+      key: c.routeId, name: c.name, count: rides.length, firstRidden: first, lastRidden: last,
+      distance: c.distance, elevation: c.elevation, polyline: rep.summary_polyline || "",
+      rides: rides.slice().sort((a, b) => new Date(b.start_date) - new Date(a.start_date))
+    });
+  });
+  return rows.sort(compareLeaderRows).slice(0, limit);
+}
+
+/** Top segments by number of distinct rides, from segmentData; respects excluded segments and filtered activities. */
+export function buildSegmentLeaderboard(segmentData, activities, excludedSegmentIds, { year = null, month = null, limit = 20 } = {}) {
+  const byId = new Map((activities || []).map(a => [String(a.id), a]));
+  const map = new Map();
+  Object.entries(segmentData || {}).forEach(([activityId, efforts]) => {
+    const activity = byId.get(String(activityId));
+    if (!activity) return;
+    const seen = new Set();
+    (efforts || []).forEach(e => {
+      if (!e?.segment_id || !e.start_date) return;
+      const sid = String(e.segment_id);
+      if (excludedSegmentIds?.has(sid) || seen.has(sid) || !matchesPeriod(e.start_date, year, month)) return;
+      seen.add(sid);
+      let row = map.get(sid);
+      if (!row) {
+        row = { key: sid, name: e.segment_name || `Segment ${sid}`, count: 0, firstRidden: e.start_date, lastRidden: e.start_date,
+          distance: e.distance || 0, elevation: e.elevation_gain || 0, polyline: "", rides: [] };
+        map.set(sid, row);
+      }
+      row.count++;
+      row.rides.push(activity);
+      if (new Date(e.start_date) < new Date(row.firstRidden)) row.firstRidden = e.start_date;
+      if (new Date(e.start_date) > new Date(row.lastRidden)) row.lastRidden = e.start_date;
+    });
+  });
+  const rows = [...map.values()].sort(compareLeaderRows).slice(0, limit);
+  rows.forEach(r => r.rides.sort((a, b) => new Date(b.start_date) - new Date(a.start_date)));
+  return rows;
+}
+
+/** Years present in the activities (descending), for the period picker. */
+export const activityYears = activities =>
+  [...new Set((activities || []).map(a => new Date(a.start_date).getFullYear()).filter(Number.isFinite))].sort((a, b) => b - a);
+
+/** How many rides already have GPS summaries (geo backfill progress). pending = not yet backfilled. */
+export function buildGeoCoverage(activities, rideType = "Ride") {
+  const rides = (activities || []).filter(a => a.sport_type === rideType);
+  return {
+    total: rides.length,
+    withGps: rides.filter(a => a.summary_polyline).length,
+    pending: rides.filter(a => a.summary_polyline === undefined).length
+  };
+}
