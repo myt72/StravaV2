@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { readStored, writeStored } from "./storage.js";
 import * as matrixRain from "./matrixRain.js";
+import * as glitchFx from "./glitchFx.js";
 
 /**
  * Theme registry. Adding a theme = one entry here + one [data-theme="id"] block in theme.css.
@@ -9,6 +10,7 @@ import * as matrixRain from "./matrixRain.js";
 export const THEMES = [
   { id: "default", label: "Default", supportsMode: true },
   { id: "matrix", label: "90s Cyber-Thriller (Matrix / Hackers)", supportsMode: false, decor: matrixRain },
+  { id: "glitch", label: "Glitch / Datamosh", supportsMode: false, decor: glitchFx },
   { id: "retro-os", label: "Retro OS (Windows 95)", supportsMode: false }
 ];
 
