@@ -82,6 +82,20 @@ How rides are matched (`lib/routeMatching.js`, defaults in `DEFAULT_MATCH_CONFIG
 
 Thresholds can be overridden by `settings.json`'s `routeMatching` key or `PUT /api/settings/route-matching`, then run *Recompute routes* on the Data page (`POST /api/matched-rides/recompute`). Top-level keys apply to every group; `GROUP_OVERRIDES` sets per-group values, e.g. `{ "OVERLAP_MIN_FRACTION": 0.9, "GROUP_OVERRIDES": { "WalkHike": { "START_END_RADIUS_M": 100 } } }`. Precedence: defaults < group defaults < top-level settings < `GROUP_OVERRIDES`. `SPORT_TYPES` (default `Ride`, `Walk`, `Hike`) limits which types are matched. The settings endpoint rejects values outside the supported bounds; unlisted values keep their defaults.
 
+## Segment rankings (Records > Segment summary)
+
+The Segment summary tab lists the segments where you currently hold the KOM, 2nd or 3rd place (tiers are exclusive).
+Strava only reports your own PR rank per effort, so current leaderboard ranks need a backfill:
+
+1. Open **Data & Admin** and press **Start segment ranks** in the "Segment rankings" card. It resumes where it left off if stopped or rate limited.
+2. It makes **one request per candidate segment** (`GET /segments/{id}/leaderboard?per_page=3`), plus one `/athlete` request per run.
+   Candidates are ride segments where you have at least one cached PR (`pr_rank` 1), typically a few hundred, against Strava's default limits of 100 requests / 15 min and 1,000 / day (the job keeps a reserve and waits on 429s, same as the other backfills).
+3. Your own entry is identified by `activity_id` when the response has it, otherwise by the `start_date` and `elapsed_time` of your fastest cached effort on that segment. If you are not in the top 3 the segment is recorded as unranked.
+4. Use **Refresh ranks** later to re-check segments checked more than 7 days ago or with a newer PR. Pulling new activities does not trigger leaderboard requests automatically.
+
+If Strava refuses leaderboard requests (HTTP 401/402/403), the job stops and shows the error on both pages instead of retrying.
+Excluded segments are not applied to this section; efforts and last ridden follow the global filters.
+
 ## Calibrating route matching
 
 The fixtures in `calibration/seeds.json` record four seed activities and the counts shown in Strava's

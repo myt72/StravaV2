@@ -764,6 +764,38 @@ export function buildSegmentSummaryHighlights(data, excludedSegmentIds) {
   };
 }
 
+/**
+ * Segments whose current overall leaderboard rank is 1, 2 or 3 (from the leaderboard backfill's `segmentRanks`),
+ * with efforts and last-ridden from the (filtered) activities. Tiers are exclusive. Excluded segments are not applied.
+ */
+export function buildSegmentRankings(data, segmentRanks) {
+  const out = { kom: [], second: [], third: [] };
+  const tiers = { 1: out.kom, 2: out.second, 3: out.third };
+  const ranks = segmentRanks || {};
+  const activityById = Object.fromEntries((data?.activities || []).map(a => [String(a.id), a]));
+  const perSegment = new Map();
+
+  Object.entries(data?.segmentData || {}).forEach(([activityId, efforts]) => {
+    const activity = activityById[String(activityId)];
+    if (!activity || !Array.isArray(efforts)) return;
+    efforts.forEach(effort => {
+      const segmentId = effort?.segment_id ? String(effort.segment_id) : null;
+      if (!segmentId || !tiers[ranks[segmentId]?.rank]) return;
+      let row = perSegment.get(segmentId);
+      if (!row) {
+        row = { segmentId, segmentName: effort.segment_name || effort.name || `Segment ${segmentId}`, attempts: 0, lastRidden: activity.start_date, rank: ranks[segmentId].rank };
+        perSegment.set(segmentId, row);
+      }
+      row.attempts += 1;
+      if (new Date(activity.start_date) > new Date(row.lastRidden)) row.lastRidden = activity.start_date;
+    });
+  });
+
+  perSegment.forEach(row => tiers[row.rank].push({ segmentId: row.segmentId, segmentName: row.segmentName, attempts: row.attempts, lastRidden: row.lastRidden }));
+  Object.values(out).forEach(rows => rows.sort((a, b) => b.attempts - a.attempts || a.segmentName.localeCompare(b.segmentName)));
+  return out;
+}
+
 const DISTANCE_BUCKETS = [
   { key: "0-0.5", label: "Under 0.5 mi", min: 0, max: 0.5 },
   { key: "0.5-1", label: "0.5–1.0 mi", min: 0.5, max: 1.0 },
@@ -979,7 +1011,7 @@ export function buildSegmentLeaderboard(segmentData, activities, excludedSegment
       seen.add(sid);
       let row = map.get(sid);
       if (!row) {
-        row = { key: sid, name: e.segment_name || `Segment ${sid}`, count: 0, firstRidden: e.start_date, lastRidden: e.start_date,
+        row = { key: sid, segmentId: sid, name: e.segment_name || `Segment ${sid}`, count: 0, firstRidden: e.start_date, lastRidden: e.start_date,
           distance: e.distance || 0, elevation: e.elevation_gain || 0, polyline: "", rides: [] };
         map.set(sid, row);
       }

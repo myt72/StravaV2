@@ -1,11 +1,12 @@
 import { useMemo, useState } from "react";
 import { useAppData } from "../context/AppData.jsx";
 import {
-  buildSegmentDistanceHighlights, buildSegmentElevationHighlights, buildSegmentSummaryHighlights
+  buildSegmentDistanceHighlights, buildSegmentElevationHighlights, buildSegmentRankings, buildSegmentSummaryHighlights
 } from "../lib/analytics.js";
 import {
   comma, feet, formatDate, formatDuration, formatYearsBetween, getStravaSegmentUrl, miles
 } from "../lib/format.js";
+import { navigate } from "../lib/router.js";
 import { ActivityLink, Card, DataTable, Empty, PageHead } from "../components/ui.jsx";
 
 const TABS = [
@@ -42,8 +43,71 @@ function SegmentLink({ row }) {
   return <a href={getStravaSegmentUrl(row.segmentId)} target="_blank" rel="noopener noreferrer">{row.segmentName}</a>;
 }
 
+const RANK_TIERS = [
+  { key: "kom", label: "KOMs" },
+  { key: "second", label: "2nd places" },
+  { key: "third", label: "3rd places" }
+];
+
+function SegmentRankings({ rankings, status, hasRanks, search }) {
+  const [open, setOpen] = useState(() => new Set());
+  const toggle = key => setOpen(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    return next;
+  });
+  const q = search.trim().toLowerCase();
+  const columns = [
+    { key: "segmentName", label: "Segment", wrap: true, render: r => <SegmentLink row={r} /> },
+    { key: "attempts", label: "Efforts", align: "r", render: r => comma(r.attempts) },
+    { key: "lastRidden", label: "Last ridden", value: r => new Date(r.lastRidden).getTime(), render: r => formatDate(r.lastRidden) }
+  ];
+  const checked = status?.checked ?? 0;
+  const total = status?.totalCandidates ?? 0;
+
+  return (
+    <Card title="Segment rankings">
+      {status?.lastError && <div className="notice error" role="alert">{status.lastError}</div>}
+      {!hasRanks ? (
+        <div className="notice" role="status">
+          Segment rankings have not been fetched. Open Data &amp; Admin to run the leaderboard backfill.{" "}
+          <button type="button" className="cell-link" onClick={() => navigate("/admin")}>Open Data &amp; Admin</button>
+          {status?.message && status.message !== "Idle" && <div className="small muted">Status: {status.message}</div>}
+        </div>
+      ) : (
+        <>
+          {total > checked && (
+            <div className="notice" role="status" style={{ marginBottom: 12 }}>
+              {comma(checked)} of {comma(total)} candidate segments checked. Rankings are incomplete until the leaderboard backfill finishes.{" "}
+              <button type="button" className="cell-link" onClick={() => navigate("/admin")}>Open Data &amp; Admin</button>
+            </div>
+          )}
+          {RANK_TIERS.map(({ key, label }) => {
+            const rows = rankings[key].filter(r => !q || r.segmentName.toLowerCase().includes(q));
+            const isOpen = open.has(key);
+            const panelId = `segment-rank-${key}`;
+            return (
+              <div key={key} className="rank-tier">
+                <button type="button" className="btn" aria-expanded={isOpen} aria-controls={panelId} onClick={() => toggle(key)}>
+                  {isOpen ? "▾" : "▸"} {label} <span className="num">({comma(rows.length)})</span>
+                </button>
+                {isOpen && (
+                  <div id={panelId} style={{ marginTop: 8, marginBottom: 12 }}>
+                    <DataTable rows={rows} rowKey={r => r.segmentId} columns={columns} caption={label} empty={`No ${label.toLowerCase()} in the current view.`} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </>
+      )}
+      <p className="hint">Current all-time leaderboard rank. A segment counts only in its highest tier. Excluded segments are not applied here; efforts and last ridden follow the global filters.</p>
+    </Card>
+  );
+}
+
 export default function Records() {
-  const { filtered, insights, gearName, excludedSet, excludedSegments, excludeSegment, restoreSegment, minEfforts, setMinEfforts } = useAppData();
+  const { filtered, insights, gearName, excludedSet, excludedSegments, excludeSegment, restoreSegment, minEfforts, setMinEfforts, raw, segmentRank } = useAppData();
   const [tab, setTab] = useState("records");
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
@@ -51,6 +115,8 @@ export default function Records() {
 
   const min = Math.max(1, Math.floor(Number(minEfforts) || 10));
   const summary = useMemo(() => buildSegmentSummaryHighlights(filtered, excludedSet), [filtered, excludedSet]);
+  const rankings = useMemo(() => buildSegmentRankings(filtered, raw?.segmentRanks), [filtered, raw]);
+  const hasRanks = Object.keys(raw?.segmentRanks || {}).length > 0;
   const distance = useMemo(() => buildSegmentDistanceHighlights(filtered, excludedSet), [filtered, excludedSet]);
   const elevation = useMemo(() => buildSegmentElevationHighlights(filtered, excludedSet, min), [filtered, excludedSet, min]);
 
@@ -141,6 +207,7 @@ export default function Records() {
               { key: "activity", label: "Last activity", sortable: false, wrap: true, render: r => <ActivityLink activity={r.latestActivity} /> },
               { key: "x", label: "", sortable: false, render: r => <button type="button" className="btn sm" onClick={() => excludeSegment(r.segmentId)}>Exclude</button> }
             ]} />
+          <SegmentRankings rankings={rankings} status={segmentRank} hasRanks={hasRanks} search={search} />
         </>
       )}
 

@@ -5,6 +5,7 @@ const fs = require("fs");
 const crypto = require("crypto");
 const { client_id, client_secret, admin_password, redirect_uri, port} = require("./config");
 const routeMatching = require("./lib/routeMatching");
+const segmentRanks = require("./lib/segmentRanks");
 
 const app = express();
 app.use(cors());
@@ -53,6 +54,23 @@ let geoBackfillJob = {
   message: "Idle",
   page: 1,
   pagesDone: 0,
+  reserve: 25
+};
+
+/* Background segment leaderboard backfill job state (one leaderboard request per candidate segment) */
+let segmentRankJob = {
+  running: false,
+  stopRequested: false,
+  startedAt: null,
+  lastRunAt: null,
+  nextRetryAt: null,
+  mode: "idle",
+  message: "Idle",
+  lastError: null,
+  refresh: false,
+  maxAgeDays: segmentRanks.DEFAULT_MAX_AGE_DAYS,
+  checkedThisRun: 0,
+  batchSize: 20,
   reserve: 25
 };
 
@@ -152,6 +170,12 @@ function ensureCacheShape(cache) {
   }
   if (!base.geoBackfill || typeof base.geoBackfill !== "object") {
     base.geoBackfill = { nextPage: 1, completed: false, lastRunAt: null, pagesDone: 0 };
+  }
+  if (!base.segmentRanks || typeof base.segmentRanks !== "object" || Array.isArray(base.segmentRanks)) {
+    base.segmentRanks = {};
+  }
+  if (!base.segmentRankMeta || typeof base.segmentRankMeta !== "object") {
+    base.segmentRankMeta = { lastRunAt: null, lastError: null };
   }
   if (!base.segmentBackfill || typeof base.segmentBackfill !== "object") {
     base.segmentBackfill = {
@@ -1111,6 +1135,169 @@ async function runGeoBackfillJobLoop() {
   }
 }
 
+/* SEGMENT RANK BACKFILL (one leaderboard request per candidate segment, plus one /athlete request per run) */
+
+function getSegmentRankCandidates(cache) {
+  return segmentRanks.buildRankCandidates(cache.segmentData, cache.activities);
+}
+
+function getSegmentRankStatus() {
+  const cache = ensureCacheShape(loadCache());
+  const candidates = getSegmentRankCandidates(cache);
+  const pending = segmentRanks.selectSegmentsToCheck(candidates, cache.segmentRanks);
+  const meta = cache.segmentRankMeta;
+  return {
+    running: segmentRankJob.running,
+    stopRequested: segmentRankJob.stopRequested,
+    startedAt: segmentRankJob.startedAt,
+    lastRunAt: segmentRankJob.lastRunAt || meta.lastRunAt || null,
+    nextRetryAt: segmentRankJob.nextRetryAt,
+    mode: segmentRankJob.mode,
+    message: segmentRankJob.message,
+    lastError: segmentRankJob.lastError || meta.lastError || null,
+    refresh: segmentRankJob.refresh,
+    totalCandidates: candidates.length,
+    checked: candidates.length - pending.length,
+    remaining: pending.length,
+    stale: segmentRanks.selectSegmentsToCheck(candidates, cache.segmentRanks, { refresh: true, maxAgeDays: segmentRankJob.maxAgeDays }).length - pending.length,
+    completed: candidates.length > 0 && pending.length === 0,
+    counts: segmentRanks.summarizeRanks(cache.segmentRanks),
+    reserve: segmentRankJob.reserve
+  };
+}
+
+function setSegmentRankError(message) {
+  segmentRankJob.lastError = message;
+  const cache = ensureCacheShape(loadCache());
+  cache.segmentRankMeta.lastError = message;
+  saveCache(cache, { skipClusters: true });
+}
+
+async function fetchAthleteName() {
+  try {
+    const res = await stravaFetch("https://www.strava.com/api/v3/athlete");
+    if (!res.ok) return null;
+    const a = await res.json();
+    return a && a.firstname ? { firstname: a.firstname, lastname: a.lastname || "" } : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+async function fetchSegmentLeaderboard(segmentId) {
+  const res = await stravaFetch(`https://www.strava.com/api/v3/segments/${encodeURIComponent(segmentId)}/leaderboard?per_page=3`);
+  let json = null;
+  if (res.ok) {
+    try { json = await res.json(); } catch (err) { json = null; }
+  }
+  return { status: res.status, ok: res.ok, json };
+}
+
+async function runSegmentRankJobLoop() {
+  if (segmentRankJob.running) return;
+
+  segmentRankJob.running = true;
+  segmentRankJob.stopRequested = false;
+  segmentRankJob.mode = "running";
+  segmentRankJob.message = "Segment rank backfill running";
+  segmentRankJob.lastError = null;
+  segmentRankJob.checkedThisRun = 0;
+  let athlete;
+
+  try {
+    const first = ensureCacheShape(loadCache());
+    first.segmentRankMeta.lastError = null;
+    saveCache(first, { skipClusters: true });
+
+    while (!segmentRankJob.stopRequested) {
+      if (segmentRankJob.nextRetryAt) {
+        const retryAt = new Date(segmentRankJob.nextRetryAt).getTime();
+        if (retryAt > Date.now()) {
+          segmentRankJob.mode = "waiting";
+          segmentRankJob.message = `Waiting until ${new Date(segmentRankJob.nextRetryAt).toLocaleString()} to retry`;
+          await sleep(Math.min(retryAt - Date.now(), 60000));
+          continue;
+        }
+        segmentRankJob.nextRetryAt = null;
+        segmentRankJob.mode = "running";
+      }
+
+      if (!access_token) {
+        segmentRankJob.mode = "error";
+        segmentRankJob.message = "Not authenticated";
+        break;
+      }
+
+      if (rateLimitRemaining <= segmentRankJob.reserve || rateLimitShortRemaining <= 5) {
+        const nextRetry = getNextRetryTime();
+        segmentRankJob.nextRetryAt = nextRetry.toISOString();
+        segmentRankJob.mode = "waiting";
+        segmentRankJob.message = `Rate limit reserve reached. Waiting until ${nextRetry.toLocaleString()}`;
+        rateLimitRemaining = Math.max(rateLimitRemaining, segmentRankJob.reserve + 1);
+        rateLimitShortRemaining = Math.max(rateLimitShortRemaining, 6);
+        continue;
+      }
+
+      const cache = ensureCacheShape(loadCache());
+      const candidates = getSegmentRankCandidates(cache);
+      const queue = segmentRanks.selectSegmentsToCheck(candidates, cache.segmentRanks, {
+        refresh: segmentRankJob.refresh, maxAgeDays: segmentRankJob.maxAgeDays
+      });
+      if (!queue.length) {
+        segmentRankJob.mode = "complete";
+        segmentRankJob.message = candidates.length ? "Segment rank backfill complete" : "No candidate segments (no cached PR efforts on rides)";
+        return;
+      }
+
+      if (athlete === undefined) athlete = await fetchAthleteName();
+
+      requestCount = 0;
+      // Stay inside the reserve for the whole batch, not just at the start.
+      const result = await segmentRanks.runRankBatch({
+        queue: queue.slice(0, segmentRankJob.batchSize),
+        ranks: cache.segmentRanks,
+        athlete,
+        fetchLeaderboard: fetchSegmentLeaderboard,
+        canContinue: () => !segmentRankJob.stopRequested
+          && rateLimitRemaining > segmentRankJob.reserve && rateLimitShortRemaining > 5
+      });
+
+      const now = new Date().toISOString();
+      cache.segmentRankMeta.lastRunAt = now;
+      segmentRankJob.lastRunAt = now;
+      segmentRankJob.checkedThisRun += result.checked;
+      saveCache(cache, { skipClusters: true });
+
+      if (result.stopped === "rate_limited") {
+        const nextRetry = getNextRetryTime();
+        segmentRankJob.nextRetryAt = nextRetry.toISOString();
+        segmentRankJob.mode = "waiting";
+        segmentRankJob.message = `Rate limited (429). Waiting until ${nextRetry.toLocaleString()}`;
+        continue;
+      }
+      if (result.stopped === "forbidden" || result.stopped === "error") {
+        segmentRankJob.mode = "error";
+        segmentRankJob.message = result.error;
+        setSegmentRankError(result.error);
+        return;
+      }
+      segmentRankJob.message = `Checked ${segmentRankJob.checkedThisRun} segments this run`;
+      await sleep(500);
+    }
+  } catch (err) {
+    console.error("[Segment Rank Job] Error:", err);
+    segmentRankJob.mode = "error";
+    segmentRankJob.message = `Error: ${err.message}`;
+    try { setSegmentRankError(segmentRankJob.message); } catch (e) { /* ignore */ }
+  } finally {
+    segmentRankJob.running = false;
+    if (segmentRankJob.stopRequested) {
+      segmentRankJob.mode = "stopped";
+      segmentRankJob.message = "Segment rank backfill stopped";
+    }
+  }
+}
+
 /* API */
 
 app.get("/api/analytics/auto", async (req, res) => {
@@ -1126,6 +1313,7 @@ app.get("/api/analytics/auto", async (req, res) => {
       ...cache,
       prBackfill: getPrBackfillStatus(),
       geoBackfillStatus: getGeoBackfillStatus(),
+      segmentRankStatus: getSegmentRankStatus(),
       message: "Loaded from local cache.json"
     });
   }
@@ -1252,6 +1440,49 @@ app.get("/api/geo-backfill/status", requireAdmin, async (req, res) => {
   return res.json({ ok: true, geoBackfill: getGeoBackfillStatus() });
 });
 
+app.post("/api/segment-ranks/start", requireAdmin, async (req, res) => {
+  if (!access_token) return res.status(401).json({ error: "Not authenticated" });
+
+  const cache = ensureCacheShape(loadCache());
+  if (!cache.activities.length) {
+    return res.status(400).json({ error: "No cache available. Run a full data pull first." });
+  }
+  if (segmentRankJob.running) {
+    return res.json({ ok: true, alreadyRunning: true, segmentRanks: getSegmentRankStatus(), message: "Segment rank backfill already running" });
+  }
+
+  const body = req.body || {};
+  const refresh = req.query.refresh === "1" || body.refresh === true;
+  const reserve = Number(req.query.reserve || body.reserve || 25);
+  const maxAge = Number(req.query.maxAgeDays || body.maxAgeDays || segmentRanks.DEFAULT_MAX_AGE_DAYS);
+  segmentRankJob = {
+    ...segmentRankJob,
+    running: false,
+    stopRequested: false,
+    startedAt: new Date().toISOString(),
+    nextRetryAt: null,
+    mode: "starting",
+    message: refresh ? "Segment rank refresh starting" : "Segment rank backfill starting",
+    lastError: null,
+    refresh,
+    maxAgeDays: Number.isFinite(maxAge) && maxAge >= 0 ? maxAge : segmentRanks.DEFAULT_MAX_AGE_DAYS,
+    reserve: Number.isFinite(reserve) && reserve >= 0 ? reserve : 25
+  };
+
+  runSegmentRankJobLoop();
+
+  return res.json({ ok: true, segmentRanks: getSegmentRankStatus(), message: refresh ? "Segment rank refresh started" : "Segment rank backfill started" });
+});
+
+app.post("/api/segment-ranks/stop", requireAdmin, async (req, res) => {
+  segmentRankJob.stopRequested = true;
+  return res.json({ ok: true, segmentRanks: getSegmentRankStatus(), message: "Segment rank backfill stop requested" });
+});
+
+app.get("/api/segment-ranks/status", requireAdmin, async (req, res) => {
+  return res.json({ ok: true, segmentRanks: getSegmentRankStatus() });
+});
+
 /* MATCHED RIDES */
 
 app.get("/api/matched-rides", async (req, res) => {
@@ -1346,6 +1577,8 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
     const newCache = setSegmentBackfillMeta({
       activities: allActivities,
       segmentData,
+      segmentRanks: cache.segmentRanks,
+      segmentRankMeta: cache.segmentRankMeta,
       activityCounts,
       gearTotals,
       gearDetails,
@@ -1452,6 +1685,8 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
     const newCache = setSegmentBackfillMeta({
       activities: allActivities,
       segmentData,
+      segmentRanks: cache.segmentRanks,
+      segmentRankMeta: cache.segmentRankMeta,
       activityCounts,
       gearTotals,
       gearDetails,

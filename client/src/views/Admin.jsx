@@ -8,7 +8,7 @@ function Row({ label, children }) {
 }
 
 export default function Admin() {
-  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes } = useAppData();
+  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks } = useAppData();
   const [confirmFull, setConfirmFull] = useState(false);
   const [auth, setAuth] = useState({ state: "checking", message: "" });
 
@@ -50,6 +50,11 @@ export default function Admin() {
   const geoDone = geoBackfill?.processed || 0;
   const geoPct = geoTotal > 0 ? Math.min(100, (geoDone / geoTotal) * 100) : 0;
   const geoState = !geoBackfill ? "Idle" : geoBackfill.completed ? "Complete" : (geoBackfill.mode || "Idle");
+
+  const rankTotal = segmentRank?.totalCandidates || 0;
+  const rankDone = segmentRank?.checked || 0;
+  const rankPct = rankTotal > 0 ? Math.min(100, (rankDone / rankTotal) * 100) : 0;
+  const rankState = !segmentRank ? "Idle" : segmentRank.mode && segmentRank.mode !== "idle" ? segmentRank.mode : segmentRank.completed ? "Complete" : "Idle";
 
   return (
     <div className="content">
@@ -125,6 +130,33 @@ export default function Admin() {
             <button type="button" className="btn primary" disabled={working || geoActive || geoBackfill?.completed} onClick={startGeoBackfill}>Start geo backfill</button>
             <button type="button" className="btn" disabled={working || !geoActive} onClick={stopGeoBackfill}>Stop</button>
             <button type="button" className="btn" disabled={working || geoActive} onClick={recomputeRoutes}>Recompute routes</button>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid two">
+        <Card title="Segment rankings (leaderboard backfill)" right={rankActive && <span className="nav-badge pulse">Running</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Looks up the top 3 of each segment where you hold a PR, to find your KOMs, 2nd and 3rd places. Uses one API
+            request per candidate segment ({comma(rankTotal)} here). Refresh re-checks ranks older than 7 days or with a newer PR.
+          </p>
+          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={rankTotal} aria-valuenow={rankDone} aria-label="Segment rank backfill progress"><div style={{ width: `${rankPct}%` }} /></div>
+          <div style={{ marginTop: 8 }}>
+            <Row label="Status">{rankState}</Row>
+            <Row label="Segments checked">{comma(rankDone)} / {comma(rankTotal)}</Row>
+            <Row label="Due for refresh">{comma(segmentRank?.stale || 0)}</Row>
+            <Row label="KOMs / 2nd / 3rd">{comma(segmentRank?.counts?.kom || 0)} / {comma(segmentRank?.counts?.second || 0)} / {comma(segmentRank?.counts?.third || 0)}</Row>
+            <Row label="Last run">{segmentRank?.lastRunAt ? formatDateTime(segmentRank.lastRunAt) : "—"}</Row>
+            <Row label="Next retry">{segmentRank?.nextRetryAt ? formatDateTime(segmentRank.nextRetryAt) : "—"}</Row>
+          </div>
+          <p className="hint">{segmentRank?.message || "Idle"}</p>
+          {segmentRank?.lastError && <div className="notice error" role="alert">{segmentRank.lastError}</div>}
+          <div className="toolbar" style={{ marginTop: 12 }}>
+            <button type="button" className="btn primary" disabled={working || rankActive || segmentRank?.completed} onClick={() => startSegmentRanks(false)}>
+              {segmentRank?.checked ? "Resume segment ranks" : "Start segment ranks"}
+            </button>
+            <button type="button" className="btn" disabled={working || rankActive || !segmentRank?.checked} onClick={() => startSegmentRanks(true)}>Refresh ranks</button>
+            <button type="button" className="btn" disabled={working || !rankActive} onClick={stopSegmentRanks}>Stop</button>
           </div>
         </Card>
       </div>
