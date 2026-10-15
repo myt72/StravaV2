@@ -188,6 +188,121 @@
 .matrix-rain-toggle:hover { background: #16311d; }
 .matrix-rain-toggle:focus-visible { outline: 2px solid #e8fff0; outline-offset: 2px; }
 
+/* Glitch / Datamosh: dark base, RGB-split accents; canvas (lib/glitchFx.js) shows behind near-opaque panels. */
+:root[data-theme="glitch"] {
+  color-scheme: dark;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --bg: #06060a;
+  --surface: #12121a;
+  --surface-2: #181824;
+  --surface-hover: #1f1f2e;
+  --border: #3a3a55;
+  --text: #f2f2fa;
+  --text-muted: #b8b8d0;
+  --accent: #00e5ff;
+  --accent-strong: #00e5ff;
+  --accent-contrast: #05050a;
+  --accent-soft: #10303a;
+  --focus: #ffee00;
+
+  --positive: #b6ff2e;
+  --negative: #ff5fa8;
+  --warning: #ffe14a;
+
+  --chart-1: #00e5ff;
+  --chart-2: #ff2fc8;
+  --chart-3: #b6ff2e;
+  --chart-4: #7aa2ff;
+  --chart-5: #ffe14a;
+  --chart-6: #ff8a5c;
+  --chart-grid: #2c2c44;
+
+  --heat-0: #181824;
+  --heat-1: #0e4a57;
+  --heat-2: #0f7d8f;
+  --heat-3: #00c4dc;
+  --heat-4: #7af0ff;
+  --heat-fg-0: var(--text);
+  --heat-fg-1: var(--text);
+  --heat-fg-2: #ffffff;
+  --heat-fg-3: var(--accent-contrast);
+  --heat-fg-4: var(--accent-contrast);
+
+  --radius: 2px;
+  --radius-sm: 1px;
+  --shadow: 0 0 0 1px #00e5ff22, 1px 0 0 #ff2fc833, -1px 0 0 #00e5ff33;
+  --shadow-soft: 0 0 0 1px #00e5ff18;
+  --overlay: rgba(2, 2, 6, 0.8);
+
+  --glass-sidebar: rgba(10, 10, 16, 0.94);
+  --glass-card: rgba(18, 18, 26, 0.94);
+  --glass-blur: blur(1px);
+  --opaque-sidebar: #0a0a10;
+  --opaque-card: #12121a;
+  --opaque-overlay: #12121a;
+
+  background: var(--bg);
+}
+
+:root[data-theme="glitch"] body,
+:root[data-theme="glitch"] #root,
+:root[data-theme="glitch"] .shell,
+:root[data-theme="glitch"] .main { background: transparent; }
+
+:root[data-theme="glitch"] .sidebar { background: var(--glass-sidebar); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+:root[data-theme="glitch"] .card,
+:root[data-theme="glitch"] .table-wrap,
+:root[data-theme="glitch"] .filterbar,
+:root[data-theme="glitch"] .headline { background: var(--glass-card); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+:root[data-theme="glitch"] .card,
+:root[data-theme="glitch"] .table-wrap { box-shadow: var(--shadow); }
+:root[data-theme="glitch"] dialog,
+:root[data-theme="glitch"] .drawer,
+:root[data-theme="glitch"] .chart-tip,
+:root[data-theme="glitch"] select,
+:root[data-theme="glitch"] option { background: var(--opaque-overlay); color: var(--text); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="glitch"] .progress > div { background: #00e5ff; box-shadow: 1px 0 0 #ff2fc8; }
+:root[data-theme="glitch"] .progress { background: #1f1f2e; border: 1px solid #3a3a55; }
+:root[data-theme="glitch"] table.data th { background: transparent; }
+:root[data-theme="glitch"] :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-theme="glitch"] .sidebar { background: var(--opaque-sidebar); }
+  :root[data-theme="glitch"] .card,
+  :root[data-theme="glitch"] .table-wrap,
+  :root[data-theme="glitch"] .filterbar,
+  :root[data-theme="glitch"] .headline { background: var(--opaque-card); }
+}
+
+/* Chromatic-split headings only (static); never applied to data, inputs or body copy */
+:root[data-theme="glitch"] h1,
+:root[data-theme="glitch"] h2,
+:root[data-theme="glitch"] .profile-name { text-shadow: 1px 0 #ff2fc8, -1px 0 #00e5ff; }
+
+@media (prefers-reduced-motion: no-preference) {
+  :root[data-theme="glitch"]:not([data-glitch-motion="static"]) h1,
+  :root[data-theme="glitch"]:not([data-glitch-motion="static"]) h2,
+  :root[data-theme="glitch"]:not([data-glitch-motion="static"]) .profile-name {
+    animation: glitch-heading 7s steps(1, end) infinite;
+  }
+}
+@keyframes glitch-heading {
+  0%, 94%, 100% { transform: none; clip-path: none; }
+  95% { transform: translateX(-2px); clip-path: inset(10% 0 55% 0); }
+  96% { transform: translateX(2px); clip-path: inset(55% 0 10% 0); }
+  97% { transform: translateX(-1px); clip-path: none; }
+}
+
+/* Glitch toggle button (created by lib/glitchFx.js; exists only while Glitch is active) */
+:root[data-theme="glitch"] .glitch-fx-toggle {
+  position: fixed; right: 12px; bottom: 12px; z-index: 50; padding: 6px 10px;
+  font: 12px ui-monospace, Menlo, Consolas, monospace; color: #f2f2fa; background: #0a0a10;
+  border: 1px solid #00e5ff; border-radius: 2px; cursor: pointer; box-shadow: 2px 0 0 #ff2fc8;
+}
+:root[data-theme="glitch"] .glitch-fx-toggle:hover { background: #1f1f2e; }
+:root[data-theme="glitch"] .glitch-fx-toggle:focus-visible { outline: 2px solid #ffee00; outline-offset: 2px; }
+
 /* Retro OS (Windows 95): ported from V1 public/themes/retro-os.css and mapped to V2 classes/tokens. */
 :root[data-theme="retro-os"] {
   color-scheme: light;

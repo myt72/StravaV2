@@ -146,6 +146,16 @@ icons + labels and a narrow icons-only rail (labels become tooltips). The choice
 is saved in `localStorage` (`stravaV2:navCollapsed`). With no saved choice the nav
 auto-collapses on viewports narrower than 1100px; a saved choice always wins.
 
+## Themes
+
+Pick a theme in the sidebar. Besides Default, Matrix and Retro OS there is
+**Glitch / Datamosh**: a near-black theme with cyan/magenta/yellow-green accents,
+a low-resolution animated background (tear bands, macroblocks, pixel-sort streaks)
+and chromatic-split headings. Data surfaces stay opaque and high-contrast. The
+fixed "Glitch: animated/static" button toggles the animation (saved in
+`localStorage` as `strava:glitchFx`); it defaults to static with
+`prefers-reduced-motion: reduce`.
+
 ## Frontend (Vite + React)
 
 The UI lives in `client/` and is built into `client/dist/` (gitignored), which
