@@ -38,6 +38,7 @@ export function AppDataProvider({ children }) {
 
   const [prBackfill, setPrBackfill] = useState(null);
   const [geoBackfill, setGeoBackfill] = useState(null);
+  const [segmentRank, setSegmentRank] = useState(null);
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
   const [bikeImages, setBikeImages] = useState({});
@@ -46,6 +47,8 @@ export function AppDataProvider({ children }) {
 
   const pollTimer = useRef(null);
   const geoPollTimer = useRef(null);
+  const rankPollTimer = useRef(null);
+  const wasRankActive = useRef(false);
   const wasGeoActive = useRef(false);
   const wasActive = useRef(false);
   const mounted = useRef(true);
@@ -54,6 +57,7 @@ export function AppDataProvider({ children }) {
   const applyPayload = useCallback(data => {
     if (data.prBackfill) setPrBackfill(data.prBackfill);
     if (data.geoBackfillStatus) setGeoBackfill(data.geoBackfillStatus);
+    if (data.segmentRankStatus) setSegmentRank(data.segmentRankStatus);
     setServerMessage(data.message || "");
     if (Array.isArray(data.activities)) {
       setRaw(data);
@@ -117,6 +121,7 @@ export function AppDataProvider({ children }) {
       mounted.current = false;
       clearTimeout(pollTimer.current);
       clearTimeout(geoPollTimer.current);
+      clearTimeout(rankPollTimer.current);
     };
   }, [load]);
 
@@ -145,6 +150,18 @@ export function AppDataProvider({ children }) {
     }
   }, []);
 
+  const pollSegmentRank = useCallback(async () => {
+    clearTimeout(rankPollTimer.current);
+    try {
+      const s = await api.fetchSegmentRankStatus();
+      if (!mounted.current) return;
+      setSegmentRank(s);
+      if (isBackfillActive(s)) rankPollTimer.current = setTimeout(pollSegmentRank, POLL_MS);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   /* Verifies the admin password by fetching backfill status; throws on failure. */
   const unlockAdmin = useCallback(async () => {
     const s = await api.fetchPrBackfillStatus();
@@ -164,6 +181,13 @@ export function AppDataProvider({ children }) {
     if (!geoActive && wasGeoActive.current) load({ quiet: true });
     wasGeoActive.current = geoActive;
   }, [geoActive, pollGeoBackfill, load]);
+
+  const rankActive = isBackfillActive(segmentRank);
+  useEffect(() => {
+    if (rankActive && !wasRankActive.current) pollSegmentRank();
+    if (!rankActive && wasRankActive.current) load({ quiet: true });
+    wasRankActive.current = rankActive;
+  }, [rankActive, pollSegmentRank, load]);
 
   /* ----- admin actions ----- */
   const pull = useCallback(async kind => {
@@ -234,6 +258,28 @@ export function AppDataProvider({ children }) {
   const stopGeoBackfill = useCallback(
     () => runGeoAction(api.stopGeoBackfill, "Stopping geo backfill…", "Geo backfill stop requested.", "Failed to stop geo backfill."),
     [runGeoAction]
+  );
+  const runRankAction = useCallback(async (start, pending, done, fail) => {
+    setBusy("ranks");
+    setNotice({ type: "info", text: pending });
+    try {
+      const data = await start();
+      if (data.segmentRanks) setSegmentRank(data.segmentRanks);
+      setNotice({ type: "success", text: data.message || done });
+      pollSegmentRank();
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || fail });
+    } finally {
+      setBusy(null);
+    }
+  }, [pollSegmentRank]);
+  const startSegmentRanks = useCallback(
+    refresh => runRankAction(() => api.startSegmentRanks({ refresh }), refresh ? "Starting segment rank refresh…" : "Starting segment rank backfill…", "Segment rank backfill started.", "Failed to start segment rank backfill."),
+    [runRankAction]
+  );
+  const stopSegmentRanks = useCallback(
+    () => runRankAction(api.stopSegmentRanks, "Stopping segment rank backfill…", "Segment rank backfill stop requested.", "Failed to stop segment rank backfill."),
+    [runRankAction]
   );
   const recomputeRoutes = useCallback(async () => {
     setBusy("routes");
@@ -334,6 +380,7 @@ export function AppDataProvider({ children }) {
     excludeSegment, restoreSegment,
     prBackfill, backfillActive: active, busy, notice, setNotice, pull, startBackfill, stopBackfill, unlockAdmin,
     geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes,
+    segmentRank, rankActive, startSegmentRanks, stopSegmentRanks,
     bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)
   };

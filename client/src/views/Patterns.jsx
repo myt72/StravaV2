@@ -5,7 +5,7 @@ import {
   METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentLeaderboard,
   buildTimeOfDayBreakdown, buildWeekdayBreakdown
 } from "../lib/analytics.js";
-import { comma, fmtFeet, fmtMiles, formatDate, MONTHS } from "../lib/format.js";
+import { comma, fmtFeet, fmtMiles, formatDate, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
 import { polylineToSvgPath } from "../lib/polyline.js";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
@@ -89,6 +89,7 @@ function MatchedRides() {
     { key: "rank", label: "#", sortable: false, render: r => rows.indexOf(r) + 1, renderChild: none },
     {
       key: "name", label: kind === "routes" ? "Route" : "Segment", wrap: true,
+      ...(kind === "segments" ? { render: r => <a href={getStravaSegmentUrl(r.segmentId)} target="_blank" rel="noopener noreferrer">{r.name}</a> } : {}),
       renderChild: c => (
         <a href={c.activity.url} target="_blank" rel="noopener noreferrer">{c.activity.name || "Activity"}</a>
       )

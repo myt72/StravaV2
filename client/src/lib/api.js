@@ -99,6 +99,22 @@ export async function stopGeoBackfill() {
   return data;
 }
 
+export async function fetchSegmentRankStatus() {
+  const { data } = await request("/api/segment-ranks/status", undefined, adminFetch);
+  return data.segmentRanks;
+}
+
+export async function startSegmentRanks({ refresh = false } = {}) {
+  const { data } = await request(`/api/segment-ranks/start${refresh ? "?refresh=1" : ""}`, { method: "POST" }, adminFetch);
+  if (data.error) throw new ApiError(data.error);
+  return data;
+}
+
+export async function stopSegmentRanks() {
+  const { data } = await request("/api/segment-ranks/stop", { method: "POST" }, adminFetch);
+  return data;
+}
+
 export async function recomputeMatchedRides() {
   const { data } = await request("/api/matched-rides/recompute", { method: "POST" }, adminFetch);
   if (data.error) throw new ApiError(data.error);
