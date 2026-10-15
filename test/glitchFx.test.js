@@ -22,7 +22,7 @@ test("theme registry lists the glitch theme", () => {
   assert.match(css, /:root\[data-theme="glitch"\] \{/);
 });
 
-test("glitchFx start() creates canvas + toggle and stop() removes them", async () => {
+async function run(saved) {
   const body = { prepended: [], appended: [], prepend(e) { this.prepended.push(e); }, appendChild(e) { this.appended.push(e); } };
   global.document = {
     body, hidden: false, documentElement: { dataset: {} },
@@ -32,22 +32,38 @@ test("glitchFx start() creates canvas + toggle and stop() removes them", async (
     innerWidth: 800, innerHeight: 600, addEventListener() {}, removeEventListener() {},
     matchMedia: () => ({ matches: true, addEventListener() {}, removeEventListener() {} })
   };
-  global.localStorage = { getItem: () => null, setItem() {} };
+  global.localStorage = { getItem: () => saved, setItem() {} };
   global.requestAnimationFrame = () => 1;
   global.cancelAnimationFrame = () => {};
   const code = fs.readFileSync(path.join(__dirname, "../client/src/lib/glitchFx.js"), "utf8");
   const fx = await import("data:text/javascript;base64," + Buffer.from(code).toString("base64"));
   fx.start();
+  return { fx, body };
+}
+
+test("glitchFx start() creates canvas + toggle and stop() removes them", async () => {
+  const { fx, body } = await run(null);
   const canvas = body.prepended[0], toggle = body.appended[0];
   assert.equal(canvas.getAttribute("aria-hidden"), "true");
   assert.equal(canvas.getAttribute("data-theme-decor"), "");
   assert.match(canvas.style.cssText, /z-index:-1/);
   assert.match(canvas.style.cssText, /pointer-events:none/);
   assert.equal(toggle.className, "glitch-fx-toggle");
-  assert.equal(toggle.getAttribute("aria-pressed"), "false"); // reduced motion -> static
-  assert.equal(toggle.textContent, "Glitch: static");
+  assert.equal(toggle.getAttribute("aria-pressed"), "true"); // animated by default, even with reduced motion
+  assert.equal(toggle.textContent, "Glitch: animated");
+  assert.equal(document.documentElement.dataset.glitchMotion, "animated");
   fx.stop();
   assert.equal(canvas.isConnected, false);
   assert.equal(toggle.isConnected, false);
   assert.equal(document.documentElement.dataset.glitchMotion, undefined);
+});
+
+test("glitchFx saved 'off' wins over the animated default", async () => {
+  const { fx, body } = await run("off");
+  const toggle = body.appended[0];
+  assert.equal(toggle.getAttribute("aria-pressed"), "false");
+  assert.equal(toggle.textContent, "Glitch: static");
+  assert.equal(document.documentElement.dataset.glitchMotion, "static");
+  fx.stop();
+  assert.equal(toggle.isConnected, false);
 });

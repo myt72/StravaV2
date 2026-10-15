@@ -150,11 +150,15 @@ auto-collapses on viewports narrower than 1100px; a saved choice always wins.
 
 Pick a theme in the sidebar. Besides Default, Matrix and Retro OS there is
 **Glitch / Datamosh**: a near-black theme with cyan/magenta/yellow-green accents,
-a low-resolution animated background (tear bands, macroblocks, pixel-sort streaks)
-and chromatic-split headings. Data surfaces stay opaque and high-contrast. The
-fixed "Glitch: animated/static" button toggles the animation (saved in
-`localStorage` as `strava:glitchFx`); it defaults to static with
-`prefers-reduced-motion: reduce`.
+a low-resolution animated background (horizontal/vertical tears, pixel-sort
+streaks, macroblock smears, duplicated regions, channel splits, scan rolls),
+chromatic-split headings and a glitch-accented sidebar. Panels are
+semi-transparent with a light blur so the effect shows through; dialogs, drawers,
+tooltips and selects stay opaque. The fixed "Glitch: animated/static" button
+toggles the animation (saved in `localStorage` as `strava:glitchFx`). It is
+animated by default, even when the OS prefers reduced motion; an explicit
+toggle choice always wins. Tunable constants are at the top of
+`client/src/lib/glitchFx.js` and in the glitch token block of `theme.css`.
 
 ## Frontend (Vite + React)
 

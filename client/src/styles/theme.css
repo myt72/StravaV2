@@ -188,7 +188,7 @@
 .matrix-rain-toggle:hover { background: #16311d; }
 .matrix-rain-toggle:focus-visible { outline: 2px solid #e8fff0; outline-offset: 2px; }
 
-/* Glitch / Datamosh: dark base, RGB-split accents; canvas (lib/glitchFx.js) shows behind near-opaque panels. */
+/* Glitch / Datamosh: dark base, RGB-split accents; canvas (lib/glitchFx.js) shows through semi-transparent panels. */
 :root[data-theme="glitch"] {
   color-scheme: dark;
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -235,9 +235,13 @@
   --shadow-soft: 0 0 0 1px #00e5ff18;
   --overlay: rgba(2, 2, 6, 0.8);
 
-  --glass-sidebar: rgba(10, 10, 16, 0.94);
-  --glass-card: rgba(18, 18, 26, 0.94);
-  --glass-blur: blur(1px);
+  /* Tunables: panel alpha (lower = more glitch shows through), blur, sidebar effect colors/timing */
+  --glass-sidebar: rgba(10, 10, 16, 0.6);
+  --glass-card: rgba(18, 18, 26, 0.6);
+  --glass-blur: blur(4px);
+  --glitch-cyan: #00e5ff;
+  --glitch-magenta: #ff2fc8;
+  --glitch-sweep-duration: 9s;
   --opaque-sidebar: #0a0a10;
   --opaque-card: #12121a;
   --opaque-overlay: #12121a;
@@ -275,23 +279,63 @@
   :root[data-theme="glitch"] .headline { background: var(--opaque-card); }
 }
 
+/* Calm surface behind small text on the transparent panels */
+:root[data-theme="glitch"] .card,
+:root[data-theme="glitch"] .table-wrap,
+:root[data-theme="glitch"] .filterbar,
+:root[data-theme="glitch"] .headline,
+:root[data-theme="glitch"] .sidebar { text-shadow: 0 0 3px rgba(2, 2, 6, 0.9), 0 1px 1px rgba(2, 2, 6, 0.9); }
+
 /* Chromatic-split headings only (static); never applied to data, inputs or body copy */
 :root[data-theme="glitch"] h1,
 :root[data-theme="glitch"] h2,
 :root[data-theme="glitch"] .profile-name { text-shadow: 1px 0 #ff2fc8, -1px 0 #00e5ff; }
 
-@media (prefers-reduced-motion: no-preference) {
-  :root[data-theme="glitch"]:not([data-glitch-motion="static"]) h1,
-  :root[data-theme="glitch"]:not([data-glitch-motion="static"]) h2,
-  :root[data-theme="glitch"]:not([data-glitch-motion="static"]) .profile-name {
-    animation: glitch-heading 7s steps(1, end) infinite;
-  }
+/* Motion follows data-glitch-motion (set by glitchFx.js: animated by default, saved toggle wins). */
+:root[data-theme="glitch"][data-glitch-motion="animated"] h1,
+:root[data-theme="glitch"][data-glitch-motion="animated"] h2,
+:root[data-theme="glitch"][data-glitch-motion="animated"] .profile-name {
+  animation: glitch-heading 7s steps(1, end) infinite;
 }
 @keyframes glitch-heading {
   0%, 94%, 100% { transform: none; clip-path: none; }
   95% { transform: translateX(-2px); clip-path: inset(10% 0 55% 0); }
   96% { transform: translateX(2px); clip-path: inset(55% 0 10% 0); }
   97% { transform: translateX(-1px); clip-path: none; }
+}
+
+/* Sidebar: RGB-split edge always; scanlines, sweep bar and logo jitter only when animated. Overlays are
+   pseudo-elements (pointer-events:none, behind/above content without affecting layout or focus). */
+:root[data-theme="glitch"] .sidebar { box-shadow: 1px 0 0 var(--glitch-magenta), 2px 0 0 var(--glitch-cyan); }
+:root[data-theme="glitch"] .sidebar::before,
+:root[data-theme="glitch"] .sidebar::after { content: none; pointer-events: none; position: absolute; left: 0; right: 0; }
+:root[data-theme="glitch"] .nav-link:hover,
+:root[data-theme="glitch"] .nav-link[aria-current="page"] { text-shadow: 1px 0 var(--glitch-magenta), -1px 0 var(--glitch-cyan); }
+
+:root[data-theme="glitch"][data-glitch-motion="animated"] .sidebar::before {
+  content: ""; top: 0; bottom: 0; z-index: -1;
+  background: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.04) 0 1px, transparent 1px 3px);
+}
+:root[data-theme="glitch"][data-glitch-motion="animated"] .sidebar::after {
+  content: ""; top: 0; height: 36px; z-index: 1;
+  background: linear-gradient(180deg, transparent, rgba(0, 229, 255, 0.16) 45%, rgba(255, 47, 200, 0.16) 55%, transparent);
+  opacity: 0; animation: glitch-sidebar-sweep var(--glitch-sweep-duration) steps(24, end) infinite;
+}
+:root[data-theme="glitch"][data-glitch-motion="animated"] .sidebar .avatar { animation: glitch-logo 6.5s steps(1, end) infinite; }
+@media (max-width: 860px) {
+  :root[data-theme="glitch"][data-glitch-motion="animated"] .sidebar::after { content: none; }
+}
+@keyframes glitch-sidebar-sweep {
+  0%, 70%, 100% { opacity: 0; transform: translateY(0); }
+  72% { opacity: 1; transform: translateY(0); }
+  84% { opacity: 1; transform: translateY(calc(100vh - 36px)); }
+  85% { opacity: 0; }
+}
+@keyframes glitch-logo {
+  0%, 91%, 100% { transform: none; clip-path: none; box-shadow: none; }
+  92% { transform: translateX(-2px); clip-path: inset(15% 0 50% 0); box-shadow: 2px 0 0 var(--glitch-magenta); }
+  94% { transform: translateX(2px); clip-path: inset(55% 0 10% 0); box-shadow: -2px 0 0 var(--glitch-cyan); }
+  96% { transform: none; clip-path: none; box-shadow: none; }
 }
 
 /* Glitch toggle button (created by lib/glitchFx.js; exists only while Glitch is active) */
