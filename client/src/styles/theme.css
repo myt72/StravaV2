@@ -582,49 +582,12 @@
   :root[data-theme="tron"] .headline::after { background: var(--opaque-card); }
 }
 
-@font-face {
-  font-family: "Orbitron";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: local("Orbitron"), url("/fonts/orbitron-latin-400-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Orbitron";
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: local("Orbitron"), url("/fonts/orbitron-latin-500-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Orbitron";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: local("Orbitron"), url("/fonts/orbitron-latin-600-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Orbitron";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: local("Orbitron"), url("/fonts/orbitron-latin-700-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Chivo";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: local("Chivo"), url("/fonts/chivo-latin-400-normal.woff2") format("woff2");
-}
-
-/* Severance (Lumon): the canvas (lib/severanceFx.js) shows through translucent panels. */
+/* Severance (Lumon): pale, sterile "Severed Floor"; the canvas (lib/severanceFx.js) shows through flat translucent panels.
+   Translucent backgrounds sit directly on each element (nothing opaque beneath them). */
 :root[data-theme="severance"] {
   color-scheme: light;
   --font-sans: "Helvetica Neue", Helvetica, "Neue Haas Grotesk", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --font-heading: "Orbitron", "Helvetica Neue", Arial, sans-serif;
-  --font-grid: "Chivo", "Helvetica Neue", Arial, sans-serif;
   --bg: #eef1ee;
   --surface: #f8f9f7;
   --surface-2: #e6ebe7;
@@ -668,22 +631,18 @@
   --shadow-soft: 0 1px 1px rgba(29, 38, 35, 0.04);
   --overlay: rgba(29, 38, 35, 0.4);
 
-  /* Tunables: panel fill/alpha, border, blur and sweep timing */
-  --severance-panel-alpha: 80%;
-  --severance-sidebar-alpha: 85%;
-  --severance-table-alpha: 80%;
-  --severance-panel-fill: #bccfd9;
-  --severance-panel-border: #1e3138;
-  --severance-panel-border-width: 1px;
-  --severance-title-fill: color-mix(in srgb, var(--severance-panel-fill) var(--severance-panel-alpha), transparent);
-  --glass-sidebar: color-mix(in srgb, var(--severance-panel-fill) var(--severance-sidebar-alpha), transparent);
-  --glass-card: color-mix(in srgb, var(--severance-panel-fill) var(--severance-panel-alpha), transparent);
-  --glass-table: color-mix(in srgb, var(--severance-panel-fill) var(--severance-table-alpha), transparent);
+  /* Tunables: panel alphas, blur, sweep timing */
+  --severance-panel-alpha: 0.8;
+  --severance-sidebar-alpha: 0.85;
+  --severance-table-alpha: 0.8;
+  --glass-sidebar: rgba(250, 252, 250, var(--severance-sidebar-alpha));
+  --glass-card: rgba(250, 252, 250, var(--severance-panel-alpha));
+  --glass-table: rgba(250, 252, 250, var(--severance-table-alpha));
   --glass-blur: blur(1px);
   --severance-corridor-duration: 10s;
-  --opaque-sidebar: var(--severance-panel-fill);
-  --opaque-card: var(--severance-panel-fill);
-  --opaque-overlay: var(--severance-panel-fill);
+  --opaque-sidebar: #f2f5f2;
+  --opaque-card: #f8f9f7;
+  --opaque-overlay: #f8f9f7;
 
   background: var(--bg);
 }
@@ -693,107 +652,43 @@
 :root[data-theme="severance"] .shell,
 :root[data-theme="severance"] .main { background: transparent; }
 
-/* Headings and navigation: condensed spacing keeps Orbitron from crowding small panels. */
+/* Headings: small, uppercase, letter-spaced, regular weight (bureaucratic labels). */
 :root[data-theme="severance"] h1,
 :root[data-theme="severance"] h2,
-:root[data-theme="severance"] h3,
-:root[data-theme="severance"] .card-head h2,
-:root[data-theme="severance"] .kpi-label,
-:root[data-theme="severance"] .profile-name,
-:root[data-theme="severance"] .nav-link,
-:root[data-theme="severance"] .tab,
-:root[data-theme="severance"] .btn.primary,
-:root[data-theme="severance"] .page-head a,
-:root[data-theme="severance"] .headline a {
-  font-family: var(--font-heading);
-  text-transform: uppercase;
-  letter-spacing: 0.025em;
-  font-weight: 400;
-  color: var(--text-muted);
+:root[data-theme="severance"] .kpi-label {
+  text-transform: uppercase; letter-spacing: 0.14em; font-weight: 400; color: var(--text-muted);
 }
-:root[data-theme="severance"] h1 { font-size: 1.05rem; }
-:root[data-theme="severance"] .card h2 { font-size: 0.72rem; }
-:root[data-theme="severance"] .kpi-label { font-size: 0.68rem; letter-spacing: 0.015em; }
-:root[data-theme="severance"] .profile-name { font-size: 0.78rem; letter-spacing: 0.025em; }
-:root[data-theme="severance"] .nav-link,
-:root[data-theme="severance"] .tab { font-size: 0.72rem; }
-:root[data-theme="severance"] .btn.primary { font-size: 0.72rem; }
+:root[data-theme="severance"] h1 { font-size: 1.1rem; }
+:root[data-theme="severance"] .card h2 { font-size: 0.8rem; }
+:root[data-theme="severance"] .profile-name { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 400; font-size: 0.85rem; }
 
 /* Decorative bureaucratic labels (generated content, non-essential). */
-:root[data-theme="severance"] .profile-text::before {
-  content: "Lumon Industries"; font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted);
-}
 :root[data-theme="severance"] .card-head h2::before {
   content: "Macrodata Refinement"; display: block; font-size: 0.6rem; letter-spacing: 0.2em; color: var(--text-muted); opacity: 0.85; margin-bottom: 2px;
 }
-
-/* Grid listings: preserve the existing table alignment, child rows and pinned rows. */
-:root[data-theme="severance"] table.data th,
-:root[data-theme="severance"] table.data td {
-  font-family: var(--font-grid);
-  text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
+:root[data-theme="severance"] .profile-text::before {
+  content: "Lumon Industries"; font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted);
 }
-:root[data-theme="severance"] table.data th.r,
-:root[data-theme="severance"] table.data td.r { white-space: nowrap; }
-:root[data-theme="severance"] table.data td.wrap { overflow-wrap: anywhere; }
 
-/* Sign panels: flat translucency sits directly on each element; no opaque underlay. */
+/* Panels: flat translucent white, hairline border directly on the element. */
 :root[data-theme="severance"] .card,
 :root[data-theme="severance"] .filterbar,
 :root[data-theme="severance"] .headline {
   background: var(--glass-card); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
-  border: var(--severance-panel-border-width) solid var(--severance-panel-border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--border); box-shadow: var(--shadow);
 }
 :root[data-theme="severance"] .table-wrap {
   background: var(--glass-table); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
-  border: var(--severance-panel-border-width) solid var(--severance-panel-border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  border: 1px solid var(--border); box-shadow: var(--shadow);
 }
-:root[data-theme="severance"] .headline { border-radius: 12px; }
-:root[data-theme="severance"] .card { position: relative; padding: 18px 18px 38px; min-width: 0; }
+:root[data-theme="severance"] .headline { border-left: 4px solid var(--accent); border-radius: var(--radius-sm); }
+:root[data-theme="severance"] .card { padding: 18px; }
 :root[data-theme="severance"] .card-head { border-left: 4px solid var(--accent); padding-left: 10px; border-bottom: 0; }
-:root[data-theme="severance"] .card > .card-head { border: 0; padding-left: 0; min-height: 1.2em; }
-:root[data-theme="severance"] .card > .card-head h2 ~ * { margin-left: auto; }
-:root[data-theme="severance"] .card > .card-head h2 {
-  position: absolute;
-  right: 12px;
-  bottom: -0.55em;
-  z-index: 1;
-  max-width: calc(100% - 24px);
-  overflow: hidden;
-  padding: 0 8px;
-  background: var(--severance-title-fill);
-  color: var(--text-muted);
-  line-height: 1.2;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-:root[data-theme="severance"] .card > .card-head h2::before { content: none; }
-:root[data-theme="severance"] .kpi { padding-bottom: 38px; }
-:root[data-theme="severance"] .kpi-label {
-  position: absolute;
-  right: 12px;
-  bottom: -0.55em;
-  z-index: 1;
-  max-width: calc(100% - 24px);
-  overflow: hidden;
-  padding: 0 8px;
-  background: var(--severance-title-fill);
-  line-height: 1.2;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 :root[data-theme="severance"] .card-head,
 :root[data-theme="severance"] .card-head h2 { color: var(--text-muted); }
 
-:root[data-theme="severance"] table.data th { background: transparent; color: var(--text-muted); font-weight: 600; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); padding: 12px 14px; }
-:root[data-theme="severance"] table.data td { padding: 12px 14px; border-bottom: 1px solid #c9d8cf; }
+:root[data-theme="severance"] table.data th { background: transparent; color: var(--text-muted); font-weight: 600; letter-spacing: 0.1em; border-bottom: 1px solid var(--border); padding: 12px 14px; }
+:root[data-theme="severance"] table.data td { padding: 12px 14px; border-bottom: 1px solid #c9d8cf; font-variant-numeric: tabular-nums; }
 :root[data-theme="severance"] table.data tbody tr:hover td { background: var(--surface-hover); }
 :root[data-theme="severance"] table.data tr.pinned td { background: var(--surface-2); }
 
@@ -801,13 +696,13 @@
 :root[data-theme="severance"] .drawer,
 :root[data-theme="severance"] .chart-tip,
 :root[data-theme="severance"] select,
-:root[data-theme="severance"] option { background: var(--opaque-overlay); color: var(--text); border-color: var(--severance-panel-border); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="severance"] option { background: var(--opaque-overlay); color: var(--text); border-color: var(--border); -webkit-backdrop-filter: none; backdrop-filter: none; }
 :root[data-theme="severance"] dialog::backdrop { background: var(--overlay); }
 
 :root[data-theme="severance"] input[type="text"],
 :root[data-theme="severance"] input[type="search"],
-:root[data-theme="severance"] input[type="number"] { background: #ffffff; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); }
-:root[data-theme="severance"] select { background: var(--opaque-overlay); color: var(--text); border: 1px solid var(--severance-panel-border); border-radius: var(--radius-sm); }
+:root[data-theme="severance"] input[type="number"],
+:root[data-theme="severance"] select { background: #ffffff; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 :root[data-theme="severance"] input:hover,
 :root[data-theme="severance"] select:hover { border-color: var(--accent); }
 :root[data-theme="severance"] input::placeholder { color: var(--text-muted); }
@@ -845,7 +740,7 @@
 /* Sidebar: pale panel with a carpet-green line on its right edge and a green block on the active item. */
 :root[data-theme="severance"] .sidebar {
   background: var(--glass-sidebar); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
-  border-right: var(--severance-panel-border-width) solid var(--severance-panel-border); box-shadow: none;
+  border-right: 2px solid var(--accent); box-shadow: none;
 }
 :root[data-theme="severance"] .sidebar::after {
   content: none; position: absolute; top: 0; right: -2px; width: 2px; height: 80px; background: #cfe3d7; opacity: 0; pointer-events: none;
@@ -857,11 +752,6 @@
 :root[data-theme="severance"] .nav-collapsed .nav-link { border-left-width: 0; }
 :root[data-theme="severance"] .nav-collapsed .nav-link[aria-current="page"] { box-shadow: inset 4px 0 0 var(--accent); }
 :root[data-theme="severance"] .nav-collapsed .profile-text::before { content: none; }
-
-@media (max-width: 860px) {
-  :root[data-theme="severance"] .sidebar { border: 0; border-top: var(--severance-panel-border-width) solid var(--severance-panel-border); }
-  :root[data-theme="severance"] .nav-link { min-width: 48px; padding-right: 2px; padding-left: 2px; font-size: 0.6rem; letter-spacing: 0; }
-}
 
 /* Avatar: still, 2px green ring plus a thin grey outer ring. */
 :root[data-theme="severance"] .avatar { box-shadow: 0 0 0 2px var(--accent), 0 0 0 3px #b9c3be; box-sizing: border-box; }
