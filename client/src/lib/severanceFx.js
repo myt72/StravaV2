@@ -1,19 +1,20 @@
 /* Severance (Lumon) decor: fixed background canvas with a sparse "Macrodata Refinement" field of small
    digits that drift slowly, occasionally swell in a nervous cluster, rarely get "refined" into a box,
-   plus a very faint scan hairline. Quiet and observational. Tunables are the constants below. */
+   plus a very faint scan hairline. Quiet and observational. Tunables are the constants below.
+   Lower DIGIT_ALPHA and/or OPACITY to make the field quieter. */
 const FRAME_MS = 1000 / 24;          // ~24 fps cap
 const KEY = "strava:severanceFx";
-const OPACITY = 0.6;                 // canvas opacity
+const OPACITY = 0.9;                 // canvas opacity (lower = quieter field)
 const SPACING = 56;                  // px between digits (both axes)
-const DIGIT_SIZE = 14;               // digit font size in px
+const DIGIT_SIZE = 16;               // digit font size in px
 const MAX_DIGITS = 1400;             // hard cap on draw ops per frame
-const DIGIT_RGB = "92,128,110";      // pale grey-green
-const DIGIT_ALPHA = 0.22;            // base digit alpha (decoration only)
+const DIGIT_RGB = "63,110,88";       // muted grey-green
+const DIGIT_ALPHA = 0.36;            // base digit alpha (decoration only; lower = quieter field)
 const CLUSTER_GAP_MS = [6000, 20000];// random gap between "anxious" clusters
 const CLUSTER_MS = 1500;             // cluster swell/jitter duration
-const REFINE_GAP_MS = [40000, 90000];// random gap between refinement events
+const REFINE_GAP_MS = [10000, 20000];// random gap between refinement events
 const REFINE_MS = 6000;              // refinement event duration
-const SWEEP_MS = 30000;              // period of the faint scan hairline
+const SWEEP_MS = 10000;              // period of the faint scan hairline
 const SWEEP_ALPHA = 0.1;
 const LINE_RGB = "63,110,88";
 
@@ -123,7 +124,7 @@ function draw() {
   }
   if (move && refine) {
     const box = p < 0.7 ? 1 : Math.max(0, 1 - (p - 0.7) / 0.3);
-    ctx.strokeStyle = rgba(LINE_RGB, 0.45 * box);
+    ctx.strokeStyle = rgba(LINE_RGB, 0.6 * box);
     ctx.lineWidth = 1;
     ctx.strokeRect(bx + 0.5, by + 0.5, bw, bh);
   }

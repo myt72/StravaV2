@@ -223,7 +223,9 @@ select the two typefaces there. Translucent panels keep the canvas visible, whil
 dialogs, drawers, tooltips and selects use the same fill opaquely. The background
 canvas draws a sparse
 "Macrodata Refinement" field of faint drifting digits that occasionally swell in a
-cluster, are rarely "refined" into an outlined box, plus a very faint scan line. The
+cluster, are "refined" into an outlined box every 10 to 20 s (measured from the end of the
+previous 6 s event, so events never overlap), plus a very faint scan line that sweeps every 10 s.
+Lower `DIGIT_ALPHA` / `OPACITY` in `severanceFx.js` to make the digits quieter. The
 fixed "Severance: animated/static" button toggles all motion (saved in
 `localStorage` as `strava:severanceFx`). It is animated by default, even when the OS
 prefers reduced motion; an explicit toggle choice always wins. Tunable constants (canvas opacity, digit
