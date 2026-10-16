@@ -190,17 +190,26 @@ wins. Tunable constants (canvas opacity, trail count, spawn gap, grid speed) are
 at the top of `client/src/lib/tronGrid.js`; panel alpha is in the tron token block
 of `theme.css`.
 
-**Severance (Lumon)**: a pale, sterile, off-white theme with muted carpet-green
-hairlines, flat matte semi-transparent panels, small uppercase bureaucratic labels
-(CSS-only) and a Helvetica-style sans-serif. The background canvas draws a sparse
+**Severance (Lumon)**: a pale, sterile theme with Orbitron headings and navigation,
+Chivo Regular uppercase grid listings, muted accents and flat matte semi-transparent
+panels. The self-hosted WOFF2 files are in `client/public/fonts/`; both fonts are
+licensed under the SIL Open Font License 1.1 (license texts are in that directory).
+Sign panels use the reference image's sampled blue-grey fill (`#BCCFD9`) and thin
+dark blue-grey border (`#1E3138`, approximately 1 px in the source image). Titled
+cards and KPI tiles place their uppercase title inline at the bottom-right border. Tune
+`--severance-panel-fill`, `--severance-panel-border`,
+`--severance-panel-border-width` and the percentage panel alpha tokens in the
+Severance block of `client/src/styles/theme.css`; `--font-heading` and `--font-grid`
+select the two typefaces there. Translucent panels keep the canvas visible, while
+dialogs, drawers, tooltips and selects use the same fill opaquely. The background
+canvas draws a sparse
 "Macrodata Refinement" field of faint drifting digits that occasionally swell in a
 cluster, are rarely "refined" into an outlined box, plus a very faint scan line. The
 fixed "Severance: animated/static" button toggles all motion (saved in
 `localStorage` as `strava:severanceFx`). It is animated by default, even when the OS
 prefers reduced motion; an explicit toggle choice always wins. Tunable constants (canvas opacity, digit
 spacing/size, cluster and refinement gap ranges, sweep period) are at the top of
-`client/src/lib/severanceFx.js`; panel alpha (`--severance-panel-alpha`) is in the
-severance token block of `theme.css`.
+`client/src/lib/severanceFx.js`.
 
 ## Frontend (Vite + React)
 
