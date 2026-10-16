@@ -397,7 +397,7 @@
   --overlay: rgba(0, 0, 0, 0.82);
 
   /* Tunables: panel alpha, blur, cut-corner size, sweep timing */
-  --tron-panel-alpha: 0.4;
+  --tron-panel-alpha: 0.45;
   --tron-sidebar-alpha: 0.5;
   --tron-table-alpha: 0.5;
   --glass-sidebar: rgba(0, 6, 12, var(--tron-sidebar-alpha));
@@ -435,7 +435,7 @@
 :root[data-theme="tron"] .sidebar {
   text-shadow: 0 0 3px rgba(0, 6, 12, 0.95), 0 1px 1px rgba(0, 6, 12, 0.95);
 }
-:root[data-theme="tron"] table.data td { background: rgba(0, 6, 12, 0.25); }
+:root[data-theme="tron"] table.data td { background: rgba(0, 6, 12, 0.08); }
 
 /* Cards: cut corners are drawn on pseudo-elements so glows/focus rings on content are never clipped. */
 :root[data-theme="tron"] .card,
@@ -443,23 +443,29 @@
 :root[data-theme="tron"] .headline {
   position: relative; isolation: isolate; background: transparent; border: 0; box-shadow: none;
 }
+/* ::before is a 1px cyan RING (evenodd clip-path, so the diagonals get a line too); ::after is the glass, sitting directly over the page with nothing opaque beneath it. */
 :root[data-theme="tron"] .card::before,
 :root[data-theme="tron"] .filterbar::before,
 :root[data-theme="tron"] .headline::before,
 :root[data-theme="tron"] .card::after,
 :root[data-theme="tron"] .filterbar::after,
 :root[data-theme="tron"] .headline::after {
-  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  content: ""; position: absolute; inset: 0; pointer-events: none;
   --cut: var(--tron-cut);
-  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
 }
 :root[data-theme="tron"] .card::before,
 :root[data-theme="tron"] .filterbar::before,
-:root[data-theme="tron"] .headline::before { inset: 0; background: #00f0ff; }
+:root[data-theme="tron"] .headline::before {
+  z-index: -1; background: #00f0ff;
+  clip-path: polygon(evenodd,
+    var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut),
+    calc(1px + var(--cut) - 0.6px) 1px, calc(100% - 1px) 1px, calc(100% - 1px) calc(100% - 1px - var(--cut) + 0.6px), calc(100% - 1px - var(--cut) + 0.6px) calc(100% - 1px), 1px calc(100% - 1px), 1px calc(1px + var(--cut) - 0.6px));
+}
 :root[data-theme="tron"] .card::after,
 :root[data-theme="tron"] .filterbar::after,
 :root[data-theme="tron"] .headline::after {
-  inset: 1px; --cut: calc(var(--tron-cut) - 1px); background: var(--glass-card);
+  z-index: -2; background: var(--glass-card);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
   -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
 }
 :root[data-theme="tron"] .card:hover::before,
