@@ -668,10 +668,10 @@
   --shadow-soft: 0 1px 1px rgba(29, 38, 35, 0.04);
   --overlay: rgba(29, 38, 35, 0.4);
 
-  /* Tunables: panel fill/alpha, border, blur and sweep timing */
-  --severance-panel-alpha: 80%;
-  --severance-sidebar-alpha: 85%;
-  --severance-table-alpha: 80%;
+  /* Tunables: panel fill/alpha, border, blur  */
+  --severance-panel-alpha: 84%;
+  --severance-sidebar-alpha: 88%;
+  --severance-table-alpha: 84%;
   --severance-panel-fill: #bccfd9;
   --severance-panel-border: #1e3138;
   --severance-panel-border-width: 1px;
@@ -683,7 +683,6 @@
   --glass-card: color-mix(in srgb, var(--severance-panel-fill) var(--severance-panel-alpha), transparent);
   --glass-table: color-mix(in srgb, var(--severance-panel-fill) var(--severance-table-alpha), transparent);
   --glass-blur: blur(1px);
-  --severance-corridor-duration: 10s;
   --opaque-sidebar: var(--severance-panel-fill);
   --opaque-card: var(--severance-panel-fill);
   --opaque-overlay: var(--severance-panel-fill);
@@ -863,9 +862,9 @@
   background: var(--glass-sidebar); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   border-right: var(--severance-panel-border-width) solid var(--severance-panel-border); box-shadow: none;
 }
-:root[data-theme="severance"] .sidebar::after {
-  content: none; position: absolute; top: 0; right: -2px; width: 2px; height: 80px; background: #cfe3d7; opacity: 0; pointer-events: none;
-}
+/* Sidebar content may scroll on small screens; hide the scrollbar visuals only. */
+:root[data-theme="severance"] .sidebar { scrollbar-width: none; }
+:root[data-theme="severance"] .sidebar::-webkit-scrollbar { display: none; }
 :root[data-theme="severance"] .nav-link { color: var(--text-muted); border-left: 4px solid transparent; position: relative; }
 :root[data-theme="severance"] .nav-link:hover { background: var(--surface-hover); color: var(--text); }
 :root[data-theme="severance"] .nav-link[aria-current="page"] { background: var(--accent-soft); color: var(--accent-strong); border-left-color: var(--accent); }
@@ -906,10 +905,8 @@
 :root[data-theme="severance"][data-severance-motion="animated"] .btn:hover:not(:disabled),
 :root[data-theme="severance"][data-severance-motion="animated"] .nav-link:hover,
 :root[data-theme="severance"][data-severance-motion="animated"] .card:hover { background-size: 100% 1px; }
-:root[data-theme="severance"][data-severance-motion="animated"] .sidebar::after { content: ""; animation: severance-corridor var(--severance-corridor-duration) linear infinite; }
 @keyframes severance-wipe { from { clip-path: inset(0 0 100% 0); opacity: 0.4; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
 @keyframes severance-band { to { background-position: 140% 0, 0 0; } }
-@keyframes severance-corridor { from { top: -80px; opacity: 0; } 20% { opacity: 0.5; } 70% { top: 100%; opacity: 0; } to { top: 100%; opacity: 0; } }
 
 /* Toggle button (created by lib/severanceFx.js; exists only while Severance is active) */
 :root[data-theme="severance"] .severance-fx-toggle {
