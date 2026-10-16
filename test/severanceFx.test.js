@@ -67,3 +67,10 @@ test("severanceFx saved 'off' wins over the animated default", async () => {
   fx.stop();
   assert.equal(toggle.isConnected, false);
 });
+
+test("Macrodata Refinement nav entry is Severance-only", () => {
+  const shell = fs.readFileSync(path.join(__dirname, "../client/src/components/Shell.jsx"), "utf8");
+  assert.match(shell, /id: "mdr", label: "Macrodata Refinement", themeId: "severance"/);
+  assert.match(shell, /NAV\.filter\(n => !n\.themeId \|\| n\.themeId === themeId\)/);
+  assert.ok(fs.existsSync(path.join(__dirname, "../client/public/mdr/NOTICE.md")));
+});
