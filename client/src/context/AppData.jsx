@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { SEGMENT_RANKINGS_ENABLED } from "../lib/features.js";
 import * as api from "../lib/api.js";
 import { applyGlobalFilters, deriveRideInsights } from "../lib/analytics.js";
 import { readStored, usePersistentState } from "../lib/storage.js";
@@ -57,7 +58,7 @@ export function AppDataProvider({ children }) {
   const applyPayload = useCallback(data => {
     if (data.prBackfill) setPrBackfill(data.prBackfill);
     if (data.geoBackfillStatus) setGeoBackfill(data.geoBackfillStatus);
-    if (data.segmentRankStatus) setSegmentRank(data.segmentRankStatus);
+    if (SEGMENT_RANKINGS_ENABLED && data.segmentRankStatus) setSegmentRank(data.segmentRankStatus);
     setServerMessage(data.message || "");
     if (Array.isArray(data.activities)) {
       setRaw(data);
@@ -182,7 +183,7 @@ export function AppDataProvider({ children }) {
     wasGeoActive.current = geoActive;
   }, [geoActive, pollGeoBackfill, load]);
 
-  const rankActive = isBackfillActive(segmentRank);
+  const rankActive = SEGMENT_RANKINGS_ENABLED && isBackfillActive(segmentRank);
   useEffect(() => {
     if (rankActive && !wasRankActive.current) pollSegmentRank();
     if (!rankActive && wasRankActive.current) load({ quiet: true });

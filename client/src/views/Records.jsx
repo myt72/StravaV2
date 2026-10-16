@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { SEGMENT_RANKINGS_ENABLED } from "../lib/features.js";
 import { useAppData } from "../context/AppData.jsx";
 import {
   buildSegmentDistanceHighlights, buildSegmentElevationHighlights, buildSegmentRankings, buildSegmentSummaryHighlights
@@ -115,8 +116,8 @@ export default function Records() {
 
   const min = Math.max(1, Math.floor(Number(minEfforts) || 10));
   const summary = useMemo(() => buildSegmentSummaryHighlights(filtered, excludedSet), [filtered, excludedSet]);
-  const rankings = useMemo(() => buildSegmentRankings(filtered, raw?.segmentRanks), [filtered, raw]);
-  const hasRanks = Object.keys(raw?.segmentRanks || {}).length > 0;
+  const rankings = useMemo(() => (SEGMENT_RANKINGS_ENABLED ? buildSegmentRankings(filtered, raw?.segmentRanks) : null), [filtered, raw]);
+  const hasRanks = SEGMENT_RANKINGS_ENABLED && Object.keys(raw?.segmentRanks || {}).length > 0;
   const distance = useMemo(() => buildSegmentDistanceHighlights(filtered, excludedSet), [filtered, excludedSet]);
   const elevation = useMemo(() => buildSegmentElevationHighlights(filtered, excludedSet, min), [filtered, excludedSet, min]);
 
@@ -207,7 +208,7 @@ export default function Records() {
               { key: "activity", label: "Last activity", sortable: false, wrap: true, render: r => <ActivityLink activity={r.latestActivity} /> },
               { key: "x", label: "", sortable: false, render: r => <button type="button" className="btn sm" onClick={() => excludeSegment(r.segmentId)}>Exclude</button> }
             ]} />
-          <SegmentRankings rankings={rankings} status={segmentRank} hasRanks={hasRanks} search={search} />
+          {SEGMENT_RANKINGS_ENABLED && <SegmentRankings rankings={rankings} status={segmentRank} hasRanks={hasRanks} search={search} />}
         </>
       )}
 
