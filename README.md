@@ -190,6 +190,18 @@ wins. Tunable constants (canvas opacity, trail count, spawn gap, grid speed) are
 at the top of `client/src/lib/tronGrid.js`; panel alpha is in the tron token block
 of `theme.css`.
 
+**Severance (Lumon)**: a pale, sterile, off-white theme with muted carpet-green
+hairlines, flat matte semi-transparent panels, small uppercase bureaucratic labels
+(CSS-only) and a Helvetica-style sans-serif. The background canvas draws a sparse
+"Macrodata Refinement" field of faint drifting digits that occasionally swell in a
+cluster, are rarely "refined" into an outlined box, plus a very faint scan line. The
+fixed "Severance: animated/static" button toggles all motion (saved in
+`localStorage` as `strava:severanceFx`). It is animated by default, even when the OS
+prefers reduced motion; an explicit toggle choice always wins. Tunable constants (canvas opacity, digit
+spacing/size, cluster and refinement gap ranges, sweep period) are at the top of
+`client/src/lib/severanceFx.js`; panel alpha (`--severance-panel-alpha`) is in the
+severance token block of `theme.css`.
+
 ## Frontend (Vite + React)
 
 The UI lives in `client/` and is built into `client/dist/` (gitignored), which

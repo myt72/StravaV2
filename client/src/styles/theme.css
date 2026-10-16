@@ -582,6 +582,226 @@
   :root[data-theme="tron"] .headline::after { background: var(--opaque-card); }
 }
 
+/* Severance (Lumon): pale, sterile "Severed Floor"; the canvas (lib/severanceFx.js) shows through flat translucent panels.
+   Translucent backgrounds sit directly on each element (nothing opaque beneath them). */
+:root[data-theme="severance"] {
+  color-scheme: light;
+  --font-sans: "Helvetica Neue", Helvetica, "Neue Haas Grotesk", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --bg: #eef1ee;
+  --surface: #f8f9f7;
+  --surface-2: #e6ebe7;
+  --surface-hover: #dde5df;
+  --border: #a9c0b3;
+  --text: #1d2623;
+  --text-muted: #4a5853;
+  --accent: #3f6e58;
+  --accent-strong: #2f5646;
+  --accent-secondary: #5b7f95;
+  --accent-contrast: #ffffff;
+  --accent-soft: #e1ebe4;
+  --focus: #2f5f8a;
+
+  --positive: #2f5646;
+  --negative: #9b4a3f;
+  --warning: #8a6d1f;
+
+  --chart-1: #3f6e58;
+  --chart-2: #5b7f95;
+  --chart-3: #2f3b45;
+  --chart-4: #8a6d1f;
+  --chart-5: #b0707a;
+  --chart-6: #5f8c8c;
+  --chart-grid: #d3ddd7;
+
+  --heat-0: #e4eae6;
+  --heat-1: #c3d5ca;
+  --heat-2: #8fb09e;
+  --heat-3: #46755f;
+  --heat-4: #2f5646;
+  --heat-fg-0: var(--text);
+  --heat-fg-1: var(--text);
+  --heat-fg-2: var(--text);
+  --heat-fg-3: #ffffff;
+  --heat-fg-4: #ffffff;
+
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(29, 38, 35, 0.05);
+  --shadow-soft: 0 1px 1px rgba(29, 38, 35, 0.04);
+  --overlay: rgba(29, 38, 35, 0.4);
+
+  /* Tunables: panel alphas, blur, sweep timing */
+  --severance-panel-alpha: 0.8;
+  --severance-sidebar-alpha: 0.85;
+  --severance-table-alpha: 0.8;
+  --glass-sidebar: rgba(250, 252, 250, var(--severance-sidebar-alpha));
+  --glass-card: rgba(250, 252, 250, var(--severance-panel-alpha));
+  --glass-table: rgba(250, 252, 250, var(--severance-table-alpha));
+  --glass-blur: blur(1px);
+  --severance-corridor-duration: 10s;
+  --opaque-sidebar: #f2f5f2;
+  --opaque-card: #f8f9f7;
+  --opaque-overlay: #f8f9f7;
+
+  background: var(--bg);
+}
+
+:root[data-theme="severance"] body,
+:root[data-theme="severance"] #root,
+:root[data-theme="severance"] .shell,
+:root[data-theme="severance"] .main { background: transparent; }
+
+/* Headings: small, uppercase, letter-spaced, regular weight (bureaucratic labels). */
+:root[data-theme="severance"] h1,
+:root[data-theme="severance"] h2,
+:root[data-theme="severance"] .kpi-label {
+  text-transform: uppercase; letter-spacing: 0.14em; font-weight: 400; color: var(--text-muted);
+}
+:root[data-theme="severance"] h1 { font-size: 1.1rem; }
+:root[data-theme="severance"] .card h2 { font-size: 0.8rem; }
+:root[data-theme="severance"] .profile-name { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 400; font-size: 0.85rem; }
+
+/* Decorative bureaucratic labels (generated content, non-essential). */
+:root[data-theme="severance"] .card-head h2::before {
+  content: "Macrodata Refinement"; display: block; font-size: 0.6rem; letter-spacing: 0.2em; color: var(--text-muted); opacity: 0.85; margin-bottom: 2px;
+}
+:root[data-theme="severance"] .profile-text::before {
+  content: "Lumon Industries"; font-size: 0.55rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted);
+}
+
+/* Panels: flat translucent white, hairline border directly on the element. */
+:root[data-theme="severance"] .card,
+:root[data-theme="severance"] .filterbar,
+:root[data-theme="severance"] .headline {
+  background: var(--glass-card); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+:root[data-theme="severance"] .table-wrap {
+  background: var(--glass-table); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+:root[data-theme="severance"] .headline { border-left: 4px solid var(--accent); border-radius: var(--radius-sm); }
+:root[data-theme="severance"] .card { padding: 18px; }
+:root[data-theme="severance"] .card-head { border-left: 4px solid var(--accent); padding-left: 10px; border-bottom: 0; }
+:root[data-theme="severance"] .card-head,
+:root[data-theme="severance"] .card-head h2 { color: var(--text-muted); }
+
+:root[data-theme="severance"] table.data th { background: transparent; color: var(--text-muted); font-weight: 600; letter-spacing: 0.1em; border-bottom: 1px solid var(--border); padding: 12px 14px; }
+:root[data-theme="severance"] table.data td { padding: 12px 14px; border-bottom: 1px solid #c9d8cf; font-variant-numeric: tabular-nums; }
+:root[data-theme="severance"] table.data tbody tr:hover td { background: var(--surface-hover); }
+:root[data-theme="severance"] table.data tr.pinned td { background: var(--surface-2); }
+
+:root[data-theme="severance"] dialog,
+:root[data-theme="severance"] .drawer,
+:root[data-theme="severance"] .chart-tip,
+:root[data-theme="severance"] select,
+:root[data-theme="severance"] option { background: var(--opaque-overlay); color: var(--text); border-color: var(--border); -webkit-backdrop-filter: none; backdrop-filter: none; }
+:root[data-theme="severance"] dialog::backdrop { background: var(--overlay); }
+
+:root[data-theme="severance"] input[type="text"],
+:root[data-theme="severance"] input[type="search"],
+:root[data-theme="severance"] input[type="number"],
+:root[data-theme="severance"] select { background: #ffffff; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+:root[data-theme="severance"] input:hover,
+:root[data-theme="severance"] select:hover { border-color: var(--accent); }
+:root[data-theme="severance"] input::placeholder { color: var(--text-muted); }
+:root[data-theme="severance"] input:disabled,
+:root[data-theme="severance"] select:disabled,
+:root[data-theme="severance"] .btn:disabled { color: var(--text-muted); background: var(--surface-2); opacity: 1; }
+
+:root[data-theme="severance"] .btn { background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.8rem; }
+:root[data-theme="severance"] .btn:hover:not(:disabled) { background: var(--surface-hover); border-color: var(--accent); }
+:root[data-theme="severance"] .btn.primary { background: var(--accent); border-color: var(--accent-strong); color: var(--accent-contrast); }
+:root[data-theme="severance"] .btn.primary:hover:not(:disabled) { background: var(--accent-strong); }
+:root[data-theme="severance"] .btn.danger { color: var(--negative); border-color: var(--negative); }
+:root[data-theme="severance"] .btn.ghost { background: transparent; border-color: transparent; }
+:root[data-theme="severance"] .seg,
+:root[data-theme="severance"] .chip { background: #ffffff; border-color: var(--border); border-radius: var(--radius-sm); color: var(--text); }
+:root[data-theme="severance"] .seg button { color: var(--text-muted); }
+:root[data-theme="severance"] .seg button:hover,
+:root[data-theme="severance"] .chip:hover { background: var(--surface-hover); }
+:root[data-theme="severance"] .seg button[aria-pressed="true"] { background: var(--accent-strong); color: #ffffff; }
+:root[data-theme="severance"] .chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); }
+:root[data-theme="severance"] .tab { color: var(--text-muted); }
+:root[data-theme="severance"] .tab:hover { background: var(--surface-hover); color: var(--text); }
+:root[data-theme="severance"] .tab[aria-selected="true"] { color: var(--accent-strong); border-bottom: 2px solid var(--accent); }
+:root[data-theme="severance"] .progress { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+:root[data-theme="severance"] .progress > div { background: var(--accent); box-shadow: none; }
+:root[data-theme="severance"] .skeleton { background: var(--surface-2); }
+:root[data-theme="severance"] .notice { background: var(--accent-soft); color: var(--text); border: 1px solid var(--border); }
+:root[data-theme="severance"] a,
+:root[data-theme="severance"] .cell-link { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 2px; }
+:root[data-theme="severance"] :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+:root[data-theme="severance"] .recharts-text { fill: var(--text-muted); }
+:root[data-theme="severance"] .recharts-cartesian-grid line { stroke: var(--chart-grid); }
+
+/* Sidebar: pale panel with a carpet-green line on its right edge and a green block on the active item. */
+:root[data-theme="severance"] .sidebar {
+  background: var(--glass-sidebar); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border-right: 2px solid var(--accent); box-shadow: none;
+}
+:root[data-theme="severance"] .sidebar::after {
+  content: none; position: absolute; top: 0; right: -2px; width: 2px; height: 80px; background: #cfe3d7; opacity: 0; pointer-events: none;
+}
+:root[data-theme="severance"] .nav-link { color: var(--text-muted); border-left: 4px solid transparent; position: relative; }
+:root[data-theme="severance"] .nav-link:hover { background: var(--surface-hover); color: var(--text); }
+:root[data-theme="severance"] .nav-link[aria-current="page"] { background: var(--accent-soft); color: var(--accent-strong); border-left-color: var(--accent); }
+:root[data-theme="severance"] .nav-link svg { stroke-linecap: butt; stroke-linejoin: miter; stroke-width: 1.5; }
+:root[data-theme="severance"] .nav-collapsed .nav-link { border-left-width: 0; }
+:root[data-theme="severance"] .nav-collapsed .nav-link[aria-current="page"] { box-shadow: inset 4px 0 0 var(--accent); }
+:root[data-theme="severance"] .nav-collapsed .profile-text::before { content: none; }
+
+/* Avatar: still, 2px green ring plus a thin grey outer ring. */
+:root[data-theme="severance"] .avatar { box-shadow: 0 0 0 2px var(--accent), 0 0 0 3px #b9c3be; box-sizing: border-box; }
+:root[data-theme="severance"] .profile-text::before { display: block; }
+
+/* Motion follows data-severance-motion (set by severanceFx.js: animated by default, saved toggle wins). */
+:root[data-theme="severance"][data-severance-motion="static"] *,
+:root[data-theme="severance"][data-severance-motion="static"] *::before,
+:root[data-theme="severance"][data-severance-motion="static"] *::after { animation: none !important; transition: none !important; }
+
+:root[data-theme="severance"][data-severance-motion="animated"] .view-enter { animation: severance-wipe 0.24s linear backwards; }
+:root[data-theme="severance"][data-severance-motion="animated"] .progress > div {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent) -40% 0 / 40% 100% no-repeat, var(--accent);
+  animation: severance-band 3.2s linear infinite;
+}
+:root[data-theme="severance"][data-severance-motion="animated"] .skeleton {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent) -40% 0 / 40% 100% no-repeat, var(--surface-2);
+  animation: severance-band 3.2s linear infinite;
+}
+:root[data-theme="severance"][data-severance-motion="animated"] .btn,
+:root[data-theme="severance"][data-severance-motion="animated"] .nav-link,
+:root[data-theme="severance"][data-severance-motion="animated"] .card {
+  background-image: linear-gradient(var(--accent), var(--accent)); background-repeat: no-repeat; background-size: 0 1px; background-position: 0 100%;
+  transition: background-size 0.25s linear, background-color 0.25s linear, border-color 0.25s linear;
+}
+:root[data-theme="severance"][data-severance-motion="animated"] .btn:hover:not(:disabled),
+:root[data-theme="severance"][data-severance-motion="animated"] .nav-link:hover,
+:root[data-theme="severance"][data-severance-motion="animated"] .card:hover { background-size: 100% 1px; }
+:root[data-theme="severance"][data-severance-motion="animated"] .sidebar::after { content: ""; animation: severance-corridor var(--severance-corridor-duration) linear infinite; }
+@keyframes severance-wipe { from { clip-path: inset(0 0 100% 0); opacity: 0.4; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+@keyframes severance-band { to { background-position: 140% 0, 0 0; } }
+@keyframes severance-corridor { from { top: -80px; opacity: 0; } 20% { opacity: 0.5; } 70% { top: 100%; opacity: 0; } to { top: 100%; opacity: 0; } }
+
+/* Toggle button (created by lib/severanceFx.js; exists only while Severance is active) */
+:root[data-theme="severance"] .severance-fx-toggle {
+  position: fixed; right: 12px; bottom: 12px; z-index: 50; padding: 6px 10px;
+  font: 12px var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); background: #f8f9f7;
+  border: 1px solid var(--accent); border-radius: var(--radius-sm); cursor: pointer;
+}
+:root[data-theme="severance"] .severance-fx-toggle:hover { background: var(--surface-hover); }
+:root[data-theme="severance"] .severance-fx-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-theme="severance"] .sidebar { background: var(--opaque-sidebar); }
+  :root[data-theme="severance"] .card,
+  :root[data-theme="severance"] .table-wrap,
+  :root[data-theme="severance"] .filterbar,
+  :root[data-theme="severance"] .headline { background: var(--opaque-card); }
+}
+
 /* Retro OS (Windows 95): ported from V1 public/themes/retro-os.css and mapped to V2 classes/tokens. */
 :root[data-theme="retro-os"] {
   color-scheme: light;

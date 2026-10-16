@@ -3,6 +3,7 @@ import { readStored, writeStored } from "./storage.js";
 import * as matrixRain from "./matrixRain.js";
 import * as glitchFx from "./glitchFx.js";
 import * as tronGrid from "./tronGrid.js";
+import * as severanceFx from "./severanceFx.js";
 
 /**
  * Theme registry. Adding a theme = one entry here + one [data-theme="id"] block in theme.css.
@@ -13,6 +14,7 @@ export const THEMES = [
   { id: "matrix", label: "90s Cyber-Thriller (Matrix / Hackers)", supportsMode: false, decor: matrixRain },
   { id: "glitch", label: "Glitch / Datamosh", supportsMode: false, decor: glitchFx },
   { id: "tron", label: "TRON (1982 Grid)", supportsMode: false, decor: tronGrid },
+  { id: "severance", label: "Severance (Lumon)", supportsMode: false, decor: severanceFx },
   { id: "retro-os", label: "Retro OS (Windows 95)", supportsMode: false }
 ];
 
