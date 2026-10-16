@@ -360,7 +360,7 @@
   --surface-hover: #062236;
   --border: #00f0ff;
   --text: #e6f9ff;
-  --text-muted: #a8dbe8;
+  --text-muted: #c0e8f2;
   --accent: #00f0ff;
   --accent-strong: #00f0ff;
   --accent-contrast: #000000;
@@ -397,9 +397,13 @@
   --overlay: rgba(0, 0, 0, 0.82);
 
   /* Tunables: panel alpha, blur, cut-corner size, sweep timing */
-  --glass-sidebar: rgba(0, 6, 12, 0.78);
-  --glass-card: rgba(0, 8, 16, 0.78);
-  --glass-blur: blur(3px);
+  --tron-panel-alpha: 0.4;
+  --tron-sidebar-alpha: 0.5;
+  --tron-table-alpha: 0.5;
+  --glass-sidebar: rgba(0, 6, 12, var(--tron-sidebar-alpha));
+  --glass-card: rgba(0, 8, 16, var(--tron-panel-alpha));
+  --glass-table: rgba(0, 8, 16, var(--tron-table-alpha));
+  --glass-blur: blur(1px);
   --tron-cut: 12px;
   --tron-sweep-duration: 7s;
   --opaque-sidebar: #00060c;
@@ -422,6 +426,16 @@
   font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--text);
   text-shadow: 0 0 6px rgba(0, 240, 255, 0.55);
 }
+
+/* Calm dark halo keeps small text legible when trails or grid lines pass behind translucent panels. */
+:root[data-theme="tron"] .card,
+:root[data-theme="tron"] .table-wrap,
+:root[data-theme="tron"] .filterbar,
+:root[data-theme="tron"] .headline,
+:root[data-theme="tron"] .sidebar {
+  text-shadow: 0 0 3px rgba(0, 6, 12, 0.95), 0 1px 1px rgba(0, 6, 12, 0.95);
+}
+:root[data-theme="tron"] table.data td { background: rgba(0, 6, 12, 0.25); }
 
 /* Cards: cut corners are drawn on pseudo-elements so glows/focus rings on content are never clipped. */
 :root[data-theme="tron"] .card,
@@ -457,7 +471,7 @@
 :root[data-theme="tron"] .card-head::after { content: ""; position: absolute; left: 0; bottom: -1px; width: 48px; height: 2px; background: #00f0ff; box-shadow: 0 0 6px #00f0ff; }
 
 :root[data-theme="tron"] .table-wrap {
-  background: var(--glass-card); border: 1px solid #00f0ff; border-radius: 0; box-shadow: inset 0 0 8px rgba(0, 240, 255, 0.18);
+  background: var(--glass-table); border: 1px solid #00f0ff; border-radius: 0; box-shadow: inset 0 0 8px rgba(0, 240, 255, 0.25);
   -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
 }
 :root[data-theme="tron"] table.data th { background: #031420; color: var(--text-muted); font-family: var(--font-sans); }
@@ -490,7 +504,7 @@
 /* Charts: thin wireframe lines with glowing node dots */
 :root[data-theme="tron"] .recharts-line-curve { stroke-width: 1.5; filter: drop-shadow(0 0 3px currentColor); }
 :root[data-theme="tron"] .recharts-cartesian-grid line { stroke: #003b6f; }
-:root[data-theme="tron"] .recharts-text { fill: #a8dbe8; }
+:root[data-theme="tron"] .recharts-text { fill: #c0e8f2; }
 
 /* Sidebar: tall narrow "Recognizer" panel with a cyan edge line */
 :root[data-theme="tron"] .sidebar {

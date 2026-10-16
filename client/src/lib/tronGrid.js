@@ -3,6 +3,7 @@
    grid lines and a rare drifting identity disc. Tunables are the constants below. */
 const FRAME_MS = 1000 / 30;          // ~30 fps cap
 const KEY = "strava:tronFx";
+const TRAIL_CORE_ALPHA = 0.75;       // max trail core alpha (glow is 0.2x of it)
 const OPACITY = 0.9;                 // canvas opacity
 const HORIZON = 0.42;                // horizon height as a fraction of the viewport
 const GRID_SPEED = 0.35;             // grid rows scrolled toward the viewer per second
@@ -183,8 +184,8 @@ function drawTrail(t) {
     const fade = Math.max(0.08, 1 - cells / FADE_CELLS);
     cells += lenCells;
     if (a.z <= 0 && b.z <= 0) continue;
-    line(a.x, a.y, b.x, b.y, t.c, 0.18 * fade, 7);
-    line(a.x, a.y, b.x, b.y, t.c, 0.9 * fade, 2);
+    line(a.x, a.y, b.x, b.y, t.c, TRAIL_CORE_ALPHA * 0.2 * fade, 7);
+    line(a.x, a.y, b.x, b.y, t.c, TRAIL_CORE_ALPHA * fade, 2);
   }
   const hd = pts[pts.length - 1];
   ctx.fillStyle = rgba("230,249,255", 0.95);
