@@ -196,9 +196,13 @@ panels. The self-hosted WOFF2 files are in `client/public/fonts/`; both fonts ar
 licensed under the SIL Open Font License 1.1 (license texts are in that directory).
 Sign panels use the reference image's sampled blue-grey fill (`#BCCFD9`) and thin
 dark blue-grey border (`#1E3138`, approximately 1 px in the source image). Titled
-cards and KPI tiles place their uppercase title inline at the bottom-right border. Tune
+cards and KPI tiles place their uppercase title inline at the bottom-left, flush with the
+panel edge; the left border stops a gap above the title with a square cut and the bottom
+border continues to its right. The fill extends past the inset border line by
+`--severance-panel-bleed` (5px, about 11px of the 500px reference). Tune
 `--severance-panel-fill`, `--severance-panel-border`,
-`--severance-panel-border-width` and the percentage panel alpha tokens in the
+`--severance-panel-border-width`, `--severance-panel-bleed`, `--severance-title-size`,
+`--severance-title-gap` and the percentage panel alpha tokens in the
 Severance block of `client/src/styles/theme.css`; `--font-heading` and `--font-grid`
 select the two typefaces there. Translucent panels keep the canvas visible, while
 dialogs, drawers, tooltips and selects use the same fill opaquely. The background

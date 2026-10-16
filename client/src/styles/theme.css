@@ -675,7 +675,10 @@
   --severance-panel-fill: #bccfd9;
   --severance-panel-border: #1e3138;
   --severance-panel-border-width: 1px;
-  --severance-title-fill: color-mix(in srgb, var(--severance-panel-fill) var(--severance-panel-alpha), transparent);
+  --severance-panel-bleed: 5px;
+  --severance-title-size: 0.72rem;
+  --severance-title-height: calc(var(--severance-title-size) * 1.2);
+  --severance-title-gap: 0.45rem;
   --glass-sidebar: color-mix(in srgb, var(--severance-panel-fill) var(--severance-sidebar-alpha), transparent);
   --glass-card: color-mix(in srgb, var(--severance-panel-fill) var(--severance-panel-alpha), transparent);
   --glass-table: color-mix(in srgb, var(--severance-panel-fill) var(--severance-table-alpha), transparent);
@@ -713,7 +716,6 @@
 }
 :root[data-theme="severance"] h1 { font-size: 1.05rem; }
 :root[data-theme="severance"] .card h2 { font-size: 0.72rem; }
-:root[data-theme="severance"] .kpi-label { font-size: 0.68rem; letter-spacing: 0.015em; }
 :root[data-theme="severance"] .profile-name { font-size: 0.78rem; letter-spacing: 0.025em; }
 :root[data-theme="severance"] .nav-link,
 :root[data-theme="severance"] .tab { font-size: 0.72rem; }
@@ -747,6 +749,24 @@
   border-radius: 12px;
   box-shadow: var(--shadow);
 }
+/* Cards: the fill covers the whole box; the line is an inset layer, one bleed in from the edge. */
+:root[data-theme="severance"] .card { border: 0; }
+:root[data-theme="severance"] .card::after {
+  content: ""; position: absolute; z-index: 0; pointer-events: none;
+  inset: var(--severance-panel-bleed);
+  border: var(--severance-panel-border-width) solid var(--severance-panel-border);
+  border-radius: calc(12px - var(--severance-panel-bleed));
+}
+/* Titled cards: left line ends a gap above the title (square cut), bottom line is drawn by the title. */
+:root[data-theme="severance"] .card:has(> .card-head h2, > .kpi-label) { border-bottom-left-radius: 0; }
+:root[data-theme="severance"] .card:has(> .card-head h2, > .kpi-label)::after {
+  --sev-cut: calc(var(--severance-title-height) / 2 + var(--severance-title-gap));
+  bottom: calc(var(--severance-title-height) / 2);
+  border-bottom: 0;
+  border-radius: calc(12px - var(--severance-panel-bleed)) calc(12px - var(--severance-panel-bleed)) 0 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, var(--severance-panel-border-width) 100%,
+    var(--severance-panel-border-width) calc(100% - var(--sev-cut)), 0 calc(100% - var(--sev-cut)));
+}
 :root[data-theme="severance"] .table-wrap {
   background: var(--glass-table); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
   border: var(--severance-panel-border-width) solid var(--severance-panel-border);
@@ -758,37 +778,33 @@
 :root[data-theme="severance"] .card-head { border-left: 4px solid var(--accent); padding-left: 10px; border-bottom: 0; }
 :root[data-theme="severance"] .card > .card-head { border: 0; padding-left: 0; min-height: 1.2em; }
 :root[data-theme="severance"] .card > .card-head h2 ~ * { margin-left: auto; }
-:root[data-theme="severance"] .card > .card-head h2 {
+:root[data-theme="severance"] .card > .card-head h2,
+:root[data-theme="severance"] .card > .kpi-label {
   position: absolute;
-  right: 12px;
-  bottom: -0.55em;
+  left: 0;
+  right: var(--severance-panel-bleed);
+  bottom: 0;
   z-index: 1;
-  max-width: calc(100% - 24px);
   overflow: hidden;
-  padding: 0 8px;
-  background: var(--severance-title-fill);
-  color: var(--text-muted);
+  margin: 0;
+  padding: 0;
+  height: var(--severance-title-height);
+  font-size: var(--severance-title-size);
+  letter-spacing: 0.015em;
   line-height: 1.2;
-  text-align: right;
+  text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+  pointer-events: none;
+}
+/* Bottom line continues right of the title text (absolute pseudo keeps its inline static position). */
+:root[data-theme="severance"] .card > .card-head h2::after,
+:root[data-theme="severance"] .card > .kpi-label::after {
+  content: ""; position: absolute; top: calc(50% - var(--severance-panel-border-width) / 2);
+  width: 100%; margin-left: 0.6em; height: var(--severance-panel-border-width); background: var(--severance-panel-border);
 }
 :root[data-theme="severance"] .card > .card-head h2::before { content: none; }
 :root[data-theme="severance"] .kpi { padding-bottom: 38px; }
-:root[data-theme="severance"] .kpi-label {
-  position: absolute;
-  right: 12px;
-  bottom: -0.55em;
-  z-index: 1;
-  max-width: calc(100% - 24px);
-  overflow: hidden;
-  padding: 0 8px;
-  background: var(--severance-title-fill);
-  line-height: 1.2;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 :root[data-theme="severance"] .card-head,
 :root[data-theme="severance"] .card-head h2 { color: var(--text-muted); }
 
