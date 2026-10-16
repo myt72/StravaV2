@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { SEGMENT_RANKINGS_ENABLED } from "../lib/features.js";
 import { isBackfillActive, useAppData } from "../context/AppData.jsx";
 import { comma, formatDateTime } from "../lib/format.js";
 import { Card, ConfirmDialog, PageHead } from "../components/ui.jsx";
@@ -134,7 +135,7 @@ export default function Admin() {
         </Card>
       </div>
 
-      <div className="grid two">
+      {SEGMENT_RANKINGS_ENABLED && <div className="grid two">
         <Card title="Segment rankings (leaderboard backfill)" right={rankActive && <span className="nav-badge pulse">Running</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>
             Looks up the top 3 of each segment where you hold a PR, to find your KOMs, 2nd and 3rd places. Uses one API
@@ -159,7 +160,7 @@ export default function Admin() {
             <button type="button" className="btn" disabled={working || !rankActive} onClick={stopSegmentRanks}>Stop</button>
           </div>
         </Card>
-      </div>
+      </div>}
 
       <ConfirmDialog open={confirmFull} title="Run a full pull?" confirmLabel="Run full pull"
         onCancel={() => setConfirmFull(false)} onConfirm={() => { setConfirmFull(false); pull("full"); }}>

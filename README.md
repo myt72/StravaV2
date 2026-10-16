@@ -84,6 +84,10 @@ Thresholds can be overridden by `settings.json`'s `routeMatching` key or `PUT /a
 
 ## Segment rankings (Records > Segment summary)
 
+**Currently disabled.** Strava returns HTTP 403 for the segment leaderboard endpoint for this app, so the panels are hidden.
+Setting `SEGMENT_RANKINGS_ENABLED = true` in `client/src/lib/features.js` brings them back (the backfill would then stop on the same 403 until Strava allows it).
+The description below is of the dormant feature.
+
 The Segment summary tab lists the segments where you currently hold the KOM, 2nd or 3rd place (tiers are exclusive).
 Strava only reports your own PR rank per effort, so current leaderboard ranks need a backfill:
 
