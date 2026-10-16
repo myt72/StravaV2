@@ -57,11 +57,15 @@ document.querySelectorAll("section div").forEach(div => {
 
 
 const employeeData = [
+    { name: "Joleen T.", tasks: 777, compliance: 77 },
+    { name: "Mark T.", tasks: 72, compliance: 55 },
+    { name: "Winnie T.", tasks: 360, compliance: 85 },
     { name: "Mark S.", tasks: 238, compliance: 92 },
     { name: "Helly R.", tasks: 183, compliance: 85 },
     { name: "Irving B.", tasks: 210, compliance: 88 },
     { name: "Dylan G.", tasks: 305, compliance: 95 },
     { name: "Ms. Cobel", tasks: 400, compliance: 98 },
+    { name: "Jeffery L.", tasks: 420, compliance: 0 },
 ];
 
 function generateEmployeeReports() {
