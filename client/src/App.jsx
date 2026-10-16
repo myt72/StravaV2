@@ -61,9 +61,11 @@ export default function App() {
       <div className="main">
         <FilterBar />
         <main id="main-content" tabIndex={-1} aria-label={title} style={{ outline: "none" }}>
-          <Gate viewId={viewId}>
-            <View route={route} />
-          </Gate>
+          <div key={viewId} className="view-enter">
+            <Gate viewId={viewId}>
+              <View route={route} />
+            </Gate>
+          </div>
         </main>
       </div>
     </div>

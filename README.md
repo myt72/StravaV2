@@ -162,7 +162,7 @@ auto-collapses on viewports narrower than 1100px; a saved choice always wins.
 
 ## Themes
 
-Pick a theme in the sidebar. Besides Default, Matrix and Retro OS there is
+Pick a theme in the sidebar. Besides Default, Matrix and Retro OS there are two more themes:
 **Glitch / Datamosh**: a near-black theme with cyan/magenta/yellow-green accents,
 a low-resolution animated background (horizontal/vertical tears, pixel-sort
 streaks, macroblock smears, duplicated regions, channel splits, scan rolls),
@@ -173,6 +173,18 @@ toggles the animation (saved in `localStorage` as `strava:glitchFx`). It is
 animated by default, even when the OS prefers reduced motion; an explicit
 toggle choice always wins. Tunable constants are at the top of
 `client/src/lib/glitchFx.js` and in the glitch token block of `theme.css`.
+
+**TRON (1982 Grid)**: a black-void theme with electric cyan outlines, laser-red
+accents and cut-corner panels. The background canvas draws a perspective grid
+floor, light-cycle trails that turn at right angles and derez, data pulses and a
+rare drifting identity disc. Headings use an Orbitron-style stack (no web font is
+loaded), the sidebar avatar gets a rotating identity-disc ring, and view changes
+use a stepped horizontal wipe. The fixed "Tron: animated/static" button toggles
+all motion (saved in `localStorage` as `strava:tronFx`). It is animated by
+default, even when the OS prefers reduced motion; an explicit toggle choice always
+wins. Tunable constants (canvas opacity, trail count, spawn gap, grid speed) are
+at the top of `client/src/lib/tronGrid.js`; panel alpha is in the tron token block
+of `theme.css`.
 
 ## Frontend (Vite + React)
 

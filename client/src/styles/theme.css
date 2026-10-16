@@ -347,6 +347,221 @@
 :root[data-theme="glitch"] .glitch-fx-toggle:hover { background: #1f1f2e; }
 :root[data-theme="glitch"] .glitch-fx-toggle:focus-visible { outline: 2px solid #ffee00; outline-offset: 2px; }
 
+/* TRON (1982 Grid): black void, cyan wireframe panels with cut corners; canvas (lib/tronGrid.js) shows through. */
+@property --tron-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+:root[data-theme="tron"] {
+  color-scheme: dark;
+  --font-sans: Inter, Roboto, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+  --font-display: "Orbitron", "Eurostile", "Bank Gothic", "Segoe UI", sans-serif;
+  --bg: #000000;
+  --surface: #02090f;
+  --surface-2: #031420;
+  --surface-hover: #062236;
+  --border: #00f0ff;
+  --text: #e6f9ff;
+  --text-muted: #a8dbe8;
+  --accent: #00f0ff;
+  --accent-strong: #00f0ff;
+  --accent-contrast: #000000;
+  --accent-soft: #00222c;
+  --focus: #e6f9ff;
+
+  --positive: #00f0ff;
+  --negative: #ff4d70;
+  --warning: #ffb3c2;
+
+  --chart-1: #00f0ff;
+  --chart-2: #ff003c;
+  --chart-3: #e6f9ff;
+  --chart-4: #2f8fe0;
+  --chart-5: #7af7ff;
+  --chart-6: #ff6b88;
+  --chart-grid: #003b6f;
+
+  --heat-0: #031420;
+  --heat-1: #003b6f;
+  --heat-2: #006c9c;
+  --heat-3: #00b4cc;
+  --heat-4: #00f0ff;
+  --heat-fg-0: var(--text);
+  --heat-fg-1: var(--text);
+  --heat-fg-2: #ffffff;
+  --heat-fg-3: #000000;
+  --heat-fg-4: #000000;
+
+  --radius: 0;
+  --radius-sm: 0;
+  --shadow: none;
+  --shadow-soft: none;
+  --overlay: rgba(0, 0, 0, 0.82);
+
+  /* Tunables: panel alpha, blur, cut-corner size, sweep timing */
+  --glass-sidebar: rgba(0, 6, 12, 0.78);
+  --glass-card: rgba(0, 8, 16, 0.78);
+  --glass-blur: blur(3px);
+  --tron-cut: 12px;
+  --tron-sweep-duration: 7s;
+  --opaque-sidebar: #00060c;
+  --opaque-card: #02090f;
+  --opaque-overlay: #02090f;
+
+  background: var(--bg);
+}
+
+:root[data-theme="tron"] body,
+:root[data-theme="tron"] #root,
+:root[data-theme="tron"] .shell,
+:root[data-theme="tron"] .main { background: transparent; }
+
+/* Headings: uppercase, letter-spaced, lightly glowing. Body and table text keep the body font. */
+:root[data-theme="tron"] h1,
+:root[data-theme="tron"] h2,
+:root[data-theme="tron"] .profile-name,
+:root[data-theme="tron"] .kpi-label {
+  font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--text);
+  text-shadow: 0 0 6px rgba(0, 240, 255, 0.55);
+}
+
+/* Cards: cut corners are drawn on pseudo-elements so glows/focus rings on content are never clipped. */
+:root[data-theme="tron"] .card,
+:root[data-theme="tron"] .filterbar,
+:root[data-theme="tron"] .headline {
+  position: relative; isolation: isolate; background: transparent; border: 0; box-shadow: none;
+}
+:root[data-theme="tron"] .card::before,
+:root[data-theme="tron"] .filterbar::before,
+:root[data-theme="tron"] .headline::before,
+:root[data-theme="tron"] .card::after,
+:root[data-theme="tron"] .filterbar::after,
+:root[data-theme="tron"] .headline::after {
+  content: ""; position: absolute; z-index: -1; pointer-events: none;
+  --cut: var(--tron-cut);
+  clip-path: polygon(var(--cut) 0, 100% 0, 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, 0 100%, 0 var(--cut));
+}
+:root[data-theme="tron"] .card::before,
+:root[data-theme="tron"] .filterbar::before,
+:root[data-theme="tron"] .headline::before { inset: 0; background: #00f0ff; }
+:root[data-theme="tron"] .card::after,
+:root[data-theme="tron"] .filterbar::after,
+:root[data-theme="tron"] .headline::after {
+  inset: 1px; --cut: calc(var(--tron-cut) - 1px); background: var(--glass-card);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+:root[data-theme="tron"] .card:hover::before,
+:root[data-theme="tron"] .filterbar:hover::before { background: #e6f9ff; }
+:root[data-theme="tron"] .filterbar { position: sticky; }
+:root[data-theme="tron"] .headline { border-left: 0; }
+/* Card header accent bar and thin dividers */
+:root[data-theme="tron"] .card-head { border-bottom: 1px solid #003b6f; padding-bottom: 8px; position: relative; }
+:root[data-theme="tron"] .card-head::after { content: ""; position: absolute; left: 0; bottom: -1px; width: 48px; height: 2px; background: #00f0ff; box-shadow: 0 0 6px #00f0ff; }
+
+:root[data-theme="tron"] .table-wrap {
+  background: var(--glass-card); border: 1px solid #00f0ff; border-radius: 0; box-shadow: inset 0 0 8px rgba(0, 240, 255, 0.18);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+:root[data-theme="tron"] table.data th { background: #031420; color: var(--text-muted); font-family: var(--font-sans); }
+:root[data-theme="tron"] table.data th,
+:root[data-theme="tron"] table.data td { border-bottom-color: #003b6f; }
+
+:root[data-theme="tron"] dialog,
+:root[data-theme="tron"] .drawer,
+:root[data-theme="tron"] .chart-tip,
+:root[data-theme="tron"] select,
+:root[data-theme="tron"] option {
+  background: var(--opaque-overlay); color: var(--text); border: 1px solid #00f0ff;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+:root[data-theme="tron"] input { background: #02090f; color: var(--text); border: 1px solid #00f0ff; }
+:root[data-theme="tron"] input:disabled,
+:root[data-theme="tron"] select:disabled,
+:root[data-theme="tron"] .btn:disabled { color: #8fc3d1; }
+:root[data-theme="tron"] .btn { background: transparent; border: 1px solid #00f0ff; color: var(--text); text-transform: uppercase; letter-spacing: 0.06em; }
+:root[data-theme="tron"] .btn:hover:not(:disabled) { background: #062236; border-color: #e6f9ff; box-shadow: 0 0 8px rgba(0, 240, 255, 0.5); }
+:root[data-theme="tron"] .btn.primary { background: #00f0ff; color: #000; }
+:root[data-theme="tron"] .btn.danger { color: #ff4d70; border-color: #ff003c; }
+:root[data-theme="tron"] .seg,
+:root[data-theme="tron"] .chip { background: transparent; border-color: #00f0ff; border-radius: 0; }
+:root[data-theme="tron"] .progress { background: #031420; border: 1px solid #003b6f; border-radius: 0; }
+:root[data-theme="tron"] .progress > div { background: #00f0ff; box-shadow: 2px 0 8px #00f0ff; }
+:root[data-theme="tron"] .skeleton { background: #031c30; }
+:root[data-theme="tron"] :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 0; }
+
+/* Charts: thin wireframe lines with glowing node dots */
+:root[data-theme="tron"] .recharts-line-curve { stroke-width: 1.5; filter: drop-shadow(0 0 3px currentColor); }
+:root[data-theme="tron"] .recharts-cartesian-grid line { stroke: #003b6f; }
+:root[data-theme="tron"] .recharts-text { fill: #a8dbe8; }
+
+/* Sidebar: tall narrow "Recognizer" panel with a cyan edge line */
+:root[data-theme="tron"] .sidebar {
+  background: var(--glass-sidebar); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  border-right: 1px solid #00f0ff; box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+}
+:root[data-theme="tron"] .sidebar::after { content: none; position: absolute; top: 0; right: -1px; width: 3px; height: 64px; background: #e6f9ff; opacity: 0.5; pointer-events: none; }
+:root[data-theme="tron"] .nav-link { color: var(--text-muted); border: 1px solid transparent; }
+:root[data-theme="tron"] .nav-link:hover { background: #062236; color: var(--text); border-color: #00f0ff; }
+:root[data-theme="tron"] .nav-link[aria-current="page"] { background: #00222c; color: #00f0ff; border-color: #003b6f; box-shadow: inset 3px 0 0 #ff003c; }
+:root[data-theme="tron"] .nav-link svg { stroke-linecap: square; stroke-linejoin: miter; stroke-width: 1.5; }
+/* Identity disc: glowing cyan ring with a gap that rotates slowly */
+:root[data-theme="tron"] .avatar {
+  box-sizing: border-box; padding: 3px; color: var(--text); background: conic-gradient(from var(--tron-angle), #00f0ff 0 290deg, transparent 290deg 360deg);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+}
+:root[data-theme="tron"] .avatar img { border-radius: 50%; }
+
+/* Motion follows data-tron-motion (set by tronGrid.js: animated by default, saved toggle wins). */
+:root[data-theme="tron"][data-tron-motion="static"] *,
+:root[data-theme="tron"][data-tron-motion="static"] *::before,
+:root[data-theme="tron"][data-tron-motion="static"] *::after { animation: none !important; }
+
+:root[data-theme="tron"][data-tron-motion="animated"] .view-enter { animation: tron-wipe 0.32s steps(8, end) backwards; }
+:root[data-theme="tron"][data-tron-motion="animated"] .avatar { animation: tron-spin 12s linear infinite; }
+:root[data-theme="tron"][data-tron-motion="animated"] .sidebar::after { content: ""; animation: tron-sweep var(--tron-sweep-duration) linear infinite; }
+:root[data-theme="tron"][data-tron-motion="animated"] .progress > div {
+  background: linear-gradient(90deg, transparent, rgba(230, 249, 255, 0.85), transparent) -40% 0 / 40% 100% no-repeat, #00f0ff;
+  animation: tron-beam 1.6s linear infinite;
+}
+:root[data-theme="tron"][data-tron-motion="animated"] .skeleton {
+  background: linear-gradient(90deg, transparent, rgba(0, 240, 255, 0.4), transparent) -40% 0 / 40% 100% no-repeat, #031c30;
+  animation: tron-beam 1.6s linear infinite;
+}
+:root[data-theme="tron"][data-tron-motion="animated"] .btn:hover:not(:disabled),
+:root[data-theme="tron"][data-tron-motion="animated"] .nav-link:hover {
+  background-image: linear-gradient(90deg, transparent, #00f0ff, transparent); background-repeat: no-repeat; background-size: 40% 2px; background-position: -50% 100%;
+  animation: tron-power 0.6s linear forwards;
+}
+:root[data-theme="tron"][data-tron-motion="animated"] .card:hover::before,
+:root[data-theme="tron"][data-tron-motion="animated"] .filterbar:hover::before {
+  background: linear-gradient(90deg, #00f0ff 0 35%, #e6f9ff 50%, #00f0ff 65% 100%) 0 0 / 300% 100%;
+  animation: tron-power-card 0.8s linear forwards;
+}
+:root[data-theme="tron"][data-tron-motion="animated"] .btn:active:not(:disabled),
+:root[data-theme="tron"][data-tron-motion="animated"] .nav-link:active { animation: tron-pulse 0.2s linear; }
+@keyframes tron-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes tron-spin { to { --tron-angle: 360deg; } }
+@keyframes tron-sweep { from { top: -64px; opacity: 0; } 10% { opacity: 0.5; } 40% { top: 100%; opacity: 0; } to { top: 100%; opacity: 0; } }
+@keyframes tron-beam { to { background-position: 140% 0, 0 0; } }
+@keyframes tron-power { to { background-position: 150% 100%; } }
+@keyframes tron-power-card { to { background-position: 100% 0; } }
+@keyframes tron-pulse { from { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.6); } to { box-shadow: 0 0 0 4px rgba(0, 240, 255, 0); } }
+
+/* Toggle button (created by lib/tronGrid.js; exists only while TRON is active) */
+:root[data-theme="tron"] .tron-fx-toggle {
+  position: fixed; right: 12px; bottom: 12px; z-index: 50; padding: 6px 10px;
+  font: 12px var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: #e6f9ff; background: #000;
+  border: 1px solid #00f0ff; border-radius: 0; cursor: pointer;
+}
+:root[data-theme="tron"] .tron-fx-toggle:hover { background: #062236; }
+:root[data-theme="tron"] .tron-fx-toggle:focus-visible { outline: 2px solid #e6f9ff; outline-offset: 2px; }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root[data-theme="tron"] .sidebar { background: var(--opaque-sidebar); }
+  :root[data-theme="tron"] .table-wrap { background: var(--opaque-card); }
+  :root[data-theme="tron"] .card::after,
+  :root[data-theme="tron"] .filterbar::after,
+  :root[data-theme="tron"] .headline::after { background: var(--opaque-card); }
+}
+
 /* Retro OS (Windows 95): ported from V1 public/themes/retro-os.css and mapped to V2 classes/tokens. */
 :root[data-theme="retro-os"] {
   color-scheme: light;
