@@ -1,7 +1,8 @@
+import { useEffect } from "react";
 import { useAppData } from "./context/AppData.jsx";
 import { useRoute } from "./lib/router.js";
 import { useTheme } from "./lib/theme.js";
-import { FilterBar, NAV, Sidebar, useNavCollapsed } from "./components/Shell.jsx";
+import { FilterBar, NAV, navFor, Sidebar, useNavCollapsed } from "./components/Shell.jsx";
 import { StateMessage, ViewSkeleton } from "./components/ui.jsx";
 import Overview from "./views/Overview.jsx";
 import Trends from "./views/Trends.jsx";
@@ -10,8 +11,9 @@ import Records from "./views/Records.jsx";
 import Garage from "./views/Garage.jsx";
 import Activities from "./views/Activities.jsx";
 import Admin from "./views/Admin.jsx";
+import Mdr from "./views/Mdr.jsx";
 
-const VIEWS = { overview: Overview, trends: Trends, patterns: Patterns, records: Records, garage: Garage, activities: Activities, admin: Admin };
+const VIEWS = { overview: Overview, trends: Trends, patterns: Patterns, records: Records, garage: Garage, activities: Activities, admin: Admin, mdr: Mdr };
 
 function Gate({ viewId, children }) {
   const { status, error, serverMessage, reload } = useAppData();
@@ -50,7 +52,16 @@ export default function App() {
   const route = useRoute();
   const themeState = useTheme();
   const [navCollapsed, toggleNav] = useNavCollapsed();
-  const viewId = VIEWS[route.segments[0]] ? route.segments[0] : "overview";
+  const requested = VIEWS[route.segments[0]] ? route.segments[0] : "overview";
+  const viewId = navFor(themeState.theme.id).some(n => n.id === requested) ? requested : "overview";
+  const redirected = viewId !== requested;
+  useEffect(() => {
+    if (redirected) window.location.replace("#/overview");
+  }, [redirected]);
+  useEffect(() => {
+    document.documentElement.dataset.view = viewId;
+    return () => { delete document.documentElement.dataset.view; };
+  }, [viewId]);
   const View = VIEWS[viewId];
   const title = NAV.find(n => n.id === viewId)?.label;
 
@@ -59,12 +70,14 @@ export default function App() {
       <a className="skip-link" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById("main-content")?.focus(); }}>Skip to content</a>
       <Sidebar current={viewId} themeState={themeState} collapsed={navCollapsed} onToggleNav={toggleNav} />
       <div className="main">
-        <FilterBar />
+        {viewId !== "mdr" && <FilterBar />}
         <main id="main-content" tabIndex={-1} aria-label={title} style={{ outline: "none" }}>
           <div key={viewId} className="view-enter">
-            <Gate viewId={viewId}>
-              <View route={route} />
-            </Gate>
+            {viewId === "mdr" ? <View route={route} /> : (
+              <Gate viewId={viewId}>
+                <View route={route} />
+              </Gate>
+            )}
           </div>
         </main>
       </div>

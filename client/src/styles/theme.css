@@ -917,6 +917,7 @@
   font: 12px var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text); background: #f8f9f7;
   border: 1px solid var(--accent); border-radius: var(--radius-sm); cursor: pointer;
 }
+:root[data-theme="severance"][data-view="mdr"] .severance-fx-toggle { top: 12px; bottom: auto; }
 :root[data-theme="severance"] .severance-fx-toggle:hover { background: var(--surface-hover); }
 :root[data-theme="severance"] .severance-fx-toggle:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 

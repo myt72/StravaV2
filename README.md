@@ -164,6 +164,21 @@ icons + labels and a narrow icons-only rail (labels become tooltips). The choice
 is saved in `localStorage` (`stravaV2:navCollapsed`). With no saved choice the nav
 auto-collapses on viewports narrower than 1100px; a saved choice always wins.
 
+## Macrodata Refinement page
+
+With the **Severance (Lumon)** theme selected, the nav shows "Macrodata Refinement"
+(`#/mdr`), a full-height `<iframe>` of the static app in `client/public/mdr/`
+(a copy of https://github.com/RJoshi141/lumon). Vite serves that folder as-is at
+`<base>/mdr/`, so its CSS/JS never touch the dashboard bundles. The Filters bar is
+hidden on this page and the "Severance: animated/static" button moves to the top right.
+On any other theme the nav entry is absent and `#/mdr` redirects to Overview.
+
+**Attribution:** see `client/public/mdr/NOTICE.md`. The upstream repo has no licence, so
+get the author's permission or replace the code before publishing.
+
+**Remove it:** delete `client/public/mdr/`, `client/src/views/Mdr.jsx`, the `mdr` entries in
+`client/src/App.jsx`, `NAV` (`Shell.jsx`) and `ui.jsx`, and the `.mdr-frame` / `data-view="mdr"` CSS rules.
+
 ## Themes
 
 Pick a theme in the sidebar. Besides Default, Matrix and Retro OS there are two more themes:

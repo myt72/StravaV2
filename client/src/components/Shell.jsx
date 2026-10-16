@@ -12,8 +12,14 @@ export const NAV = [
   { id: "records", label: "Records" },
   { id: "garage", label: "Garage" },
   { id: "activities", label: "Activities" },
-  { id: "admin", label: "Data" }
+  { id: "admin", label: "Data" },
+  { id: "mdr", label: "Macrodata Refinement", themeId: "severance" }
 ];
+
+/** Nav entries available for a theme (entries with a themeId are shown only for that theme). */
+export function navFor(themeId) {
+  return NAV.filter(n => !n.themeId || n.themeId === themeId);
+}
 
 function ProfileLink() {
   const [imgFailed, setImgFailed] = useState(false);
@@ -68,7 +74,7 @@ export function Sidebar({ current, themeState, collapsed, onToggleNav }) {
       </button>
       <ProfileLink />
       <nav className="nav" id="main-nav" aria-label="Main">
-        {NAV.map(item => (
+        {navFor(theme.id).map(item => (
           <a key={item.id} href={`#/${item.id}`} className="nav-link" aria-label={item.label} title={item.label}
             aria-current={current === item.id ? "page" : undefined}>
             <Icon name={item.id === "admin" ? "admin" : item.id} />

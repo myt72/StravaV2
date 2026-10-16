@@ -329,3 +329,7 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
 .focus-area:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .focus-preview { display: grid; gap: 6px; }
 @media (max-width: 640px) { .focus-editor { grid-template-columns: 1fr; } }
+
+/* Macrodata Refinement page: isolated app in an iframe filling the main area (no filter bar on this route) */
+.mdr-frame { display: block; width: 100%; height: 100vh; border: 0; }
+@media (max-width: 860px) { .mdr-frame { height: calc(100vh - 64px); } }
