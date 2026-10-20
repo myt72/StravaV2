@@ -173,6 +173,64 @@ export function computeLongestGapDetails(dateKeys) {
   return best;
 }
 
+const DAY_MS = 86400000;
+// Monday-start week index of a local date key (matches getWeekStartMonday); 1970-01-01 was a Thursday.
+const weekIndexOf = dateKey => {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return Math.floor((Math.round(Date.UTC(y, m - 1, d) / DAY_MS) + 3) / 7);
+};
+
+/**
+ * Consecutive Monday-start calendar weeks with at least one activity, counted back from the current week.
+ * The streak is live only if the latest active week is the current or the immediately preceding week
+ * (an empty current week does not break it); otherwise it is 0.
+ * start/end are the first and last activity dates inside the streak.
+ */
+export function computeCurrentWeekStreak(dateKeys, now = new Date()) {
+  const keys = [...new Set(dateKeys)].filter(Boolean).sort();
+  const empty = { length: 0, start: null, end: null };
+  if (!keys.length) return empty;
+  const currentWeek = weekIndexOf(getDateKey(now));
+  const weekOf = keys.map(weekIndexOf);
+  const latest = weekOf[weekOf.length - 1];
+  if (latest > currentWeek || latest < currentWeek - 1) return empty;
+  const active = new Set(weekOf);
+  let first = latest, length = 0;
+  while (active.has(first)) { length += 1; first -= 1; }
+  first += 1;
+  const start = keys[weekOf.findIndex(w => w === first)];
+  return { length, start, end: keys[keys.length - 1] };
+}
+
+/**
+ * Average miles per week for each calendar year, newest first. Completed years divide by their full
+ * 52/53 ISO weeks; the current year divides by the weeks elapsed so far (day of year / 7, rounded up).
+ */
+export function buildWeeklyDistanceAverages(activities, now = new Date()) {
+  const totals = {};
+  (activities || []).forEach(a => {
+    const d = new Date(a.start_date);
+    if (Number.isNaN(d.getTime())) return;
+    const y = d.getFullYear();
+    totals[y] = (totals[y] || 0) + miles(a.distance || 0);
+  });
+  const thisYear = now.getFullYear();
+  const rows = Object.keys(totals).map(Number).sort((a, b) => b - a).map(year => {
+    let weeks;
+    if (year < thisYear) weeks = isoWeeksInYear(year);
+    else {
+      const dayOfYear = Math.round((Date.UTC(year, now.getMonth(), now.getDate()) - Date.UTC(year, 0, 1)) / DAY_MS) + 1;
+      weeks = Math.max(1, Math.ceil(dayOfYear / 7));
+    }
+    return { year, miles: totals[year], weeks, average: totals[year] / weeks, partial: year >= thisYear, delta: null };
+  });
+  rows.forEach((r, i) => {
+    const prev = rows[i + 1];
+    if (prev && prev.year === r.year - 1) r.delta = r.average - prev.average;
+  });
+  return rows;
+}
+
 export function buildKpis(activities, gearTotals) {
   const sum = key => activities.reduce((s, a) => s + (a[key] || 0), 0);
   const allDayKeys = activities.map(a => getDateKey(a.start_date));
@@ -185,7 +243,8 @@ export function buildKpis(activities, gearTotals) {
     activeBikes: Object.keys(gearTotals || {}).length,
     longestRideStreak: computeLongestStreakDetails(rideDayKeys),
     longestActivityStreak: computeLongestStreakDetails(allDayKeys),
-    longestOffBikeStreak: computeLongestGapDetails(rideDayKeys)
+    longestOffBikeStreak: computeLongestGapDetails(rideDayKeys),
+    currentWeekStreak: computeCurrentWeekStreak(allDayKeys)
   };
 }
 
@@ -803,7 +862,10 @@ const DISTANCE_BUCKETS = [
   { key: "1-2", label: "1.0–2.0 mi", min: 1.0, max: 2.0 },
   { key: "2-3", label: "2.0–3.0 mi", min: 2.0, max: 3.0 },
   { key: "3-5", label: "3.0–5.0 mi", min: 3.0, max: 5.0 },
-  { key: "5plus", label: "5.0+ mi", min: 5.0, max: Infinity }
+  { key: "5plus", label: "5.0+ mi", min: 5.0, max: Infinity },
+  { key: "10plus", label: "10+ mi", min: 10, max: Infinity },
+  { key: "15plus", label: "15+ mi", min: 15, max: Infinity },
+  { key: "20plus", label: "20+ mi", min: 20, max: Infinity }
 ];
 
 export function buildSegmentDistanceHighlights(data, excludedSegmentIds) {

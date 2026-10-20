@@ -254,9 +254,18 @@ button.period-tile:focus-visible { outline: 3px solid var(--focus); outline-offs
 .list-btn { display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 12px; text-align: left; border: 0; background: transparent; padding: 9px 4px; border-radius: 6px; }
 .list-btn:hover { background: var(--surface-hover); }
 .record-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
-.record-title { font-weight: 600; margin-top: 4px; overflow-wrap: anywhere; }
-.record-value { font-size: 1.3rem; font-weight: 700; margin-top: 4px; }
+.record-title { font-weight: 600; margin-top: 6px; overflow-wrap: anywhere; }
+.record-value { font-size: 1.3rem; font-weight: 700; margin: 4px 0 0; font-variant-numeric: tabular-nums; }
 .record-sub { color: var(--text-muted); font-size: 0.85rem; margin-top: 2px; }
+.record-hero-grid, .record-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.record-hero-grid { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-bottom: 8px; }
+.record-section { margin-top: 20px; }
+.record-section-title { font-size: 0.95rem; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.record-tile { display: flex; flex-direction: column; min-width: 0; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+.record-tile:hover, .record-tile:focus-within { background: var(--surface-hover); }
+.record-tile.hero { padding: 18px 20px; border-color: var(--accent, var(--border)); }
+.record-tile.hero .record-value { font-size: 2.1rem; line-height: 1.15; margin-top: 6px; }
+.record-tile.hero .record-title { font-size: 1.05rem; }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); overflow-x: auto; }
 .tab { border: 0; background: transparent; padding: 9px 14px; color: var(--text-muted); font-weight: 500; border-bottom: 3px solid transparent; white-space: nowrap; }
 .tab:hover { color: var(--text); }
