@@ -3,14 +3,14 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { filenameOf, focusPosition, useAppData } from "../context/AppData.jsx";
 import {
   buildBikeTypeStats, buildUnmappedBikes, buildConsistencyStats,
-  buildEverestStats, buildMileageMilestones, buildWeeklyRamp
+  buildEverestStats, buildMileageMilestones, buildWeeklyRamp, buildBikeSummaryRows
 } from "../lib/analytics.js";
 import {
-  comma, feet, formatDate, formatDayDifference, formatDuration, formatShortDate, formatSpeed, getMondayForIsoWeek, miles
+  comma, feet, formatDate, formatDayDifference, formatDuration, formatHms, formatShortDate, formatSpeed, getMondayForIsoWeek, miles
 } from "../lib/format.js";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
-import { Card, ChartTip, Empty, Icon, PageHead } from "../components/ui.jsx";
+import { Card, ChartTip, DataTable, Empty, Icon, PageHead } from "../components/ui.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
 
 const SORTS = [
@@ -35,7 +35,7 @@ function GarageAnalytics({ activities }) {
   const milestones = useMemo(() => buildMileageMilestones(rides), [rides]);
 
   const typeRows = bikeTypes.map(row => ({ label: row.type, value: miles(row.distance) }));
-  const everestRows = everest.years.map(row => ({ label: String(row.year), value: row.elevation }));
+  const everestRows = [...everest.years].reverse().map(row => ({ label: String(row.year), value: row.elevation }));
   const mileageFmt = value => `${comma(value.toFixed(1))} mi`;
 
   if (!rides.length) return null;
@@ -69,7 +69,7 @@ function GarageAnalytics({ activities }) {
           <div className="stat-row"><span>Longest qualifying-week streak</span><span className="num">{comma(consistency.longestWeekStreak)} weeks</span></div>
           <p className="hint">Qualifying weeks have at least {consistency.threshold} rides.</p>
           {consistency.years.length > 0 && <div className="week-list">
-            {consistency.years.map(row => <div className="stat-row" key={row.year}>
+            {[...consistency.years].reverse().map(row => <div className="stat-row" key={row.year}>
               <span>{row.year}</span><span className="num">{comma(row.weeksMeetingThreshold)} qualifying weeks</span>
             </div>)}
           </div>}
@@ -111,12 +111,20 @@ function GarageAnalytics({ activities }) {
         <Card title="Mileage milestones">
           <div className="record-value num">{comma(milestones.total.toFixed(1))} mi</div>
           <p className="hint">Lifetime mileage across the current filtered rides.</p>
-          {milestones.achieved.length ? milestones.achieved.slice(-5).reverse().map(item => (
-            <div className="stat-row" key={`${item.target}-${item.date}`}>
-              <span>{comma(item.target)} mi</span><span className="num">{formatDate(item.date)}</span>
-            </div>
-          )) : <p className="muted">No lifetime mileage milestones reached yet.</p>}
-          {milestones.upcoming && <p className="hint">Next: {comma(milestones.upcoming.target)} mi · projected {formatDate(milestones.upcoming.date)} ({milestones.upcoming.pace}).</p>}
+          <div className="milestone-list">
+            {milestones.achieved.map(item => (
+              <div className="stat-row" key={`${item.target}-${item.date}`}>
+                <span>{comma(item.target)} mi</span><span className="num">{formatDate(item.date)}</span>
+              </div>
+            ))}
+            {milestones.upcomingList.map(item => (
+              <div className="stat-row" key={`next-${item.target}`}>
+                <span>{comma(item.target)} mi</span>
+                <span className="num">{item.date ? `${formatDate(item.date)} (projected)` : "not projected"}</span>
+              </div>
+            ))}
+          </div>
+          <p className="hint">Projections use the {milestones.upcomingList[0]?.pace || "90-day average"} pace.</p>
         </Card>
       </div>
     </>
@@ -172,6 +180,41 @@ function Thumb({ gid, alt }) {
   );
 }
 
+function BikeSummary({ bikes }) {
+  const { rows, total } = useMemo(() => buildBikeSummaryRows(
+    Object.fromEntries(bikes.rows.map(r => [r.gid, r.total])),
+    Object.fromEntries(bikes.rows.map(r => [r.gid, { name: r.name }])),
+    gid => bikes.rows.find(r => r.gid === gid)?.isRetired
+  ), [bikes.rows]);
+  if (!rows.length) return null;
+  const f1 = n => comma(n.toFixed(1));
+  const f0 = n => comma(n.toFixed(0));
+  const speed = n => (n > 0 ? n.toFixed(1) : "-");
+  const columns = [
+    { key: "name", label: "Name", render: r => r.gid ? <>{r.name}{r.retired && <span className="muted"> (retired)</span>}</> : r.name },
+    { key: "count", label: "Count", align: "r", render: r => r.gid
+      ? <a href={`#/activities?bike=${encodeURIComponent(r.gid)}`} aria-label={`View ${comma(r.count)} activities for ${r.name}`}>{comma(r.count)}</a>
+      : comma(r.count) },
+    { key: "distance", label: "Total distance (mi)", align: "r", render: r => f1(r.distance) },
+    { key: "avgDistance", label: "Avg distance (mi)", align: "r", render: r => f1(r.avgDistance) },
+    { key: "elevation", label: "Total elevation (ft)", align: "r", render: r => f0(r.elevation) },
+    { key: "avgElevation", label: "Avg elevation (ft)", align: "r", render: r => f0(r.avgElevation) },
+    { key: "time", label: "Total time", align: "r", render: r => formatHms(r.time) },
+    { key: "avgTime", label: "Avg time", align: "r", render: r => formatHms(r.avgTime) },
+    { key: "avgSpeed", label: "Avg speed (mph)", align: "r", render: r => speed(r.avgSpeed) },
+    // No segments view can be filtered by bike, so PR counts link to that bike's Activities.
+    { key: "prs", label: "PRs", align: "r", render: r => r.gid
+      ? <a href={`#/activities?bike=${encodeURIComponent(r.gid)}`} aria-label={`View activities for ${r.name} (${comma(r.prs)} PRs)`}>{comma(r.prs)}</a>
+      : comma(r.prs) }
+  ];
+  return (
+    <Card title="All bikes">
+      <DataTable columns={columns} rows={rows} rowKey={r => r.gid || "total"} initialSort={{ key: "distance", dir: "desc" }}
+        caption="All bikes summary" pinnedRows={[{ ...total, name: "Total" }]} />
+    </Card>
+  );
+}
+
 function GarageList({ bikes, activities }) {
   const [search, setSearch] = usePersistentState("bikeSearch", "");
   const [sort, setSort] = usePersistentState("bikeSort", "distance-desc");
@@ -221,6 +264,7 @@ function GarageList({ bikes, activities }) {
         Pick a bike for its yearly history and photos, or tick “Compare” on several bikes.
       </PageHead>
       <GarageAnalytics activities={activities} />
+      <BikeSummary bikes={bikes} />
       <div className="toolbar">
         <input type="search" placeholder="Search bikes…" aria-label="Search bikes" value={search} onChange={e => setSearch(e.target.value)} />
         <label className="toolbar">Sort

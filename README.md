@@ -39,7 +39,7 @@ Use the gear ID shown by Strava for each bike; unmapped bikes are grouped as
 ignoring case/whitespace, and `1234567` is treated as `b1234567`. Types are
 resolved when the data is served, so existing caches work without a re-pull.
 `config.local.js` is read once at startup: restart the server after editing it.
-The Garage compares mileage by bike type and shows ride consistency, weekly mileage ramp, annual climbing toward Everest, and
+The Garage starts with a sortable "All bikes" summary (rides, distance, elevation, time as `hhh:mm:ss`, speed and PRs per bike, with a totals row; the Count and PR figures link to Activities filtered to that bike, since no segments view can be filtered by bike). It compares mileage by bike type and shows ride consistency, weekly mileage ramp, annual climbing toward Everest, and
 lifetime mileage milestones. These summaries follow the global date, activity
 type, and bike filters. The Patterns page includes a month-by-year activity
 matrix, best and lowest months, rolling 12-month totals, seasonality, and ride

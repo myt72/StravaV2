@@ -20,6 +20,12 @@ export function formatDuration(seconds) {
   return `${hours}h ${minutes}m`;
 }
 
+export function formatHms(seconds) {
+  const total = Math.max(0, Math.round(seconds || 0));
+  const pad = n => String(n).padStart(2, "0");
+  return `${Math.floor(total / 3600)}:${pad(Math.floor((total % 3600) / 60))}:${pad(total % 60)}`;
+}
+
 export function formatDate(dateStr) {
   if (!dateStr) return "-";
   const d = new Date(dateStr);
