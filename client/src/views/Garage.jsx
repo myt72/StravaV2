@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { filenameOf, focusPosition, useAppData } from "../context/AppData.jsx";
+import {
+  buildBikeMonthlyUsage, buildBikeTypeStats, buildConsistencyStats,
+  buildEverestStats, buildMileageMilestones, buildWeeklyRamp
+} from "../lib/analytics.js";
 import {
   comma, feet, formatDate, formatDayDifference, formatDuration, formatShortDate, formatSpeed, getMondayForIsoWeek, miles
 } from "../lib/format.js";
@@ -19,6 +23,130 @@ const SORTS = [
 ];
 
 const plural = (n, w) => `${comma(n)} ${w}${n === 1 ? "" : "s"}`;
+const CHART_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)"];
+const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, allowEscapeViewBox: { x: true, y: true } };
+
+function GarageAnalytics({ activities }) {
+  const [metric, setMetric] = usePersistentState("garageMonthlyMetric", "distance");
+  const rides = useMemo(() => activities.filter(a => a.sport_type === "Ride"), [activities]);
+  const bikeTypes = useMemo(() => buildBikeTypeStats(rides), [rides]);
+  const monthlyUsage = useMemo(() => buildBikeMonthlyUsage(rides, metric), [rides, metric]);
+  const consistency = useMemo(() => buildConsistencyStats(rides), [rides]);
+  const ramp = useMemo(() => buildWeeklyRamp(rides), [rides]);
+  const everest = useMemo(() => buildEverestStats(rides), [rides]);
+  const milestones = useMemo(() => buildMileageMilestones(rides), [rides]);
+
+  const series = monthlyUsage.bikes.map((name, index) => ({ name, key: `bike${index}`, color: CHART_COLORS[index % CHART_COLORS.length] }));
+  const usageRows = monthlyUsage.rows.map(row => ({
+    ...row,
+    ...Object.fromEntries(series.map(bike => [bike.key, row[bike.name] || 0]))
+  }));
+  const typeRows = bikeTypes.map(row => ({ label: row.type, value: miles(row.distance) }));
+  const everestRows = everest.years.map(row => ({ label: String(row.year), value: row.elevation }));
+  const mileageFmt = value => `${comma(value.toFixed(1))} mi`;
+
+  if (!rides.length) return null;
+  return (
+    <>
+      <Card title="Bike type comparison">
+        {typeRows.length ? (
+          <div className="chart-box short" role="img" aria-label="Ride miles by bike type">
+            <ResponsiveContainer>
+              <BarChart data={typeRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
+                <Tooltip {...tooltipProps} content={<ChartTip format={mileageFmt} />} cursor={{ fill: "var(--surface-hover)" }} />
+                <Bar dataKey="value" name="Distance" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : <p className="muted">No bike type data for the current filters.</p>}
+      </Card>
+
+      <Card title="Monthly use by bike" right={
+        <label className="toolbar">Metric
+          <select aria-label="Monthly bike usage metric" value={metric} onChange={e => setMetric(e.target.value)}>
+            <option value="distance">Miles</option>
+            <option value="moving_time">Hours</option>
+          </select>
+        </label>
+      }>
+        {usageRows.length ? (
+          <div className="chart-box short" role="img" aria-label={`Monthly ${metric === "distance" ? "miles" : "hours"} by bike`}>
+            <ResponsiveContainer>
+              <LineChart data={usageRows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--chart-grid)" />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
+                <Tooltip {...tooltipProps} content={<ChartTip format={metric === "distance" ? mileageFmt : value => `${value.toFixed(1)} h`} />} />
+                <Legend />
+                {series.map(bike => <Line key={bike.key} type="monotone" dataKey={bike.key} name={bike.name} stroke={bike.color} dot={false} />)}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : <p className="muted">No monthly ride history for the current filters.</p>}
+      </Card>
+
+      <div className="grid two">
+        <Card title="Ride consistency">
+          <div className="stat-row"><span>Longest ride streak</span><span className="num">{comma(consistency.longestDayStreak)} days</span></div>
+          <div className="stat-row"><span>Longest qualifying-week streak</span><span className="num">{comma(consistency.longestWeekStreak)} weeks</span></div>
+          <p className="hint">Qualifying weeks have at least {consistency.threshold} rides.</p>
+          {consistency.years.length > 0 && <div className="week-list">
+            {consistency.years.map(row => <div className="stat-row" key={row.year}>
+              <span>{row.year}</span><span className="num">{comma(row.weeksMeetingThreshold)} qualifying weeks</span>
+            </div>)}
+          </div>}
+        </Card>
+        <Card title="Weekly mileage ramp">
+          <div className="chart-box short" role="img" aria-label="Weekly ride mileage">
+            <ResponsiveContainer>
+              <BarChart data={ramp} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
+                <Tooltip {...tooltipProps} content={<ChartTip format={mileageFmt} />} />
+                <Bar dataKey="value" name="Distance" fill="var(--chart-2)">
+                  {ramp.map(row => <Cell key={row.key} fill={row.warning ? "var(--negative)" : "var(--chart-2)"} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="hint">Red weeks increased more than 10% over the previous week.</p>
+        </Card>
+      </div>
+
+      <div className="grid two">
+        <Card title="Everest challenge">
+          <div className="record-value num">{everest.lifetime.toFixed(2)} Everests</div>
+          <p className="hint">Lifetime climbing across the current filtered rides.</p>
+          <div className="chart-box short" role="img" aria-label="Annual climbing by year">
+            <ResponsiveContainer>
+              <BarChart data={everestRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(feet(value)))} />
+                <Tooltip {...tooltipProps} content={<ChartTip format={value => `${comma(feet(value).toFixed(0))} ft`} />} />
+                <Bar dataKey="value" name="Climbing" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+        <Card title="Mileage milestones">
+          <div className="record-value num">{comma(milestones.total.toFixed(1))} mi</div>
+          <p className="hint">Lifetime mileage across the current filtered rides.</p>
+          {milestones.achieved.length ? milestones.achieved.slice(-5).reverse().map(item => (
+            <div className="stat-row" key={`${item.target}-${item.date}`}>
+              <span>{comma(item.target)} mi</span><span className="num">{formatDate(item.date)}</span>
+            </div>
+          )) : <p className="muted">No lifetime mileage milestones reached yet.</p>}
+          {milestones.upcoming && <p className="hint">Next: {comma(milestones.upcoming.target)} mi · projected {formatDate(milestones.upcoming.date)} ({milestones.upcoming.pace}).</p>}
+        </Card>
+      </div>
+    </>
+  );
+}
 
 function useBikes() {
   const { filtered } = useAppData();
@@ -69,7 +197,7 @@ function Thumb({ gid, alt }) {
   );
 }
 
-function GarageList({ bikes }) {
+function GarageList({ bikes, activities }) {
   const [search, setSearch] = usePersistentState("bikeSearch", "");
   const [sort, setSort] = usePersistentState("bikeSort", "distance-desc");
 
@@ -117,6 +245,7 @@ function GarageList({ bikes }) {
           : <button type="button" className="btn" disabled>Compare bikes (0)</button>}>
         Pick a bike for its yearly history and photos, or tick “Compare” on several bikes.
       </PageHead>
+      <GarageAnalytics activities={activities} />
       <div className="toolbar">
         <input type="search" placeholder="Search bikes…" aria-label="Search bikes" value={search} onChange={e => setSearch(e.target.value)} />
         <label className="toolbar">Sort
@@ -320,6 +449,7 @@ function Compare({ bikes }) {
 
 export default function Garage({ route }) {
   const bikes = useBikes();
+  const { filtered } = useAppData();
   const sub = route.segments[1];
   if (sub === "compare") return <Compare bikes={bikes} />;
   if (sub) {
@@ -334,5 +464,5 @@ export default function Garage({ route }) {
     }
     return <BikeDetail bike={bike} bikes={bikes} />;
   }
-  return <GarageList bikes={bikes} />;
+  return <GarageList bikes={bikes} activities={filtered.activities} />;
 }

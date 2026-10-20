@@ -21,6 +21,28 @@ Open `http://localhost:5001/dashboard`. On first use, log in with Strava via
 `http://localhost:5001/auth` once; the token is kept in the server's memory, so
 log in again after restarting the server.
 
+## Bike types and analytics
+
+Optionally classify bikes by adding their Strava gear IDs to `bike_types` in
+`config.local.js` (copy the format from `config.local.example.js`):
+
+```js
+bike_types: {
+  "b1234567": "road",
+  "b2345678": "hardtail",
+  "b3456789": "full-suspension"
+}
+```
+
+Use the gear ID shown by Strava for each bike; unmapped bikes are grouped as
+`unknown`. The Garage compares mileage by bike type and shows monthly bike use,
+ride consistency, weekly mileage ramp, annual climbing toward Everest, and
+lifetime mileage milestones. These summaries follow the global date, activity
+type, and bike filters. The Patterns page includes a month-by-year activity
+matrix, best and lowest months, rolling 12-month totals, seasonality, and ride
+timing by weekday and hour. Pattern charts and the matrix use the browser's
+local time zone; matrix cells link to that month's activities.
+
 ## Admin password (Data tab)
 
 The Data & Admin tab and the endpoints behind it (`/api/analytics`, `/api/pr-backfill/*`, `/api/geo-backfill/*`)
