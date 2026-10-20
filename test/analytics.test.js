@@ -77,11 +77,8 @@ test("month/year patterns and ride-timing summaries aggregate by local date", ()
   const monthHighlights = analytics.buildMonthHighlights(rides, "distance");
   assert.strictEqual(monthHighlights.highlights.find(row => row.year === 2024).best.month, 1);
   assert.strictEqual(monthHighlights.rolling.length, 14);
-
-  const hourly = analytics.buildHourlyWeekdayMatrix(rides);
-  assert.strictEqual(hourly[0].values[7], 1);
-  assert.strictEqual(hourly[1].values[7], 1);
-  assert.strictEqual(hourly[5].values[18], 1);
+  assert.strictEqual(monthHighlights.rolling[0].label, "Feb 2024");
+  assert.strictEqual(monthHighlights.rolling[13].label, "Jan 2023");
   assert.strictEqual(analytics.buildSeasonalityIndex(rides, "count").length, 12);
 });
 
@@ -133,4 +130,39 @@ test("milestones list upcoming targets and drop absurd projections", () => {
     [activity("2020-01-01T08:00:00", { distance: 1609.34 * 1100 })], now);
   assert.ok(none.upcomingList.every(x => x.date === null));
   assert.strictEqual(none.upcoming, null);
+});
+
+test("bike type stats include hours and average speed", () => {
+  const rows = analytics.buildBikeTypeStats([
+    activity("2024-01-01T08:00:00", { bike_type: "road", distance: 1609.34 * 20, moving_time: 7200, total_elevation_gain: 100 }),
+    activity("2024-01-02T08:00:00", { bike_type: "road", distance: 1609.34 * 10, moving_time: 3600, total_elevation_gain: 50 })
+  ]);
+  assert.strictEqual(rows[0].count, 2);
+  assert.ok(Math.abs(rows[0].hours - 3) < 1e-9);
+  assert.ok(Math.abs(rows[0].avgSpeed - 10) < 1e-9);
+});
+
+test("buildBikePrSegments lists distinct PR segments for one bike and honours exclusions", () => {
+  const acts = [
+    activity("2024-01-01T08:00:00", { id: 1, gear_id: "b1" }),
+    activity("2024-02-01T08:00:00", { id: 2, gear_id: "b1" }),
+    activity("2024-02-02T08:00:00", { id: 3, gear_id: "b2" })
+  ];
+  const eff = (id, name, rank, time, date) => ({ segment_id: id, segment_name: name, pr_rank: rank, elapsed_time: time, start_date: date });
+  const segmentData = {
+    1: [eff(10, "Hill", 1, 300, "2024-01-01T08:10:00"), eff(11, "Flat", 2, 100, "2024-01-01T08:20:00"), eff(12, "Skip", 1, 90, "2024-01-01T08:30:00")],
+    2: [eff(10, "Hill", 1, 280, "2024-02-01T08:10:00")],
+    3: [eff(13, "Other bike", 1, 50, "2024-02-02T08:10:00")]
+  };
+  const rows = analytics.buildBikePrSegments(segmentData, acts, "b1", new Set(["12"]));
+  assert.deepStrictEqual(rows.map(r => r.segmentId), ["10"]);
+  assert.strictEqual(rows[0].count, 2);
+  assert.strictEqual(rows[0].bestTime, 280);
+  assert.strictEqual(rows[0].latestActivity.id, 2);
+});
+
+test("buildEverestStats reports yearly elevation in feet", () => {
+  const stats = analytics.buildEverestStats([activity("2024-01-01T08:00:00", { total_elevation_gain: 1000 })]);
+  assert.ok(Math.abs(stats.years[0].elevation - 3280.84) < 0.01);
+  assert.ok(Math.abs(stats.years[0].everests - 3280.84 / 29031.7) < 1e-9);
 });

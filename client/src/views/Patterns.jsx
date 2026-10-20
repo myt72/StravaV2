@@ -3,7 +3,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { useAppData } from "../context/AppData.jsx";
 import {
   METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentLeaderboard,
-  buildHourlyWeekdayMatrix, buildMonthHighlights, buildMonthYearMatrix,
+  buildMonthHighlights, buildMonthYearMatrix,
   buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown
 } from "../lib/analytics.js";
 import { comma, fmtFeet, fmtMiles, formatDate, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
@@ -18,10 +18,10 @@ const OPTIONS = [
   { value: "count", label: "Count" }
 ];
 
-function PatternChart({ data, metric, color, paramKey, label, format }) {
+function PatternChart({ data, metric, color, paramKey, label, format, className = "" }) {
   const m = METRICS[metric];
   return (
-    <div className="chart-box" role="img" aria-label={label}>
+    <div className={`chart-box ${className}`.trim()} role="img" aria-label={label}>
       <ResponsiveContainer>
         <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -75,32 +75,6 @@ function MonthYearMatrix({ activities, metric }) {
   );
 }
 
-function HourlyWeekdayMatrix({ activities }) {
-  const rows = useMemo(() => buildHourlyWeekdayMatrix(activities), [activities]);
-  const maximum = Math.max(0, ...rows.flatMap(row => row.values));
-  return (
-    <div className="pattern-matrix-scroll">
-      <div className="hourly-matrix" role="grid" aria-label="Ride counts by weekday and hour">
-        <div className="hourly-matrix-row" role="row">
-          <span role="columnheader" />
-          {Array.from({ length: 24 }, (_, hour) => <span role="columnheader" aria-label={`${hour}:00`} key={hour}>{hour % 6 === 0 ? hour : ""}</span>)}
-        </div>
-        {rows.map(row => (
-          <div className="hourly-matrix-row" role="row" key={row.label}>
-            <span role="rowheader">{row.label}</span>
-            {row.values.map((count, hour) => {
-              const intensity = maximum ? count / maximum : 0;
-              return <span role="gridcell" key={hour} title={`${row.label}, ${hour}:00 — ${comma(count)} rides`}
-                aria-label={`${row.label}, ${hour}:00 — ${comma(count)} rides`}
-                style={{ background: `color-mix(in srgb, var(--chart-3) ${Math.round(12 + intensity * 72)}%, var(--surface))` }} />;
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function MonthPatterns({ activities, metric }) {
   const highlights = useMemo(() => buildMonthHighlights(activities, metric), [activities, metric]);
   const seasonality = useMemo(() => buildSeasonalityIndex(activities, metric), [activities, metric]);
@@ -112,10 +86,10 @@ function MonthPatterns({ activities, metric }) {
       <Card title="Month by year">
         <MonthYearMatrix activities={activities} metric={metric} />
       </Card>
-      <div className="grid two">
-        <Card title="Monthly highlights and rolling year">
+      <div className="patterns-split">
+        <Card title="Monthly highlights" className="patterns-highlights">
           {highlights.highlights.length ? (
-            <div className="table-wrap">
+            <div className="table-wrap scroll-region" role="region" aria-label="Best and lowest months by year" tabIndex={0}>
               <table className="data">
                 <caption className="sr-only">Best and lowest activity months by year</caption>
                 <thead><tr><th scope="col">Year</th><th scope="col">Best month</th><th scope="col">Lowest month</th></tr></thead>
@@ -129,37 +103,29 @@ function MonthPatterns({ activities, metric }) {
               </table>
             </div>
           ) : <p className="muted">No monthly activity to summarize.</p>}
-          {rolling.length > 0 && <div className="chart-box short" role="img" aria-label={`Rolling 12-month ${m.label.toLowerCase()}`}>
-            <ResponsiveContainer>
-              <BarChart data={rolling} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
-                <Tooltip {...tooltipProps} content={<ChartTip format={m.fmt} />} />
-                <Bar dataKey="value" name={m.label} fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>}
         </Card>
-        <Card title="Seasonality">
-          <PatternChart data={seasonality} metric="count" color="var(--chart-4)" label="Monthly seasonality index" format={value => `${value.toFixed(1)}%`} />
-          <p className="hint">Average share of each year’s {m.label.toLowerCase()} that falls in each month.</p>
-        </Card>
+        <div className="patterns-stack">
+          <Card title="Seasonality">
+            <PatternChart className="compact" data={seasonality} metric="count" color="var(--chart-4)" label="Monthly seasonality index" format={value => `${value.toFixed(1)}%`} />
+            <p className="hint">Average share of each year’s {m.label.toLowerCase()} that falls in each month.</p>
+          </Card>
+          {rolling.length > 0 && (
+            <Card title="Rolling 12-month totals">
+              <div className="chart-box compact" role="img" aria-label={`Rolling 12-month ${m.label.toLowerCase()}`}>
+                <ResponsiveContainer>
+                  <BarChart data={rolling} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
+                    <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
+                    <Tooltip {...tooltipProps} content={<ChartTip format={m.fmt} />} cursor={{ fill: "var(--surface-hover)" }} />
+                    <Bar dataKey="value" name={m.label} fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
-    </>
-  );
-}
-
-function RideTimingPatterns({ activities }) {
-  const rides = useMemo(() => activities.filter(a => a.sport_type === "Ride"), [activities]);
-  return (
-    <>
-      <Card title="Ride timing by weekday and hour">
-        {rides.length ? <>
-          <HourlyWeekdayMatrix activities={rides} />
-          <p className="hint">Counts use your browser’s local time zone.</p>
-        </> : <p className="muted">No rides for the current filters.</p>}
-      </Card>
     </>
   );
 }
@@ -294,7 +260,6 @@ export default function Patterns() {
             </Card>
           </div>
           <MonthPatterns activities={filtered.activities} metric={metric} />
-          <RideTimingPatterns activities={filtered.activities} />
           <Card title="Activity types">
             <div className="grid three">
               {counts.map(([type, count]) => {

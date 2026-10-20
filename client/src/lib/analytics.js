@@ -1090,17 +1090,7 @@ export function buildMonthHighlights(activities, metric) {
     }
     rolling.push({ label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}`, value });
   }
-  return { highlights, rolling };
-}
-
-export function buildHourlyWeekdayMatrix(activities) {
-  const rows = WEEKDAYS.map(label => ({ label, values: Array(24).fill(0) }));
-  (activities || []).forEach(a => {
-    const date = new Date(a.start_date);
-    if (Number.isNaN(date.getTime())) return;
-    rows[weekdayIndex(date)].values[date.getHours()]++;
-  });
-  return rows;
+  return { highlights, rolling: rolling.reverse() };
 }
 
 export function buildSeasonalityIndex(activities, metric) {
@@ -1207,8 +1197,10 @@ export function buildBikeTypeStats(activities) {
   return Object.values(types).map(row => ({
     ...row,
     names: [...row.names],
+    hours: row.moving_time / 3600,
     avgRideMiles: row.count ? miles(row.distance) / row.count : 0,
-    elevationPerMile: row.distance > 0 ? feet(row.elevation) / miles(row.distance) : 0
+    elevationPerMile: row.distance > 0 ? feet(row.elevation) / miles(row.distance) : 0,
+    avgSpeed: row.moving_time > 0 ? miles(row.distance) / (row.moving_time / 3600) : 0
   })).sort((a, b) => b.distance - a.distance);
 }
 
@@ -1308,4 +1300,35 @@ export function buildBikeSummaryRows(gearTotals, gearDetails, isRetired) {
     prs: sum("prs")
   };
   return { rows, total };
+}
+
+/**
+ * Distinct segments where a bike has at least one PR effort (pr_rank === 1), joining the bike's activities
+ * (gear_id) with cache.segmentData. Excluded segments are skipped; one effort per segment per activity.
+ */
+export function buildBikePrSegments(segmentData, activities, gearId, excludedSegmentIds) {
+  const map = new Map();
+  (activities || []).forEach(activity => {
+    if (!activity || String(activity.gear_id) !== String(gearId)) return;
+    const seen = new Set();
+    ((segmentData || {})[activity.id] || []).forEach(e => {
+      if (e?.pr_rank !== 1 || !e.segment_id) return;
+      const sid = String(e.segment_id);
+      if (excludedSegmentIds?.has(sid) || seen.has(sid)) return;
+      seen.add(sid);
+      const date = e.start_date || activity.start_date;
+      let row = map.get(sid);
+      if (!row) {
+        row = { segmentId: sid, name: e.segment_name || `Segment ${sid}`, count: 0, bestTime: null, latestDate: date, latestActivity: activity };
+        map.set(sid, row);
+      }
+      row.count++;
+      if (e.elapsed_time > 0 && (row.bestTime == null || e.elapsed_time < row.bestTime)) row.bestTime = e.elapsed_time;
+      if (new Date(date) >= new Date(row.latestDate)) {
+        row.latestDate = date;
+        row.latestActivity = activity;
+      }
+    });
+  });
+  return [...map.values()].sort((a, b) => b.count - a.count || new Date(b.latestDate) - new Date(a.latestDate) || a.name.localeCompare(b.name));
 }

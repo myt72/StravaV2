@@ -124,6 +124,31 @@ select:hover, input:hover { border-color: var(--text-muted); }
 .stat-row:first-of-type { border-top: 0; }
 .chart-box { height: 280px; min-width: 0; }
 .chart-box.short { height: 240px; }
+.chart-box.compact { height: 170px; }
+.scroll-region { max-height: 130px; overflow-y: auto; }
+.scroll-region:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.scroll-head { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+.week-list.scroll-region { padding-left: 0; }
+.card.fill { display: flex; flex-direction: column; }
+.card.fill > .scroll-region.grow { flex: 1 1 0; min-height: 130px; max-height: none; }
+.ramp-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 72px 52px; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.85rem; }
+.ramp-row.head { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); background: var(--surface); position: sticky; top: 0; z-index: 1; }
+.ramp-row .r { text-align: right; }
+.ramp-row.warn .bar-fill { background: var(--negative); }
+.bar-track { height: 8px; background: var(--surface-2); border-radius: 999px; overflow: hidden; min-width: 40px; }
+.bar-fill { height: 100%; background: var(--chart-1); border-radius: 999px; }
+.type-table td.bar-cell { width: 25%; min-width: 120px; }
+.type-table tbody tr:hover { background: transparent; }
+.patterns-split { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.patterns-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.patterns-highlights { min-width: 0; display: flex; flex-direction: column; }
+.patterns-highlights .scroll-region { flex: 1 1 0; max-height: 460px; }
+.subhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 8px; font-size: 1rem; }
+.subhead h3 { margin: 0; font-size: 1rem; }
+@media (max-width: 900px) {
+  .patterns-split { grid-template-columns: minmax(0, 1fr); }
+  .patterns-highlights .scroll-region { flex: 0 1 auto; max-height: 320px; }
+}
 .recharts-text { fill: var(--text-muted); }
 .chart-tip { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; box-shadow: var(--shadow); font-size: 0.85rem; }
 .yoy-tip { padding: 6px 8px; max-width: calc(100vw - 24px); max-height: 80vh; overflow: auto; font-size: 0.8rem; }
@@ -145,10 +170,6 @@ select:hover, input:hover { border-color: var(--text-muted); }
 .pattern-matrix-row > span:first-child { text-align: left; }
 .pattern-matrix-row > button { border: 1px solid var(--border); background: var(--surface); }
 .pattern-matrix-row > button:hover { filter: brightness(1.12); }
-.hourly-matrix { min-width: 800px; }
-.hourly-matrix-row { display: grid; grid-template-columns: 64px repeat(24, minmax(18px, 1fr)); gap: 2px; margin-bottom: 3px; }
-.hourly-matrix-row > span { min-height: 22px; border-radius: 3px; text-align: center; font-size: 0.72rem; }
-.hourly-matrix-row > span:first-child { text-align: left; color: var(--text-muted); font-weight: 600; }
 
 /* ---------- tables ---------- */
 .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
@@ -279,6 +300,7 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
   position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100vw); background: var(--surface); border-left: 1px solid var(--border);
   box-shadow: var(--shadow); z-index: 41; display: flex; flex-direction: column; overflow-y: auto;
 }
+.drawer.wide { width: min(760px, 100vw); }
 .drawer-head { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding: 16px; border-bottom: 1px solid var(--border); }
 .drawer-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 .dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
