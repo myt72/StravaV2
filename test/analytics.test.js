@@ -93,3 +93,44 @@ test("unmapped bikes are listed with gear ids and names", () => {
   ];
   assert.deepStrictEqual(analytics.buildUnmappedBikes(rides), [{ gear_id: "b2", name: "Gravel" }]);
 });
+
+test("formatHms pads minutes/seconds and does not cap hours", async () => {
+  const { formatHms } = await import("../client/src/lib/format.js");
+  assert.strictEqual(formatHms(123 * 3600 + 5 * 60 + 9), "123:05:09");
+  assert.strictEqual(formatHms(3600), "1:00:00");
+  assert.strictEqual(formatHms(0), "0:00:00");
+});
+
+test("buildBikeSummaryRows aggregates per bike with totals", () => {
+  const { rows, total } = analytics.buildBikeSummaryRows(
+    {
+      b1: { distance: 1609.34 * 20, elevation: 1000, count: 2, moving_time: 7200, pr_count: 3 },
+      b2: { distance: 1609.34 * 10, elevation: 500, count: 1, moving_time: 3600, pr_count: 1 }
+    },
+    { b1: { name: "Road" } },
+    gid => gid === "b2"
+  );
+  assert.strictEqual(rows[0].name, "Road");
+  assert.strictEqual(rows[1].name, "b2");
+  assert.strictEqual(rows[1].retired, true);
+  assert.ok(Math.abs(rows[0].avgDistance - 10) < 1e-9);
+  assert.ok(Math.abs(rows[0].avgSpeed - 10) < 1e-9);
+  assert.strictEqual(total.count, 3);
+  assert.strictEqual(total.prs, 4);
+  assert.ok(Math.abs(total.distance - 30) < 1e-9);
+  assert.strictEqual(total.time, 10800);
+  assert.strictEqual(total.avgTime, 3600);
+});
+
+test("milestones list upcoming targets and drop absurd projections", () => {
+  const now = new Date("2025-01-01T00:00:00");
+  const slow = [activity("2024-12-31T08:00:00", { distance: 1609.34 * 1100 })];
+  const m = analytics.buildMileageMilestones(slow, now);
+  assert.deepStrictEqual(m.achieved.map(x => x.target), [1000]);
+  assert.strictEqual(m.upcomingList[0].target, 2500);
+  assert.strictEqual(m.upcomingList[m.upcomingList.length - 1].target, 45000);
+  const none = analytics.buildMileageMilestones(
+    [activity("2020-01-01T08:00:00", { distance: 1609.34 * 1100 })], now);
+  assert.ok(none.upcomingList.every(x => x.date === null));
+  assert.strictEqual(none.upcoming, null);
+});

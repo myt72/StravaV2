@@ -1232,26 +1232,80 @@ export function buildEverestStats(activities) {
   return { lifetime: lifetimeFeet / 29031.7, years: Object.entries(years).map(([year, elevation]) => ({ year: Number(year), elevation, everests: elevation / 29031.7 })).sort((a, b) => a.year - b.year) };
 }
 
+export const MILESTONE_TARGETS = [1000, 2500, 5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000];
+const MILESTONE_HORIZON_DAYS = 100 * 365.25;
+
 export function buildMileageMilestones(activities, now = new Date(), lookbackDays = 90) {
   const sorted = [...(activities || [])].filter(a => a.start_date).sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  const lifetime = sorted.reduce((sum, a) => sum + miles(a.distance || 0), 0);
+  const targets = [...MILESTONE_TARGETS];
+  while (targets[targets.length - 1] <= lifetime) targets.push(targets[targets.length - 1] + 5000);
   let total = 0;
   const achieved = [];
   sorted.forEach(a => {
+    const before = total;
     total += miles(a.distance || 0);
-    const before = total - miles(a.distance || 0);
-    for (const target of [1000, 5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000]) {
+    targets.forEach(target => {
       if (before < target && total >= target) achieved.push({ target, date: a.start_date, projected: false });
-    }
+    });
   });
   const cutoff = new Date(now.getTime() - lookbackDays * 86400000);
   const recent = sorted.filter(a => new Date(a.start_date) >= cutoff && new Date(a.start_date) <= now);
   const recentMiles = recent.reduce((sum, a) => sum + miles(a.distance || 0), 0);
   const days = recent.length ? Math.max(1, (now - new Date(recent[0].start_date)) / 86400000) : 0;
   const pace = days ? recentMiles / days : 0;
-  const next = [1000, 5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000].find(target => target > total);
+  const paceLabel = `${lookbackDays}-day average`;
+  const projectDate = target => {
+    if (!(pace > 0)) return null;
+    const daysAway = (target - total) / pace;
+    return daysAway > MILESTONE_HORIZON_DAYS ? null : new Date(now.getTime() + daysAway * 86400000).toISOString();
+  };
+  const upcomingList = targets.filter(target => target > total).map(target => ({ target, date: projectDate(target), projected: true, pace: paceLabel }));
+  const firstWithDate = upcomingList.find(item => item.date);
   return {
     total,
     achieved,
-    upcoming: next && pace > 0 ? { target: next, pace: `${lookbackDays}-day average`, date: new Date(now.getTime() + ((next - total) / pace) * 86400000).toISOString() } : null
+    upcomingList,
+    upcoming: firstWithDate ? { target: firstWithDate.target, pace: paceLabel, date: firstWithDate.date } : null
   };
+}
+
+export function buildBikeSummaryRows(gearTotals, gearDetails, isRetired) {
+  const rows = Object.entries(gearTotals || {}).map(([gid, t]) => {
+    const distance = miles(t.distance);
+    const elevation = feet(t.elevation);
+    const count = t.count || 0;
+    const time = t.moving_time || 0;
+    return {
+      gid,
+      name: gearDetails?.[gid]?.name || gid,
+      retired: !!(isRetired && isRetired(gid)),
+      count,
+      distance,
+      avgDistance: count ? distance / count : 0,
+      elevation,
+      avgElevation: count ? elevation / count : 0,
+      time,
+      avgTime: count ? time / count : 0,
+      avgSpeed: time > 0 ? distance / (time / 3600) : 0,
+      prs: t.pr_count || 0
+    };
+  });
+  const sum = key => rows.reduce((n, r) => n + r[key], 0);
+  const count = sum("count");
+  const distance = sum("distance");
+  const elevation = sum("elevation");
+  const time = sum("time");
+  const total = {
+    count,
+    distance,
+    avgDistance: count ? distance / count : 0,
+    elevation,
+    avgElevation: count ? elevation / count : 0,
+    time,
+    avgTime: count ? time / count : 0,
+    avgSpeed: time > 0 ? distance / (time / 3600) : 0,
+    prs: sum("prs")
+  };
+  return { rows, total };
 }
