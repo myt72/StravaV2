@@ -1044,7 +1044,7 @@ export function buildGeoCoverage(activities, types = ROUTE_SPORT_TYPES) {
 }
 
 export function buildMonthYearMatrix(activities, metric) {
-  const years = [...new Set((activities || []).map(a => new Date(a.start_date).getFullYear()))].sort((a, b) => a - b);
+  const years = [...new Set((activities || []).map(a => new Date(a.start_date).getFullYear()))].sort((a, b) => b - a);
   const sums = {};
   (activities || []).forEach(a => {
     const d = new Date(a.start_date);
@@ -1076,7 +1076,7 @@ export function buildMonthHighlights(activities, metric) {
   const highlights = Object.entries(years).map(([year, months]) => {
     const sorted = [...months].sort((a, b) => b.value - a.value);
     return { year: Number(year), best: sorted[0], worst: sorted[sorted.length - 1] };
-  }).sort((a, b) => a.year - b.year);
+  }).sort((a, b) => b.year - a.year);
   if (!Object.keys(buckets).length) return { highlights, rolling: [] };
   const keys = Object.keys(buckets).sort();
   const [firstYear, firstMonth] = keys[0].split("-").map(Number);

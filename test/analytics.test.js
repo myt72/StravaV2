@@ -70,7 +70,7 @@ test("month/year patterns and ride-timing summaries aggregate by local date", ()
   ];
 
   const matrix = analytics.buildMonthYearMatrix(rides, "distance");
-  assert.deepStrictEqual(matrix.years, [2023, 2024]);
+  assert.deepStrictEqual(matrix.years, [2024, 2023]);
   assert.strictEqual(matrix.rows[0][2023], 1);
   assert.strictEqual(matrix.rows[0][2024], 2);
 
@@ -79,6 +79,7 @@ test("month/year patterns and ride-timing summaries aggregate by local date", ()
   assert.strictEqual(monthHighlights.rolling.length, 14);
   assert.strictEqual(monthHighlights.rolling[0].label, "Feb 2024");
   assert.strictEqual(monthHighlights.rolling[13].label, "Jan 2023");
+  assert.deepStrictEqual(monthHighlights.highlights.map(row => row.year), [2024, 2023]);
   assert.strictEqual(analytics.buildSeasonalityIndex(rides, "count").length, 12);
 });
 
