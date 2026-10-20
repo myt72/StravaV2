@@ -137,6 +137,18 @@ select:hover, input:hover { border-color: var(--text-muted); }
 .yoy-tip tr.latest td { background: var(--surface-2); font-weight: 600; }
 .yoy-swatch { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: baseline; }
 .hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 6px; }
+.pattern-matrix-scroll { overflow-x: auto; }
+.pattern-matrix { min-width: max-content; }
+.pattern-matrix-row { display: grid; grid-template-columns: var(--matrix-columns); }
+.pattern-matrix-row > * { min-height: 34px; padding: 6px; border-bottom: 1px solid var(--border); text-align: center; font-size: 0.8rem; }
+.pattern-matrix-row > span { color: var(--text-muted); font-weight: 600; }
+.pattern-matrix-row > span:first-child { text-align: left; }
+.pattern-matrix-row > button { border: 1px solid var(--border); background: var(--surface); }
+.pattern-matrix-row > button:hover { filter: brightness(1.12); }
+.hourly-matrix { min-width: 800px; }
+.hourly-matrix-row { display: grid; grid-template-columns: 64px repeat(24, minmax(18px, 1fr)); gap: 2px; margin-bottom: 3px; }
+.hourly-matrix-row > span { min-height: 22px; border-radius: 3px; text-align: center; font-size: 0.72rem; }
+.hourly-matrix-row > span:first-child { text-align: left; color: var(--text-muted); font-weight: 600; }
 
 /* ---------- tables ---------- */
 .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }

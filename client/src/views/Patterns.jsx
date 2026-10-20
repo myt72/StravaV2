@@ -3,7 +3,9 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { useAppData } from "../context/AppData.jsx";
 import {
   METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentLeaderboard,
-  buildTimeOfDayBreakdown, buildWeekdayBreakdown
+  buildHourlyWeekdayMatrix, buildMonthHighlights, buildMonthYearMatrix,
+  buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown,
+  buildWeekdayWeekendSummary
 } from "../lib/analytics.js";
 import { comma, fmtFeet, fmtMiles, formatDate, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
 import { polylineToSvgPath } from "../lib/polyline.js";
@@ -17,7 +19,7 @@ const OPTIONS = [
   { value: "count", label: "Count" }
 ];
 
-function PatternChart({ data, metric, color, paramKey, label }) {
+function PatternChart({ data, metric, color, paramKey, label, format }) {
   const m = METRICS[metric];
   return (
     <div className="chart-box" role="img" aria-label={label}>
@@ -26,9 +28,9 @@ function PatternChart({ data, metric, color, paramKey, label }) {
           <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={v => comma(Math.round(v))} />
-          <Tooltip wrapperStyle={{ zIndex: 1000, pointerEvents: "none" }} allowEscapeViewBox={{ x: true, y: true }} content={<ChartTip format={m.fmt} />} cursor={{ fill: "var(--surface-hover)" }} />
-          <Bar dataKey="value" name={m.label} fill={color} radius={[4, 4, 0, 0]} cursor="pointer"
-            onClick={d => navigate("/activities", { [paramKey]: d.label })} />
+          <Tooltip wrapperStyle={{ zIndex: 1000, pointerEvents: "none" }} allowEscapeViewBox={{ x: true, y: true }} content={<ChartTip format={format || m.fmt} />} cursor={{ fill: "var(--surface-hover)" }} />
+          <Bar dataKey="value" name={m.label} fill={color} radius={[4, 4, 0, 0]} cursor={paramKey ? "pointer" : "default"}
+            onClick={paramKey ? d => navigate("/activities", { [paramKey]: d.label }) : undefined} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -38,6 +40,147 @@ function PatternChart({ data, metric, color, paramKey, label }) {
 const LIMIT_OPTIONS = [10, 20, 50].map(n => ({ value: n, label: String(n) }));
 const PERIOD_OPTIONS = [{ value: "all", label: "All time" }, { value: "year", label: "Year" }, { value: "month", label: "Month" }];
 const KIND_OPTIONS = [{ value: "routes", label: "Routes" }, { value: "segments", label: "Segments" }];
+const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, allowEscapeViewBox: { x: true, y: true } };
+
+function MonthYearMatrix({ activities, metric }) {
+  const { years, rows } = useMemo(() => buildMonthYearMatrix(activities, metric), [activities, metric]);
+  const maximum = Math.max(0, ...rows.flatMap(row => years.map(year => row[year] || 0)));
+  if (!years.length) return null;
+  const columns = `repeat(${years.length + 1}, minmax(64px, 1fr))`;
+  return (
+    <div className="pattern-matrix-scroll">
+      <div className="pattern-matrix" role="table" aria-label="Activity by month and year" style={{ "--matrix-columns": columns }}>
+        <div className="pattern-matrix-row" role="row">
+          <span role="columnheader">Month</span>
+          {years.map(year => <span role="columnheader" key={year}>{year}</span>)}
+        </div>
+        {rows.map(row => (
+          <div className="pattern-matrix-row" role="row" key={row.month}>
+            <span role="rowheader">{row.label}</span>
+            {years.map(year => {
+              const value = row[year] || 0;
+              const intensity = maximum ? value / maximum : 0;
+              const label = `${row.label} ${year}: ${METRICS[metric].fmt(value)}`;
+              return (
+                <button type="button" role="cell" key={year} title={label} aria-label={label}
+                  style={{ background: `color-mix(in srgb, var(--chart-1) ${Math.round(12 + intensity * 72)}%, var(--surface))` }}
+                  onClick={() => navigate("/activities", { month: `${year}-${String(row.month + 1).padStart(2, "0")}` })}>
+                  {value ? METRICS[metric].fmt(value) : "—"}
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HourlyWeekdayMatrix({ activities }) {
+  const rows = useMemo(() => buildHourlyWeekdayMatrix(activities), [activities]);
+  const maximum = Math.max(0, ...rows.flatMap(row => row.values));
+  return (
+    <div className="pattern-matrix-scroll">
+      <div className="hourly-matrix" role="grid" aria-label="Ride counts by weekday and hour">
+        <div className="hourly-matrix-row" role="row">
+          <span role="columnheader" />
+          {Array.from({ length: 24 }, (_, hour) => <span role="columnheader" aria-label={`${hour}:00`} key={hour}>{hour % 6 === 0 ? hour : ""}</span>)}
+        </div>
+        {rows.map(row => (
+          <div className="hourly-matrix-row" role="row" key={row.label}>
+            <span role="rowheader">{row.label}</span>
+            {row.values.map((count, hour) => {
+              const intensity = maximum ? count / maximum : 0;
+              return <span role="gridcell" key={hour} title={`${row.label}, ${hour}:00 — ${comma(count)} rides`}
+                aria-label={`${row.label}, ${hour}:00 — ${comma(count)} rides`}
+                style={{ background: `color-mix(in srgb, var(--chart-3) ${Math.round(12 + intensity * 72)}%, var(--surface))` }} />;
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MonthPatterns({ activities, metric }) {
+  const highlights = useMemo(() => buildMonthHighlights(activities, metric), [activities, metric]);
+  const seasonality = useMemo(() => buildSeasonalityIndex(activities, metric), [activities, metric]);
+  const m = METRICS[metric];
+  const rolling = highlights.rolling;
+  const bestLabel = row => row ? MONTHS[row.month - 1] : "—";
+  return (
+    <>
+      <Card title="Month by year">
+        <MonthYearMatrix activities={activities} metric={metric} />
+      </Card>
+      <div className="grid two">
+        <Card title="Monthly highlights and rolling year">
+          {highlights.highlights.length ? (
+            <div className="table-wrap">
+              <table className="data">
+                <caption className="sr-only">Best and lowest activity months by year</caption>
+                <thead><tr><th scope="col">Year</th><th scope="col">Best month</th><th scope="col">Lowest month</th></tr></thead>
+                <tbody>{highlights.highlights.map(row => (
+                  <tr key={row.year}>
+                    <td>{row.year}</td>
+                    <td>{bestLabel(row.best)} · {m.fmt(row.best.value)}</td>
+                    <td>{bestLabel(row.worst)} · {m.fmt(row.worst.value)}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          ) : <p className="muted">No monthly activity to summarize.</p>}
+          {rolling.length > 0 && <div className="chart-box short" role="img" aria-label={`Rolling 12-month ${m.label.toLowerCase()}`}>
+            <ResponsiveContainer>
+              <BarChart data={rolling} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
+                <Tooltip {...tooltipProps} content={<ChartTip format={m.fmt} />} />
+                <Bar dataKey="value" name={m.label} fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>}
+        </Card>
+        <Card title="Seasonality">
+          <PatternChart data={seasonality} metric="count" color="var(--chart-4)" label="Monthly seasonality index" format={value => `${value.toFixed(1)}%`} />
+          <p className="hint">Average share of each year’s {m.label.toLowerCase()} that falls in each month.</p>
+        </Card>
+      </div>
+    </>
+  );
+}
+
+function RideTimingPatterns({ activities }) {
+  const rides = useMemo(() => activities.filter(a => a.sport_type === "Ride"), [activities]);
+  const weekend = useMemo(() => buildWeekdayWeekendSummary(rides), [rides]);
+  const weekendRows = Object.entries(weekend).map(([label, value]) => ({ label, value }));
+  return (
+    <>
+      <Card title="Ride timing by weekday and hour">
+        {rides.length ? <>
+          <HourlyWeekdayMatrix activities={rides} />
+          <p className="hint">Counts use your browser’s local time zone.</p>
+        </> : <p className="muted">No rides for the current filters.</p>}
+      </Card>
+      {rides.length > 0 && (
+        <Card title="Weekday vs weekend rides">
+          <div className="chart-box short" role="img" aria-label="Ride counts on weekdays and weekends">
+            <ResponsiveContainer>
+              <BarChart data={weekendRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
+                <Tooltip {...tooltipProps} content={<ChartTip format={comma} />} />
+                <Bar dataKey="value" name="Activities" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      )}
+    </>
+  );
+}
 
 function RouteThumb({ polyline, name }) {
   const d = polylineToSvgPath(polyline);
@@ -168,6 +311,8 @@ export default function Patterns() {
               <p className="hint">Early AM 0–6 · Morning 6–12 · Afternoon 12–17 · Evening 17–21 · Night 21–24</p>
             </Card>
           </div>
+          <MonthPatterns activities={filtered.activities} metric={metric} />
+          <RideTimingPatterns activities={filtered.activities} />
           <Card title="Activity types">
             <div className="grid three">
               {counts.map(([type, count]) => {

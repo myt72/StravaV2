@@ -1166,7 +1166,7 @@ export function buildConsistencyStats(activities, ridesPerWeek = 3) {
       weeksMeetingThreshold: [...(perYear[year] || [])].filter(key => weekCounts[key] >= threshold).length
     })),
     longestWeekStreak,
-    longestDayStreak: computeLongestStreak(uniqueDates),
+    longestDayStreak: computeLongestStreakDetails(uniqueDates).length,
     longestGap: computeLongestGapDetails(uniqueDates),
     threshold
   };
