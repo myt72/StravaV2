@@ -63,6 +63,10 @@ function GarageAnalytics({ activities }) {
   const typeMax = Math.max(0, ...bikeTypes.map(row => typeMetricValue(row, typeMetric)));
   const everestRows = [...everest.years].reverse().map(row => ({ label: String(row.year), value: row.elevation, everests: row.everests }));
   const rampRows = [...ramp].reverse();
+  const nextMilestone = milestones.upcomingList[0] || null;
+  const laterMilestones = milestones.upcomingList.slice(1);
+  const prevTarget = milestones.achieved.length ? milestones.achieved[milestones.achieved.length - 1].target : 0;
+  const nextProgress = nextMilestone ? Math.min(1, Math.max(0, (milestones.total - prevTarget) / (nextMilestone.target - prevTarget))) : 0;
   const rampMax = Math.max(0, ...ramp.map(row => row.value));
 
   if (!rides.length) return null;
@@ -109,13 +113,13 @@ function GarageAnalytics({ activities }) {
         )}
       </Card>
 
-      <div className="grid two">
+      <div className="grid two garage-stats">
         <Card title="Ride consistency" className="fill">
           <div className="stat-row"><span>Longest ride streak</span><span className="num">{comma(consistency.longestDayStreak)} days</span></div>
           <div className="stat-row"><span>Longest qualifying-week streak</span><span className="num">{comma(consistency.longestWeekStreak)} weeks</span></div>
           <p className="hint">Qualifying weeks have at least {consistency.threshold} rides.</p>
           {consistency.years.length > 0 && (
-            <div className="week-list scroll-region" role="region" aria-label="Qualifying weeks by year, newest first" tabIndex={0}>
+            <div className="week-list scroll-region grow" role="region" aria-label="Qualifying weeks by year, newest first" tabIndex={0}>
               <div className="stat-row scroll-head"><strong>Year</strong><strong>Qualifying weeks</strong></div>
               {[...consistency.years].reverse().map(row => <div className="stat-row" key={row.year}>
                 <span>{row.year}</span><span className="num">{comma(row.weeksMeetingThreshold)} qualifying weeks</span>
@@ -137,10 +141,8 @@ function GarageAnalytics({ activities }) {
           </div>
           <p className="hint">Red weeks increased more than 10% over the previous week.</p>
         </Card>
-      </div>
 
-      <div className="grid two">
-        <Card title="Everest challenge">
+        <Card title="Everest challenge" className="fill">
           <div className="record-value num">{everest.lifetime.toFixed(2)} Everests</div>
           <p className="hint">Lifetime climbing across the current filtered rides.</p>
           <div className="chart-box short" role="img" aria-label="Annual climbing by year">
@@ -155,18 +157,30 @@ function GarageAnalytics({ activities }) {
             </ResponsiveContainer>
           </div>
         </Card>
-        <Card title="Mileage milestones">
+        <Card title="Mileage milestones" className="fill">
           <div className="record-value num">{comma(milestones.total.toFixed(1))} mi</div>
           <p className="hint">Lifetime mileage across the current filtered rides.</p>
-          <div className="milestone-list">
+          {nextMilestone && (
+            <div className="milestone-next">
+              <div className="stat-row">
+                <span>Next: <strong className="num">{comma(nextMilestone.target)} mi</strong></span>
+                <span className="num">{nextMilestone.date ? `${formatDate(nextMilestone.date)} (projected)` : "not projected"}</span>
+              </div>
+              <div className="bar-track" role="progressbar" aria-label={`Progress to ${comma(nextMilestone.target)} miles`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(nextProgress * 100)}>
+                <div className="bar-fill" style={{ width: `${nextProgress * 100}%` }} />
+              </div>
+              <div className="hint num">{comma((nextMilestone.target - milestones.total).toFixed(1))} mi to go</div>
+            </div>
+          )}
+          <div className="milestone-grid scroll-region grow" role="region" aria-label="Mileage milestones, passed and projected" tabIndex={0}>
             {milestones.achieved.map(item => (
-              <div className="stat-row" key={`${item.target}-${item.date}`}>
-                <span>{comma(item.target)} mi</span><span className="num">{formatDate(item.date)}</span>
+              <div className="milestone-tile done" key={`${item.target}-${item.date}`}>
+                <span className="num">{comma(item.target)} mi</span><span className="num">{formatDate(item.date)}</span>
               </div>
             ))}
-            {milestones.upcomingList.map(item => (
-              <div className="stat-row" key={`next-${item.target}`}>
-                <span>{comma(item.target)} mi</span>
+            {laterMilestones.map(item => (
+              <div className="milestone-tile" key={`next-${item.target}`}>
+                <span className="num">{comma(item.target)} mi</span>
                 <span className="num">{item.date ? `${formatDate(item.date)} (projected)` : "not projected"}</span>
               </div>
             ))}
