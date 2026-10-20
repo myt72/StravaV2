@@ -6,7 +6,7 @@ const API_TARGET = "http://localhost:5001";
 export default defineConfig(({ command }) => ({
   plugins: [react()],
   base: command === "build" ? "/dashboard/" : "/",
-  build: { outDir: "dist", emptyOutDir: true },
+  build: { outDir: "dist", emptyOutDir: true, chunkSizeWarningLimit: 800 },
   server: {
     port: 5173,
     proxy: {
