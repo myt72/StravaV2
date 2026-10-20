@@ -1,16 +1,16 @@
 import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { filenameOf, focusPosition, useAppData } from "../context/AppData.jsx";
 import {
-  buildBikeTypeStats, buildUnmappedBikes, buildConsistencyStats,
+  buildBikeTypeStats, buildUnmappedBikes, buildConsistencyStats, buildBikePrSegments,
   buildEverestStats, buildMileageMilestones, buildWeeklyRamp, buildBikeSummaryRows
 } from "../lib/analytics.js";
 import {
-  comma, feet, formatDate, formatDayDifference, formatDuration, formatHms, formatShortDate, formatSpeed, getMondayForIsoWeek, miles
+  comma, feet, formatDate, formatDayDifference, formatDuration, formatHms, formatShortDate, formatSpeed, getMondayForIsoWeek, getStravaSegmentUrl, miles
 } from "../lib/format.js";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
-import { Card, ChartTip, DataTable, Empty, Icon, PageHead } from "../components/ui.jsx";
+import { ActivityLink, Card, ChartTip, DataTable, Drawer, Empty, Icon, PageHead, Segmented } from "../components/ui.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
 
 const SORTS = [
@@ -22,8 +22,33 @@ const SORTS = [
   { value: "name-desc", label: "Name (Z–A)" }
 ];
 
+const TYPE_METRICS = [
+  { value: "distance", label: "Miles" },
+  { value: "elevation", label: "Elevation" },
+  { value: "count", label: "Rides" },
+  { value: "hours", label: "Hours" }
+];
+const typeMetricValue = (row, metric) => (
+  metric === "distance" ? miles(row.distance)
+    : metric === "elevation" ? feet(row.elevation)
+      : metric === "hours" ? row.hours
+        : row.count
+);
+
 const plural = (n, w) => `${comma(n)} ${w}${n === 1 ? "" : "s"}`;
 const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, allowEscapeViewBox: { x: true, y: true } };
+
+function EverestTip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  return (
+    <div className="chart-tip">
+      <strong>{label}</strong>
+      <div style={{ color: payload[0].color || payload[0].fill }}>{comma(row.value.toFixed(0))} ft</div>
+      <div>{row.everests.toFixed(1)}x Everests</div>
+    </div>
+  );
+}
 
 function GarageAnalytics({ activities }) {
   const rides = useMemo(() => activities.filter(a => a.sport_type === "Ride"), [activities]);
@@ -34,25 +59,46 @@ function GarageAnalytics({ activities }) {
   const everest = useMemo(() => buildEverestStats(rides), [rides]);
   const milestones = useMemo(() => buildMileageMilestones(rides), [rides]);
 
-  const typeRows = bikeTypes.map(row => ({ label: row.type, value: miles(row.distance) }));
-  const everestRows = [...everest.years].reverse().map(row => ({ label: String(row.year), value: row.elevation }));
-  const mileageFmt = value => `${comma(value.toFixed(1))} mi`;
+  const [typeMetric, setTypeMetric] = usePersistentState("bikeTypeMetric", "distance");
+  const typeMax = Math.max(0, ...bikeTypes.map(row => typeMetricValue(row, typeMetric)));
+  const everestRows = [...everest.years].reverse().map(row => ({ label: String(row.year), value: row.elevation, everests: row.everests }));
+  const rampRows = [...ramp].reverse();
+  const rampMax = Math.max(0, ...ramp.map(row => row.value));
 
   if (!rides.length) return null;
   return (
     <>
-      <Card title="Bike type comparison">
-        {typeRows.length ? (
-          <div className="chart-box short" role="img" aria-label="Ride miles by bike type">
-            <ResponsiveContainer>
-              <BarChart data={typeRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
-                <Tooltip {...tooltipProps} content={<ChartTip format={mileageFmt} />} cursor={{ fill: "var(--surface-hover)" }} />
-                <Bar dataKey="value" name="Distance" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+      <Card title="Bike type comparison" right={<Segmented label="Bar metric" value={typeMetric} options={TYPE_METRICS} onChange={setTypeMetric} />}>
+        {bikeTypes.length ? (
+          <div className="table-wrap">
+            <table className="data type-table">
+              <caption className="sr-only">Ride totals by bike type</caption>
+              <thead><tr>
+                <th scope="col">Type</th><th scope="col" className="r">Rides</th><th scope="col" className="r">Miles</th>
+                <th scope="col" className="r">Elevation (ft)</th><th scope="col" className="r">Avg ride (mi)</th>
+                <th scope="col" className="r">ft / mi</th><th scope="col" className="r">Avg mph</th>
+                <th scope="col">{TYPE_METRICS.find(o => o.value === typeMetric).label}</th>
+              </tr></thead>
+              <tbody>{bikeTypes.map(row => {
+                const value = typeMetricValue(row, typeMetric);
+                return (
+                  <tr key={row.type}>
+                    <th scope="row" style={{ position: "static" }}>{row.type}</th>
+                    <td className="r num">{comma(row.count)}</td>
+                    <td className="r num">{comma(miles(row.distance).toFixed(1))}</td>
+                    <td className="r num">{comma(feet(row.elevation).toFixed(0))}</td>
+                    <td className="r num">{row.avgRideMiles.toFixed(1)}</td>
+                    <td className="r num">{row.elevationPerMile.toFixed(0)}</td>
+                    <td className="r num">{row.avgSpeed > 0 ? row.avgSpeed.toFixed(1) : "—"}</td>
+                    <td className="bar-cell">
+                      <div className="bar-track" role="img" aria-label={`${row.type}: ${comma(value.toFixed(typeMetric === "count" ? 0 : 1))} ${TYPE_METRICS.find(o => o.value === typeMetric).label.toLowerCase()}`}>
+                        <div className="bar-fill" style={{ width: `${typeMax ? (value / typeMax) * 100 : 0}%` }} />
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}</tbody>
+            </table>
           </div>
         ) : <p className="muted">No bike type data for the current filters.</p>}
         {unmapped.length > 0 && (
@@ -64,29 +110,30 @@ function GarageAnalytics({ activities }) {
       </Card>
 
       <div className="grid two">
-        <Card title="Ride consistency">
+        <Card title="Ride consistency" className="fill">
           <div className="stat-row"><span>Longest ride streak</span><span className="num">{comma(consistency.longestDayStreak)} days</span></div>
           <div className="stat-row"><span>Longest qualifying-week streak</span><span className="num">{comma(consistency.longestWeekStreak)} weeks</span></div>
           <p className="hint">Qualifying weeks have at least {consistency.threshold} rides.</p>
-          {consistency.years.length > 0 && <div className="week-list">
-            {[...consistency.years].reverse().map(row => <div className="stat-row" key={row.year}>
-              <span>{row.year}</span><span className="num">{comma(row.weeksMeetingThreshold)} qualifying weeks</span>
-            </div>)}
-          </div>}
+          {consistency.years.length > 0 && (
+            <div className="week-list scroll-region" role="region" aria-label="Qualifying weeks by year, newest first" tabIndex={0}>
+              <div className="stat-row scroll-head"><strong>Year</strong><strong>Qualifying weeks</strong></div>
+              {[...consistency.years].reverse().map(row => <div className="stat-row" key={row.year}>
+                <span>{row.year}</span><span className="num">{comma(row.weeksMeetingThreshold)} qualifying weeks</span>
+              </div>)}
+            </div>
+          )}
         </Card>
-        <Card title="Weekly mileage ramp">
-          <div className="chart-box short" role="img" aria-label="Weekly ride mileage">
-            <ResponsiveContainer>
-              <BarChart data={ramp} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
-                <Tooltip {...tooltipProps} content={<ChartTip format={mileageFmt} />} />
-                <Bar dataKey="value" name="Distance" fill="var(--chart-2)">
-                  {ramp.map(row => <Cell key={row.key} fill={row.warning ? "var(--negative)" : "var(--chart-2)"} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        <Card title="Weekly mileage ramp" className="fill">
+          <div className="scroll-region grow" role="region" aria-label="Weekly ride mileage, newest week first" tabIndex={0}>
+            <div className="ramp-row head"><span>Week of</span><span aria-hidden="true" /><span className="r">Miles</span><span className="r">Change</span></div>
+            {rampRows.map(row => (
+              <div className={`ramp-row num${row.warning ? " warn" : ""}`} key={row.key}>
+                <span>{row.label}, {row.key.slice(0, 4)}</span>
+                <div className="bar-track" aria-hidden="true"><div className="bar-fill" style={{ width: `${rampMax ? (row.value / rampMax) * 100 : 0}%` }} /></div>
+                <span className="r">{row.value.toFixed(1)}</span>
+                <span className={`r${row.warning ? " negative" : ""}`}>{row.change == null ? "—" : `${row.change > 0 ? "+" : ""}${row.change.toFixed(0)}%`}</span>
+              </div>
+            ))}
           </div>
           <p className="hint">Red weeks increased more than 10% over the previous week.</p>
         </Card>
@@ -101,8 +148,8 @@ function GarageAnalytics({ activities }) {
               <BarChart data={everestRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(feet(value)))} />
-                <Tooltip {...tooltipProps} content={<ChartTip format={value => `${comma(feet(value).toFixed(0))} ft`} />} />
+                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
+                <Tooltip {...tooltipProps} content={<EverestTip />} cursor={false} />
                 <Bar dataKey="value" name="Climbing" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -180,7 +227,47 @@ function Thumb({ gid, alt }) {
   );
 }
 
+function PrSegmentsDrawer({ bike, onClose }) {
+  const { raw, filtered, excludedSet } = useAppData();
+  const segments = useMemo(
+    () => buildBikePrSegments(raw?.segmentData, filtered.activities, bike.gid, excludedSet),
+    [raw, filtered.activities, bike.gid, excludedSet]
+  );
+  const total = segments.reduce((n, r) => n + r.count, 0);
+  return (
+    <Drawer title={`PR segments: ${bike.name}`} onClose={onClose} wide>
+      {segments.length ? (
+        <div className="table-wrap">
+          <table className="data">
+            <caption className="sr-only">Segments where {bike.name} has a PR</caption>
+            <thead><tr>
+              <th scope="col">Segment</th><th scope="col" className="r">PR efforts</th><th scope="col" className="r">Best time</th>
+              <th scope="col">Latest PR</th><th scope="col">Activity</th>
+            </tr></thead>
+            <tbody>{segments.map(r => (
+              <tr key={r.segmentId}>
+                <td className="wrap"><a href={getStravaSegmentUrl(r.segmentId)} target="_blank" rel="noopener noreferrer">{r.name}</a></td>
+                <td className="r num">{comma(r.count)}</td>
+                <td className="r num">{r.bestTime ? formatHms(r.bestTime) : "—"}</td>
+                <td>{formatDate(r.latestDate)}</td>
+                <td className="wrap"><ActivityLink activity={r.latestActivity} /></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      ) : <p className="muted">No PR segment efforts are cached for this bike with the current filters and excluded segments.</p>}
+      <p className="hint">
+        {comma(segments.length)} segments, {comma(total)} PR efforts (rank 1), following the global filters and excluded segments.
+        {" "}<a href={`#/activities?bike=${encodeURIComponent(bike.gid)}`} onClick={onClose}>View this bike’s activities</a>
+      </p>
+    </Drawer>
+  );
+}
+
 function BikeSummary({ bikes }) {
+  const [sort, setSort] = useState({ key: "distance", dir: "desc" });
+  const [retiredOpen, setRetiredOpen] = usePersistentState("bikeSummaryRetiredOpen", false);
+  const [prBike, setPrBike] = useState(null);
   const { rows, total } = useMemo(() => buildBikeSummaryRows(
     Object.fromEntries(bikes.rows.map(r => [r.gid, r.total])),
     Object.fromEntries(bikes.rows.map(r => [r.gid, { name: r.name }])),
@@ -191,7 +278,7 @@ function BikeSummary({ bikes }) {
   const f0 = n => comma(n.toFixed(0));
   const speed = n => (n > 0 ? n.toFixed(1) : "-");
   const columns = [
-    { key: "name", label: "Name", render: r => r.gid ? <>{r.name}{r.retired && <span className="muted"> (retired)</span>}</> : r.name },
+    { key: "name", label: "Name", render: r => r.name },
     { key: "count", label: "Count", align: "r", render: r => r.gid
       ? <a href={`#/activities?bike=${encodeURIComponent(r.gid)}`} aria-label={`View ${comma(r.count)} activities for ${r.name}`}>{comma(r.count)}</a>
       : comma(r.count) },
@@ -202,15 +289,30 @@ function BikeSummary({ bikes }) {
     { key: "time", label: "Total time", align: "r", render: r => formatHms(r.time) },
     { key: "avgTime", label: "Avg time", align: "r", render: r => formatHms(r.avgTime) },
     { key: "avgSpeed", label: "Avg speed (mph)", align: "r", render: r => speed(r.avgSpeed) },
-    // No segments view can be filtered by bike, so PR counts link to that bike's Activities.
-    { key: "prs", label: "PRs", align: "r", render: r => r.gid
-      ? <a href={`#/activities?bike=${encodeURIComponent(r.gid)}`} aria-label={`View activities for ${r.name} (${comma(r.prs)} PRs)`}>{comma(r.prs)}</a>
+    // PR counts open the list of PR segments for that bike (segmentData joined with the bike's activities).
+    { key: "prs", label: "PRs", align: "r", render: r => r.gid && r.prs > 0
+      ? <button type="button" className="cell-link" aria-haspopup="dialog" aria-label={`Show ${comma(r.prs)} PR segments for ${r.name}`} onClick={() => setPrBike(r)}>{comma(r.prs)}</button>
       : comma(r.prs) }
   ];
+  const active = rows.filter(r => !r.retired);
+  const retired = rows.filter(r => r.retired);
+  const tableProps = { columns, rowKey: r => r.gid || "total", sort, onSortChange: setSort };
   return (
     <Card title="All bikes">
-      <DataTable columns={columns} rows={rows} rowKey={r => r.gid || "total"} initialSort={{ key: "distance", dir: "desc" }}
-        caption="All bikes summary" pinnedRows={[{ ...total, name: "Total" }]} />
+      <h3 className="subhead">Active bikes ({active.length})</h3>
+      <DataTable {...tableProps} rows={active} caption="Active bikes summary" empty="No active bikes."
+        pinnedRows={[{ ...total, name: `Total (all ${rows.length} bikes)` }]} />
+      {retired.length > 0 && (
+        <>
+          <h3 className="subhead">
+            <button type="button" className="cell-link" aria-expanded={retiredOpen} aria-controls="all-bikes-retired" onClick={() => setRetiredOpen(o => !o)}>
+              {retiredOpen ? "▾" : "▸"} Retired bikes ({retired.length})
+            </button>
+          </h3>
+          {retiredOpen && <div id="all-bikes-retired"><DataTable {...tableProps} rows={retired} caption="Retired bikes summary" /></div>}
+        </>
+      )}
+      {prBike && <PrSegmentsDrawer bike={prBike} onClose={() => setPrBike(null)} />}
     </Card>
   );
 }

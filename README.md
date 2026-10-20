@@ -39,11 +39,9 @@ Use the gear ID shown by Strava for each bike; unmapped bikes are grouped as
 ignoring case/whitespace, and `1234567` is treated as `b1234567`. Types are
 resolved when the data is served, so existing caches work without a re-pull.
 `config.local.js` is read once at startup: restart the server after editing it.
-The Garage starts with a sortable "All bikes" summary (rides, distance, elevation, time as `hhh:mm:ss`, speed and PRs per bike, with a totals row; the Count and PR figures link to Activities filtered to that bike, since no segments view can be filtered by bike). It compares mileage by bike type and shows ride consistency, weekly mileage ramp, annual climbing toward Everest, and
-lifetime mileage milestones. These summaries follow the global date, activity
+The Garage starts with a compact "Bike type comparison" scorecard (rides, miles, elevation, average ride length, ft/mi and average mph per type, with an inline bar for a selectable metric: miles, elevation, rides or hours), followed by ride consistency and a weekly mileage ramp (both scroll inside their cards, newest first), annual climbing toward Everest (the tooltip shows the year's Everest multiple, e.g. `17.3x Everests`) and lifetime mileage milestones. The sortable "All bikes" summary is split into Active bikes and a collapsible Retired bikes section (rides, distance, elevation, time as `hhh:mm:ss`, speed and PRs per bike; the pinned totals row covers all bikes). The Count figure links to Activities filtered to that bike; the PR figure opens a drawer listing the segments where that bike has a PR (`pr_rank` 1 in `segmentData`, joined to the bike's activities by `gear_id`), each linked to Strava with its PR effort count, best time and latest PR activity. The drawer follows the global filters and the excluded-segments setting. These summaries follow the global date, activity
 type, and bike filters. The Patterns page includes a month-by-year activity
-matrix, best and lowest months, rolling 12-month totals, seasonality, and ride
-timing by weekday and hour. Pattern charts and the matrix use the browser's
+matrix, best and lowest months (left), with seasonality above rolling 12-month totals (newest first, right; stacked on narrow screens). Pattern charts and the matrix use the browser's
 local time zone; matrix cells link to that month's activities.
 
 ## Admin password (Data tab)

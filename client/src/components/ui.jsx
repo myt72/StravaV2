@@ -122,12 +122,15 @@ export function ActivityLink({ activity, children }) {
 /* ---------- table ---------- */
 /**
  * columns: { key, label, render?, renderChild?, value?, align?, wrap?, sortable? }
+ * sort / onSortChange (optional): controlled { key, dir } sort state, to share one sort between several tables.
  * pinnedRows: rows always rendered first, never sorted.
  * expand (optional): { isOpen(row), toggle(row), label(row), disabledReason?(row), children(row) -> child rows }
  *   adds a trailing arrow column; open rows render children directly beneath them (cells use renderChild when present).
  */
-export function DataTable({ columns, rows, rowKey, initialSort, onRowClick, pageSize, empty, caption, pinnedRows, expand }) {
-  const [sort, setSort] = useState(initialSort || null);
+export function DataTable({ columns, rows, rowKey, initialSort, sort: controlledSort, onSortChange, onRowClick, pageSize, empty, caption, pinnedRows, expand }) {
+  const [localSort, setLocalSort] = useState(initialSort || null);
+  const sort = controlledSort !== undefined ? controlledSort : localSort;
+  const setSort = onSortChange || setLocalSort;
   const [limit, setLimit] = useState(pageSize || Infinity);
 
   const sorted = useMemo(() => {
@@ -149,8 +152,8 @@ export function DataTable({ columns, rows, rowKey, initialSort, onRowClick, page
   useEffect(() => setLimit(pageSize || Infinity), [rows.length, pageSize]);
 
   const toggleSort = col => {
-    setSort(prev => prev?.key === col.key
-      ? { key: col.key, dir: prev.dir === "asc" ? "desc" : "asc" }
+    setSort(sort?.key === col.key
+      ? { key: col.key, dir: sort.dir === "asc" ? "desc" : "asc" }
       : { key: col.key, dir: col.align === "r" ? "desc" : "asc" });
   };
 
@@ -254,7 +257,7 @@ export function ConfirmDialog({ open, title, children, confirmLabel = "Confirm",
   );
 }
 
-export function Drawer({ title, onClose, children }) {
+export function Drawer({ title, onClose, children, wide = false }) {
   const ref = useRef(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -271,7 +274,7 @@ export function Drawer({ title, onClose, children }) {
   return (
     <>
       <div className="drawer-backdrop" onClick={onClose} />
-      <aside className="drawer" role="dialog" aria-modal="true" aria-label={title} ref={ref} tabIndex={-1}>
+      <aside className={`drawer${wide ? " wide" : ""}`} role="dialog" aria-modal="true" aria-label={title} ref={ref} tabIndex={-1}>
         <div className="drawer-head">
           <h2>{title}</h2>
           <button type="button" className="btn sm" onClick={onClose} aria-label="Close details">Close</button>
