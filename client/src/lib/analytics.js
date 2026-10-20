@@ -488,6 +488,7 @@ export function buildPeriodGrid(activities, metric, granularity, now = new Date(
     minYear = Math.min(minYear, yr);
     maxYear = Math.max(maxYear, yr);
   }
+
   if (!isFinite(minYear)) minYear = maxYear;
 
   const cell = (key, label, fullLabel, start, params) => ({
@@ -1039,5 +1040,232 @@ export function buildGeoCoverage(activities, types = ROUTE_SPORT_TYPES) {
     total: rides.length,
     withGps: rides.filter(a => a.summary_polyline).length,
     pending: rides.filter(a => a.summary_polyline === undefined).length
+  };
+}
+
+export function buildMonthYearMatrix(activities, metric) {
+  const years = [...new Set((activities || []).map(a => new Date(a.start_date).getFullYear()))].sort((a, b) => a - b);
+  const sums = {};
+  (activities || []).forEach(a => {
+    const d = new Date(a.start_date);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    sums[key] = (sums[key] || 0) + (METRICS[metric] || METRICS.distance).value(a);
+  });
+  return {
+    years,
+    rows: MONTHS.map((label, month) => ({
+      label,
+      month,
+      ...Object.fromEntries(years.map(year => [year, sums[`${year}-${month}`] || 0]))
+    }))
+  };
+}
+
+export function buildMonthHighlights(activities, metric) {
+  const buckets = {};
+  (activities || []).forEach(a => {
+    const d = new Date(a.start_date);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    buckets[key] = (buckets[key] || 0) + (METRICS[metric] || METRICS.distance).value(a);
+  });
+  const years = {};
+  Object.entries(buckets).forEach(([key, value]) => {
+    const [year, month] = key.split("-").map(Number);
+    (years[year] ||= []).push({ month, value });
+  });
+  const highlights = Object.entries(years).map(([year, months]) => {
+    const sorted = [...months].sort((a, b) => b.value - a.value);
+    return { year: Number(year), best: sorted[0], worst: sorted[sorted.length - 1] };
+  }).sort((a, b) => a.year - b.year);
+  if (!Object.keys(buckets).length) return { highlights, rolling: [] };
+  const keys = Object.keys(buckets).sort();
+  const [firstYear, firstMonth] = keys[0].split("-").map(Number);
+  const [lastYear, lastMonth] = keys[keys.length - 1].split("-").map(Number);
+  const rolling = [];
+  for (let d = new Date(firstYear, firstMonth - 1, 1); d <= new Date(lastYear, lastMonth - 1, 1); d.setMonth(d.getMonth() + 1)) {
+    let value = 0;
+    for (let offset = 0; offset < 12; offset++) {
+      const month = new Date(d.getFullYear(), d.getMonth() - offset, 1);
+      value += buckets[`${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`] || 0;
+    }
+    rolling.push({ label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}`, value });
+  }
+  return { highlights, rolling };
+}
+
+export function buildHourlyWeekdayMatrix(activities) {
+  const rows = WEEKDAYS.map(label => ({ label, values: Array(24).fill(0) }));
+  (activities || []).forEach(a => {
+    const date = new Date(a.start_date);
+    if (Number.isNaN(date.getTime())) return;
+    rows[weekdayIndex(date)].values[date.getHours()]++;
+  });
+  return rows;
+}
+
+export function buildWeekdayWeekendSummary(activities) {
+  const summary = { Weekday: 0, Weekend: 0 };
+  (activities || []).forEach(a => {
+    const day = new Date(a.start_date).getDay();
+    summary[day === 0 || day === 6 ? "Weekend" : "Weekday"]++;
+  });
+  return summary;
+}
+
+export function buildSeasonalityIndex(activities, metric) {
+  const totals = {};
+  (activities || []).forEach(a => {
+    const d = new Date(a.start_date);
+    const year = d.getFullYear();
+    const m = (METRICS[metric] || METRICS.distance).value(a);
+    if (!totals[year]) totals[year] = { total: 0, months: Array(12).fill(0) };
+    totals[year].total += m;
+    totals[year].months[d.getMonth()] += m;
+  });
+  const usable = Object.values(totals).filter(y => y.total > 0);
+  return MONTHS.map((label, month) => ({
+    label,
+    value: usable.length ? usable.reduce((sum, year) => sum + year.months[month] / year.total, 0) / usable.length * 100 : 0
+  }));
+}
+
+export function buildConsistencyStats(activities, ridesPerWeek = 3) {
+  const threshold = Math.max(1, Number(ridesPerWeek) || 3);
+  const perYear = {};
+  const dates = [];
+  const weekCounts = {};
+  (activities || []).forEach(a => {
+    const date = new Date(a.start_date);
+    if (Number.isNaN(date.getTime())) return;
+    const dateKey = getDateKey(date);
+    dates.push(dateKey);
+    const { isoYear, week } = isoWeekParts(date);
+    const key = `${isoYear}-${week}`;
+    weekCounts[key] = (weekCounts[key] || 0) + 1;
+    (perYear[isoYear] ||= new Set()).add(key);
+  });
+  const yearList = Object.keys(perYear).map(Number).sort((a, b) => a - b);
+  const qualifying = Object.keys(weekCounts).filter(key => weekCounts[key] >= threshold).map(key => {
+    const [year, week] = key.split("-").map(Number);
+    return { year, week };
+  }).sort((a, b) => a.year - b.year || a.week - b.week);
+  let streak = 0, longestWeekStreak = 0, previous = null;
+  qualifying.forEach(current => {
+    const consecutive = previous && (
+      (current.year === previous.year && current.week === previous.week + 1) ||
+      (current.year === previous.year + 1 && previous.week === isoWeeksInYear(previous.year) && current.week === 1)
+    );
+    streak = consecutive ? streak + 1 : 1;
+    longestWeekStreak = Math.max(longestWeekStreak, streak);
+    previous = current;
+  });
+  const uniqueDates = [...new Set(dates)];
+  return {
+    years: yearList.map(year => ({
+      year,
+      weeksMeetingThreshold: [...(perYear[year] || [])].filter(key => weekCounts[key] >= threshold).length
+    })),
+    longestWeekStreak,
+    longestDayStreak: computeLongestStreak(uniqueDates),
+    longestGap: computeLongestGapDetails(uniqueDates),
+    threshold
+  };
+}
+
+export function buildWeeklyRamp(activities, metric = "distance", now = new Date()) {
+  const weekly = {};
+  (activities || []).forEach(a => {
+    const start = getWeekStartMonday(a.start_date);
+    const key = getDateKey(start);
+    weekly[key] = (weekly[key] || 0) + (metric === "moving_time" ? (a.moving_time || 0) / 3600 : miles(a.distance || 0));
+  });
+  const keys = Object.keys(weekly).sort();
+  if (!keys.length) return [];
+  const start = new Date(`${keys[0]}T00:00:00`);
+  const end = getWeekStartMonday(now);
+  const rows = [];
+  let previous = 0;
+  for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
+    const key = getDateKey(d);
+    const value = weekly[key] || 0;
+    const baseline = metric === "moving_time" ? 1 : 5;
+    rows.push({
+      key,
+      label: `${MONTHS[d.getMonth()]} ${d.getDate()}`,
+      value,
+      change: previous >= baseline ? (value - previous) / previous * 100 : null,
+      warning: previous >= baseline && (value - previous) / previous > 0.1
+    });
+    previous = value;
+  }
+  return rows;
+}
+
+export function buildBikeTypeStats(activities) {
+  const types = {};
+  (activities || []).filter(a => a.sport_type === "Ride").forEach(a => {
+    const type = a.bike_type || "unknown";
+    if (!types[type]) types[type] = { type, count: 0, distance: 0, elevation: 0, moving_time: 0, names: new Set() };
+    const row = types[type];
+    row.count++;
+    row.distance += a.distance || 0;
+    row.elevation += a.total_elevation_gain || 0;
+    row.moving_time += a.moving_time || 0;
+    if (a.bike_name) row.names.add(a.bike_name);
+  });
+  return Object.values(types).map(row => ({
+    ...row,
+    names: [...row.names],
+    avgRideMiles: row.count ? miles(row.distance) / row.count : 0,
+    elevationPerMile: row.distance > 0 ? feet(row.elevation) / miles(row.distance) : 0
+  })).sort((a, b) => b.distance - a.distance);
+}
+
+export function buildBikeMonthlyUsage(activities, metric = "distance") {
+  const bikes = [...new Set((activities || []).map(a => a.bike_name || a.gear_id || "No bike"))].sort();
+  const months = {};
+  (activities || []).filter(a => a.sport_type === "Ride").forEach(a => {
+    const d = new Date(a.start_date);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    if (!months[key]) months[key] = { key, label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` };
+    const name = a.bike_name || a.gear_id || "No bike";
+    months[key][name] = (months[key][name] || 0) + (metric === "moving_time" ? (a.moving_time || 0) / 3600 : miles(a.distance || 0));
+  });
+  return { bikes, rows: Object.values(months).sort((a, b) => a.key.localeCompare(b.key)) };
+}
+
+export function buildEverestStats(activities) {
+  const years = {};
+  let lifetimeFeet = 0;
+  (activities || []).forEach(a => {
+    const gain = feet(a.total_elevation_gain || 0);
+    const year = new Date(a.start_date).getFullYear();
+    years[year] = (years[year] || 0) + gain;
+    lifetimeFeet += gain;
+  });
+  return { lifetime: lifetimeFeet / 29031.7, years: Object.entries(years).map(([year, elevation]) => ({ year: Number(year), elevation, everests: elevation / 29031.7 })).sort((a, b) => a.year - b.year) };
+}
+
+export function buildMileageMilestones(activities, now = new Date(), lookbackDays = 90) {
+  const sorted = [...(activities || [])].filter(a => a.start_date).sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  let total = 0;
+  const achieved = [];
+  sorted.forEach(a => {
+    total += miles(a.distance || 0);
+    const before = total - miles(a.distance || 0);
+    for (const target of [1000, 5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000]) {
+      if (before < target && total >= target) achieved.push({ target, date: a.start_date, projected: false });
+    }
+  });
+  const cutoff = new Date(now.getTime() - lookbackDays * 86400000);
+  const recent = sorted.filter(a => new Date(a.start_date) >= cutoff && new Date(a.start_date) <= now);
+  const recentMiles = recent.reduce((sum, a) => sum + miles(a.distance || 0), 0);
+  const days = recent.length ? Math.max(1, (now - new Date(recent[0].start_date)) / 86400000) : 0;
+  const pace = days ? recentMiles / days : 0;
+  const next = [1000, 5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000].find(target => target > total);
+  return {
+    total,
+    achieved,
+    upcoming: next && pace > 0 ? { target: next, pace: `${lookbackDays}-day average`, date: new Date(now.getTime() + ((next - total) / pace) * 86400000).toISOString() } : null
   };
 }

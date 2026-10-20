@@ -3,7 +3,7 @@ const fetch = require("node-fetch");
 const cors = require("cors");
 const fs = require("fs");
 const crypto = require("crypto");
-const { client_id, client_secret, admin_password, redirect_uri, port} = require("./config");
+const { client_id, client_secret, admin_password, redirect_uri, port, getBikeType } = require("./config");
 const routeMatching = require("./lib/routeMatching");
 const segmentRanks = require("./lib/segmentRanks");
 
@@ -1311,6 +1311,11 @@ app.get("/api/analytics/auto", async (req, res) => {
     return res.json({
       cached: true,
       ...cache,
+      activities: (cache.activities || []).map(activity => ({
+        ...activity,
+        bike_type: getBikeType(activity.gear_id),
+        bike_name: activity.gear_id ? cache.gearDetails?.[activity.gear_id]?.name || activity.gear_id : null
+      })),
       prBackfill: getPrBackfillStatus(),
       geoBackfillStatus: getGeoBackfillStatus(),
       segmentRankStatus: getSegmentRankStatus(),
