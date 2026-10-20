@@ -3,7 +3,7 @@ const fetch = require("node-fetch");
 const cors = require("cors");
 const fs = require("fs");
 const crypto = require("crypto");
-const { client_id, client_secret, admin_password, redirect_uri, port, getBikeType } = require("./config");
+const { client_id, client_secret, admin_password, redirect_uri, port, bike_types, applyBikeTypes, findUnmatchedBikeTypes } = require("./config");
 const routeMatching = require("./lib/routeMatching");
 const segmentRanks = require("./lib/segmentRanks");
 
@@ -1300,6 +1300,13 @@ async function runSegmentRankJobLoop() {
 
 /* API */
 
+// Resolve bike types at response time so existing caches and every analytics response carry them.
+app.use("/api/analytics", (req, res, next) => {
+  const json = res.json.bind(res);
+  res.json = body => json(applyBikeTypes(body));
+  next();
+});
+
 app.get("/api/analytics/auto", async (req, res) => {
   if (!access_token) {
     return res.status(401).json({ error: "Not authenticated" });
@@ -1311,11 +1318,6 @@ app.get("/api/analytics/auto", async (req, res) => {
     return res.json({
       cached: true,
       ...cache,
-      activities: (cache.activities || []).map(activity => ({
-        ...activity,
-        bike_type: getBikeType(activity.gear_id),
-        bike_name: activity.gear_id ? cache.gearDetails?.[activity.gear_id]?.name || activity.gear_id : null
-      })),
       prBackfill: getPrBackfillStatus(),
       geoBackfillStatus: getGeoBackfillStatus(),
       segmentRankStatus: getSegmentRankStatus(),
@@ -2160,4 +2162,17 @@ app.put("/api/bike-photo-prefs/:gearId", (req, res) => {
   }
 });
 
-app.listen(port, "0.0.0.0", () => console.log(`Server running on port ${port}`));
+app.listen(port, "0.0.0.0", () => {
+  console.log(`Server running on port ${port}`);
+  const configured = Object.keys(bike_types).length;
+  console.log(`[Config] Loaded ${configured} bike_types entries (restart the server after editing config.local.js).`);
+  if (configured) {
+    const cache = loadCache();
+    const seen = new Set((cache?.activities || []).map(a => a.gear_id).filter(Boolean));
+    Object.keys(cache?.gearDetails || {}).forEach(id => seen.add(id));
+    if (seen.size) {
+      const unmatched = findUnmatchedBikeTypes([...seen]);
+      if (unmatched.length) console.warn(`[Config] bike_types ids not found in cache: ${unmatched.join(", ")}`);
+    }
+  }
+});

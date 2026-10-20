@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { filenameOf, focusPosition, useAppData } from "../context/AppData.jsx";
 import {
-  buildBikeMonthlyUsage, buildBikeTypeStats, buildConsistencyStats,
+  buildBikeTypeStats, buildUnmappedBikes, buildConsistencyStats,
   buildEverestStats, buildMileageMilestones, buildWeeklyRamp
 } from "../lib/analytics.js";
 import {
@@ -23,24 +23,17 @@ const SORTS = [
 ];
 
 const plural = (n, w) => `${comma(n)} ${w}${n === 1 ? "" : "s"}`;
-const CHART_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)"];
 const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, allowEscapeViewBox: { x: true, y: true } };
 
 function GarageAnalytics({ activities }) {
-  const [metric, setMetric] = usePersistentState("garageMonthlyMetric", "distance");
   const rides = useMemo(() => activities.filter(a => a.sport_type === "Ride"), [activities]);
   const bikeTypes = useMemo(() => buildBikeTypeStats(rides), [rides]);
-  const monthlyUsage = useMemo(() => buildBikeMonthlyUsage(rides, metric), [rides, metric]);
+  const unmapped = useMemo(() => buildUnmappedBikes(rides), [rides]);
   const consistency = useMemo(() => buildConsistencyStats(rides), [rides]);
   const ramp = useMemo(() => buildWeeklyRamp(rides), [rides]);
   const everest = useMemo(() => buildEverestStats(rides), [rides]);
   const milestones = useMemo(() => buildMileageMilestones(rides), [rides]);
 
-  const series = monthlyUsage.bikes.map((name, index) => ({ name, key: `bike${index}`, color: CHART_COLORS[index % CHART_COLORS.length] }));
-  const usageRows = monthlyUsage.rows.map(row => ({
-    ...row,
-    ...Object.fromEntries(series.map(bike => [bike.key, row[bike.name] || 0]))
-  }));
   const typeRows = bikeTypes.map(row => ({ label: row.type, value: miles(row.distance) }));
   const everestRows = everest.years.map(row => ({ label: String(row.year), value: row.elevation }));
   const mileageFmt = value => `${comma(value.toFixed(1))} mi`;
@@ -62,30 +55,12 @@ function GarageAnalytics({ activities }) {
             </ResponsiveContainer>
           </div>
         ) : <p className="muted">No bike type data for the current filters.</p>}
-      </Card>
-
-      <Card title="Monthly use by bike" right={
-        <label className="toolbar">Metric
-          <select aria-label="Monthly bike usage metric" value={metric} onChange={e => setMetric(e.target.value)}>
-            <option value="distance">Miles</option>
-            <option value="moving_time">Hours</option>
-          </select>
-        </label>
-      }>
-        {usageRows.length ? (
-          <div className="chart-box short" role="img" aria-label={`Monthly ${metric === "distance" ? "miles" : "hours"} by bike`}>
-            <ResponsiveContainer>
-              <LineChart data={usageRows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="var(--chart-grid)" />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} interval="preserveStartEnd" />
-                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
-                <Tooltip {...tooltipProps} content={<ChartTip format={metric === "distance" ? mileageFmt : value => `${value.toFixed(1)} h`} />} />
-                <Legend />
-                {series.map(bike => <Line key={bike.key} type="monotone" dataKey={bike.key} name={bike.name} stroke={bike.color} dot={false} />)}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        ) : <p className="muted">No monthly ride history for the current filters.</p>}
+        {unmapped.length > 0 && (
+          <p className="hint">
+            {plural(unmapped.length, "bike")} {unmapped.length === 1 ? "has" : "have"} no type. Add {unmapped.length === 1 ? "it" : "them"} to bike_types in config.local.js (then restart the server):{" "}
+            {unmapped.map(b => `${b.gear_id}${b.name && b.name !== b.gear_id ? ` (${b.name})` : ""}`).join(", ")}
+          </p>
+        )}
       </Card>
 
       <div className="grid two">

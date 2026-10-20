@@ -4,8 +4,7 @@ import { useAppData } from "../context/AppData.jsx";
 import {
   METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentLeaderboard,
   buildHourlyWeekdayMatrix, buildMonthHighlights, buildMonthYearMatrix,
-  buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown,
-  buildWeekdayWeekendSummary
+  buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown
 } from "../lib/analytics.js";
 import { comma, fmtFeet, fmtMiles, formatDate, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
 import { polylineToSvgPath } from "../lib/polyline.js";
@@ -153,8 +152,6 @@ function MonthPatterns({ activities, metric }) {
 
 function RideTimingPatterns({ activities }) {
   const rides = useMemo(() => activities.filter(a => a.sport_type === "Ride"), [activities]);
-  const weekend = useMemo(() => buildWeekdayWeekendSummary(rides), [rides]);
-  const weekendRows = Object.entries(weekend).map(([label, value]) => ({ label, value }));
   return (
     <>
       <Card title="Ride timing by weekday and hour">
@@ -163,21 +160,6 @@ function RideTimingPatterns({ activities }) {
           <p className="hint">Counts use your browser’s local time zone.</p>
         </> : <p className="muted">No rides for the current filters.</p>}
       </Card>
-      {rides.length > 0 && (
-        <Card title="Weekday vs weekend rides">
-          <div className="chart-box short" role="img" aria-label="Ride counts on weekdays and weekends">
-            <ResponsiveContainer>
-              <BarChart data={weekendRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
-                <Tooltip {...tooltipProps} content={<ChartTip format={comma} />} />
-                <Bar dataKey="value" name="Activities" fill="var(--chart-3)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      )}
     </>
   );
 }

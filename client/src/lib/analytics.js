@@ -1103,15 +1103,6 @@ export function buildHourlyWeekdayMatrix(activities) {
   return rows;
 }
 
-export function buildWeekdayWeekendSummary(activities) {
-  const summary = { Weekday: 0, Weekend: 0 };
-  (activities || []).forEach(a => {
-    const day = new Date(a.start_date).getDay();
-    summary[day === 0 || day === 6 ? "Weekend" : "Weekday"]++;
-  });
-  return summary;
-}
-
 export function buildSeasonalityIndex(activities, metric) {
   const totals = {};
   (activities || []).forEach(a => {
@@ -1221,17 +1212,12 @@ export function buildBikeTypeStats(activities) {
   })).sort((a, b) => b.distance - a.distance);
 }
 
-export function buildBikeMonthlyUsage(activities, metric = "distance") {
-  const bikes = [...new Set((activities || []).map(a => a.bike_name || a.gear_id || "No bike"))].sort();
-  const months = {};
-  (activities || []).filter(a => a.sport_type === "Ride").forEach(a => {
-    const d = new Date(a.start_date);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    if (!months[key]) months[key] = { key, label: `${MONTHS[d.getMonth()]} ${d.getFullYear()}` };
-    const name = a.bike_name || a.gear_id || "No bike";
-    months[key][name] = (months[key][name] || 0) + (metric === "moving_time" ? (a.moving_time || 0) / 3600 : miles(a.distance || 0));
+export function buildUnmappedBikes(activities) {
+  const bikes = {};
+  (activities || []).filter(a => a.sport_type === "Ride" && a.gear_id && (a.bike_type || "unknown") === "unknown").forEach(a => {
+    if (!bikes[a.gear_id]) bikes[a.gear_id] = { gear_id: a.gear_id, name: a.bike_name || a.gear_id };
   });
-  return { bikes, rows: Object.values(months).sort((a, b) => a.key.localeCompare(b.key)) };
+  return Object.values(bikes).sort((x, y) => x.gear_id.localeCompare(y.gear_id));
 }
 
 export function buildEverestStats(activities) {
