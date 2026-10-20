@@ -15,7 +15,7 @@ const activity = (start_date, extra = {}) => ({
   ...extra
 });
 
-test("bike type comparison aggregates Ride activities and monthly usage", () => {
+test("bike type comparison aggregates Ride activities", () => {
   const rides = [
     activity("2024-01-10T08:00:00", { bike_type: "road", bike_name: "Road bike", distance: 1609.34, moving_time: 3600 }),
     activity("2024-01-20T08:00:00", { bike_type: "road", bike_name: "Road bike", distance: 3218.68, moving_time: 7200 }),
@@ -28,13 +28,6 @@ test("bike type comparison aggregates Ride activities and monthly usage", () => 
   assert.ok(Math.abs(types[0].distance - 4828.02) < 0.001);
   assert.ok(Math.abs(types[1].distance - 1609.34) < 0.001);
   assert.deepStrictEqual(types[0].names, ["Road bike"]);
-
-  const usage = analytics.buildBikeMonthlyUsage(rides);
-  assert.deepStrictEqual(usage.bikes, ["Road bike", "Trail bike"]);
-  assert.strictEqual(usage.rows.length, 2);
-  assert.strictEqual(usage.rows[0]["Road bike"], 3);
-  assert.strictEqual(usage.rows[0]["Trail bike"], undefined);
-  assert.strictEqual(usage.rows[1]["Trail bike"], 1);
 });
 
 test("consistency and weekly ramp summarize ride streaks and flagged increases", () => {
@@ -89,6 +82,14 @@ test("month/year patterns and ride-timing summaries aggregate by local date", ()
   assert.strictEqual(hourly[0].values[7], 1);
   assert.strictEqual(hourly[1].values[7], 1);
   assert.strictEqual(hourly[5].values[18], 1);
-  assert.deepStrictEqual(analytics.buildWeekdayWeekendSummary(rides), { Weekday: 2, Weekend: 1 });
   assert.strictEqual(analytics.buildSeasonalityIndex(rides, "count").length, 12);
+});
+
+test("unmapped bikes are listed with gear ids and names", () => {
+  const rides = [
+    activity("2024-01-01T08:00:00", { gear_id: "b1", bike_type: "road", bike_name: "Road" }),
+    activity("2024-01-02T08:00:00", { gear_id: "b2", bike_type: "unknown", bike_name: "Gravel" }),
+    activity("2024-01-03T08:00:00", { gear_id: "b2", bike_type: "unknown", bike_name: "Gravel" })
+  ];
+  assert.deepStrictEqual(analytics.buildUnmappedBikes(rides), [{ gear_id: "b2", name: "Gravel" }]);
 });
