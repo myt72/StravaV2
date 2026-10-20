@@ -97,6 +97,8 @@ export default function Overview() {
           <p className="hint" style={{ marginTop: 0 }}>{formatDateRange(kpis.longestRideStreak.start, kpis.longestRideStreak.end)}</p>
           <div className="stat-row"><span>Longest activity streak</span><span className="num"><strong>{comma(kpis.longestActivityStreak.length)} days</strong></span></div>
           <p className="hint" style={{ marginTop: 0 }}>{(kpis.longestActivityStreak.length / 7).toFixed(1)} weeks · {formatDateRange(kpis.longestActivityStreak.start, kpis.longestActivityStreak.end)}</p>
+          <div className="stat-row"><span>Current week streak</span><span className="num"><strong>{comma(kpis.currentWeekStreak.length)} {kpis.currentWeekStreak.length === 1 ? "week" : "weeks"}</strong></span></div>
+          <p className="hint" style={{ marginTop: 0 }}>{formatDateRange(kpis.currentWeekStreak.start, kpis.currentWeekStreak.end)}</p>
           <div className="stat-row"><span>Longest off-bike streak</span><span className="num"><strong>{comma(kpis.longestOffBikeStreak.length)} days</strong></span></div>
           <p className="hint" style={{ marginTop: 0 }}>{formatDateRange(kpis.longestOffBikeStreak.start, kpis.longestOffBikeStreak.end)}</p>
         </Card>

@@ -17,27 +17,73 @@ const TABS = [
   { id: "elevation", label: "By elevation" }
 ];
 
+const RECORD_SECTIONS = [
+  { id: "bikes", title: "Bikes" },
+  { id: "weeks", title: "Biggest weeks" },
+  { id: "activities", title: "Activities" }
+];
+
 function buildRecordCards(h, gearName) {
-  const bike = (label, b, value, sub = "") => ({ label, title: b ? b.name : "-", value: value || "-", sub });
-  const act = (label, a, value) => ({ label, activity: a, title: a ? (a.name || a.sport_type || "Activity") : "-", value: value || "-", sub: a ? `${formatDate(a.start_date)} • ${gearName(a.gear_id)}` : "" });
+  const bike = (group, key, label, b, value, sub = "", hero = false) => ({ group, key, label, hero, bike: b, title: b ? b.name : "-", value: value || "-", sub });
+  const act = (key, label, a, value, hero = false) => ({ group: "activities", key, label, hero, activity: a, title: a ? (a.name || a.sport_type || "Activity") : "-", value: value || "-", sub: a ? `${formatDate(a.start_date)} • ${gearName(a.gear_id)}` : "" });
   return [
-    bike("Most-used bike by miles", h.mostUsedByMiles, h.mostUsedByMiles && `${comma(miles(h.mostUsedByMiles.distance).toFixed(1))} mi`),
-    bike("Most-used bike by count", h.mostUsedByCount, h.mostUsedByCount && `${comma(h.mostUsedByCount.count)} activities`),
-    bike("Fastest bike", h.fastestBike, h.fastestBike && `${h.fastestBike.avg_speed_mph.toFixed(1)} mph avg`),
-    bike("Best climbing bike", h.climbingBike, h.climbingBike && `${comma(feet(h.climbingBike.avg_elevation_per_ride).toFixed(0))} ft/ride`),
-    bike("Longest average ride bike", h.longestAverageRideBike, h.longestAverageRideBike && `${comma(miles(h.longestAverageRideBike.avg_distance_per_ride).toFixed(1))} mi/ride`),
-    bike("Most total activity time", h.mostTotalTimeBike, h.mostTotalTimeBike && formatDuration(h.mostTotalTimeBike.moving_time)),
-    bike("Most recent bike", h.mostRecentBike, h.mostRecentBike && formatDate(h.mostRecentBike.lastRide)),
-    bike("Biggest mileage week", h.biggestMileageWeekBike, h.biggestMileageWeekBike && `${comma(miles(h.biggestMileageWeekBike.distance).toFixed(1))} mi`, h.biggestMileageWeekBike?.label),
-    bike("Biggest climbing week", h.biggestClimbingWeekBike, h.biggestClimbingWeekBike && `${comma(feet(h.biggestClimbingWeekBike.elevation).toFixed(0))} ft`, h.biggestClimbingWeekBike?.label),
-    bike("Longest-used bike", h.longestUsedBike, h.longestUsedBike && formatYearsBetween(h.longestUsedBike.firstRide, h.longestUsedBike.lastRide),
+    bike("bikes", "miles", "Most-used bike by miles", h.mostUsedByMiles, h.mostUsedByMiles && `${comma(miles(h.mostUsedByMiles.distance).toFixed(1))} mi`, "", true),
+    bike("bikes", "count", "Most-used bike by count", h.mostUsedByCount, h.mostUsedByCount && `${comma(h.mostUsedByCount.count)} activities`),
+    bike("bikes", "time", "Most total activity time", h.mostTotalTimeBike, h.mostTotalTimeBike && formatDuration(h.mostTotalTimeBike.moving_time)),
+    bike("bikes", "fastest", "Fastest bike", h.fastestBike, h.fastestBike && `${h.fastestBike.avg_speed_mph.toFixed(1)} mph avg`),
+    bike("bikes", "climbing", "Best climbing bike", h.climbingBike, h.climbingBike && `${comma(feet(h.climbingBike.avg_elevation_per_ride).toFixed(0))} ft/ride`),
+    bike("bikes", "avgride", "Longest average ride bike", h.longestAverageRideBike, h.longestAverageRideBike && `${comma(miles(h.longestAverageRideBike.avg_distance_per_ride).toFixed(1))} mi/ride`),
+    bike("bikes", "recent", "Most recent bike", h.mostRecentBike, h.mostRecentBike && formatDate(h.mostRecentBike.lastRide)),
+    bike("bikes", "longestused", "Longest-used bike", h.longestUsedBike, h.longestUsedBike && formatYearsBetween(h.longestUsedBike.firstRide, h.longestUsedBike.lastRide),
       h.longestUsedBike ? `${formatDate(h.longestUsedBike.firstRide)} – ${formatDate(h.longestUsedBike.lastRide)}` : ""),
-    act("Longest single activity", h.longestActivity, h.longestActivity && `${comma(miles(h.longestActivity.distance || 0).toFixed(1))} mi`),
-    act("Most elevation in a single activity", h.highestElevationActivity, h.highestElevationActivity && `${comma(feet(h.highestElevationActivity.total_elevation_gain || 0).toFixed(0))} ft`),
-    act("Longest activity time", h.longestMovingTimeActivity, h.longestMovingTimeActivity && formatDuration(h.longestMovingTimeActivity.moving_time || 0)),
-    act("Fastest ride by avg speed", h.fastestRide, h.fastestRide && `${h.fastestRide.avg_speed_mph.toFixed(1)} mph`),
-    act("Steepest ride", h.steepestRide, h.steepestRide && `${comma(h.steepestRide.elevation_per_mile.toFixed(0))} ft/mi`)
+    bike("weeks", "mileweek", "Biggest mileage week", h.biggestMileageWeekBike, h.biggestMileageWeekBike && `${comma(miles(h.biggestMileageWeekBike.distance).toFixed(1))} mi`, h.biggestMileageWeekBike?.label, true),
+    bike("weeks", "climbweek", "Biggest climbing week", h.biggestClimbingWeekBike, h.biggestClimbingWeekBike && `${comma(feet(h.biggestClimbingWeekBike.elevation).toFixed(0))} ft`, h.biggestClimbingWeekBike?.label),
+    act("longest", "Longest single activity", h.longestActivity, h.longestActivity && `${comma(miles(h.longestActivity.distance || 0).toFixed(1))} mi`, true),
+    act("elevation", "Most elevation in a single activity", h.highestElevationActivity, h.highestElevationActivity && `${comma(feet(h.highestElevationActivity.total_elevation_gain || 0).toFixed(0))} ft`),
+    act("time", "Longest activity time", h.longestMovingTimeActivity, h.longestMovingTimeActivity && formatDuration(h.longestMovingTimeActivity.moving_time || 0)),
+    act("speed", "Fastest ride by avg speed", h.fastestRide, h.fastestRide && `${h.fastestRide.avg_speed_mph.toFixed(1)} mph`),
+    act("steepest", "Steepest ride", h.steepestRide, h.steepestRide && `${comma(h.steepestRide.elevation_per_mile.toFixed(0))} ft/mi`)
   ];
+}
+
+function RecordTile({ r, hero = false }) {
+  return (
+    <article className={`record-tile${hero ? " hero" : ""}`} aria-label={r.label}>
+      <div className="record-label">{r.label}</div>
+      <div className="record-value num">{r.value}</div>
+      <div className="record-title">
+        {r.activity ? <ActivityLink activity={r.activity} />
+          : r.bike?.gid ? <a href={`#/activities?bike=${encodeURIComponent(r.bike.gid)}`}>{r.title}</a>
+          : r.title}
+      </div>
+      {r.sub && <div className="record-sub">{r.sub}</div>}
+    </article>
+  );
+}
+
+function RecordsOverview({ records }) {
+  const hero = records.filter(r => r.hero);
+  return (
+    <>
+      {hero.length > 0 && (
+        <div className="record-hero-grid" role="group" aria-label="Headline records">
+          {hero.map(r => <RecordTile key={r.group + r.key} r={r} hero />)}
+        </div>
+      )}
+      {RECORD_SECTIONS.map(sec => {
+        const tiles = records.filter(r => r.group === sec.id && !r.hero);
+        if (!tiles.length) return null;
+        return (
+          <section key={sec.id} className="record-section" aria-labelledby={`records-${sec.id}`}>
+            <h2 id={`records-${sec.id}`} className="record-section-title">{sec.title}</h2>
+            <div className="record-grid">
+              {tiles.map(r => <RecordTile key={r.group + r.key} r={r} />)}
+            </div>
+          </section>
+        );
+      })}
+    </>
+  );
 }
 
 function SegmentLink({ row }) {
@@ -178,16 +224,7 @@ export default function Records() {
 
       {tab === "records" && (
         records.length ? (
-          <div className="grid three">
-            {records.map(r => (
-              <Card key={r.label}>
-                <div className="record-label">{r.label}</div>
-                <div className="record-title">{r.activity ? <ActivityLink activity={r.activity} /> : r.title}</div>
-                <div className="record-value num">{r.value}</div>
-                {r.sub && <div className="record-sub">{r.sub}</div>}
-              </Card>
-            ))}
-          </div>
+          <RecordsOverview records={records} />
         ) : <Empty>No records match.</Empty>
       )}
 

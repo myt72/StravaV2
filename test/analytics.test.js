@@ -167,3 +167,65 @@ test("buildEverestStats reports yearly elevation in feet", () => {
   assert.ok(Math.abs(stats.years[0].elevation - 3280.84) < 0.01);
   assert.ok(Math.abs(stats.years[0].everests - 3280.84 / 29031.7) < 1e-9);
 });
+
+const weekRides = dates => dates.map(d => activity(`${d}T08:00:00`, { distance: 1609.34 }));
+const keys = dates => dates;
+
+test("current week streak counts consecutive Monday-start weeks across a year boundary", () => {
+  const r = analytics.computeCurrentWeekStreak(keys(["2024-12-26", "2025-01-02", "2025-01-08"]), new Date(2025, 0, 9));
+  assert.deepStrictEqual(r, { length: 3, start: "2024-12-26", end: "2025-01-08" });
+});
+
+test("current week streak is broken by a gap", () => {
+  const r = analytics.computeCurrentWeekStreak(keys(["2025-01-01", "2025-01-16", "2025-01-22"]), new Date(2025, 0, 23));
+  assert.deepStrictEqual(r, { length: 2, start: "2025-01-16", end: "2025-01-22" });
+});
+
+test("current week streak survives an empty current week but not two", () => {
+  const dates = keys(["2025-01-08", "2025-01-15"]);
+  assert.strictEqual(analytics.computeCurrentWeekStreak(dates, new Date(2025, 0, 20)).length, 2);
+  assert.strictEqual(analytics.computeCurrentWeekStreak(dates, new Date(2025, 0, 27)).length, 0);
+  assert.strictEqual(analytics.computeCurrentWeekStreak([], new Date(2025, 0, 20)).length, 0);
+});
+
+test("current week streak handles a long streak (619 weeks)", () => {
+  const dates = [];
+  const start = new Date(2014, 11, 17);
+  for (let i = 0; i < 619; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i * 7 - (i === 618 ? 2 : 0));
+    dates.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  }
+  dates[618] = "2026-10-19";
+  const r = analytics.computeCurrentWeekStreak(dates, new Date(2026, 9, 20));
+  assert.strictEqual(r.length, 619);
+  assert.strictEqual(r.start, "2014-12-17");
+  assert.strictEqual(r.end, "2026-10-19");
+});
+
+test("weekly distance average uses 52/53 weeks for past years and elapsed weeks for the current year", () => {
+  const rows = analytics.buildWeeklyDistanceAverages(
+    weekRides(["2020-03-01", "2021-03-01", "2021-04-01", "2026-01-10"]),
+    new Date(2026, 0, 15)
+  );
+  assert.deepStrictEqual(rows.map(r => r.year), [2026, 2021, 2020]);
+  assert.strictEqual(rows[2].weeks, 53);
+  assert.strictEqual(rows[1].weeks, 52);
+  assert.ok(Math.abs(rows[1].average - 2 / 52) < 1e-9);
+  assert.strictEqual(rows[0].weeks, 3);
+  assert.strictEqual(rows[0].partial, true);
+  assert.ok(Math.abs(rows[1].delta - (2 / 52 - 1 / 53)) < 1e-9);
+  assert.strictEqual(rows[0].delta, null);
+});
+
+test("segment distance buckets include 10+, 15+ and 20+ miles", () => {
+  const seg = (id, mi) => ({ segment_id: id, segment_name: `S${id}`, distance: mi * 1609.34, elevation_gain: 0 });
+  const out = analytics.buildSegmentDistanceHighlights({
+    activities: [{ id: 1, start_date: "2024-01-01T00:00:00" }, { id: 2, start_date: "2024-01-02T00:00:00" }],
+    segmentData: { 1: [seg(1, 12), seg(2, 16), seg(3, 22)], 2: [seg(1, 12), seg(2, 16)] }
+  }, new Set());
+  const by = Object.fromEntries(out.map(b => [b.label, b]));
+  assert.ok(!by["10+ mi"].empty);
+  assert.strictEqual(by["15+ mi"].segmentId, "2");
+  assert.strictEqual(by["20+ mi"].segmentId, "3");
+  assert.ok(by["10+ mi"].attempts >= by["15+ mi"].attempts);
+});

@@ -3,7 +3,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { useAppData } from "../context/AppData.jsx";
 import {
   METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentLeaderboard,
-  buildMonthHighlights, buildMonthYearMatrix,
+  buildMonthHighlights, buildMonthYearMatrix, buildWeeklyDistanceAverages,
   buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown
 } from "../lib/analytics.js";
 import { comma, fmtFeet, fmtMiles, formatDate, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
@@ -127,6 +127,36 @@ function MonthPatterns({ activities, metric }) {
         </div>
       </div>
     </>
+  );
+}
+
+function WeeklyAverages({ activities }) {
+  const rows = useMemo(() => buildWeeklyDistanceAverages(activities), [activities]);
+  if (!rows.length) return null;
+  const chartData = rows.map(r => ({ label: String(r.year), value: r.average }));
+  return (
+    <Card title="Weekly distance average per year">
+      <div className="grid two">
+        <div className="table-wrap scroll-region" role="region" aria-label="Weekly distance average per year" tabIndex={0}>
+          <table className="data">
+            <caption className="sr-only">Average miles per week by year, newest first</caption>
+            <thead><tr><th scope="col">Year</th><th scope="col" className="r">Mi / week</th><th scope="col" className="r">vs prior year</th><th scope="col" className="r">Total mi</th><th scope="col" className="r">Weeks</th></tr></thead>
+            <tbody>{rows.map(r => (
+              <tr key={r.year}>
+                <td>{r.year}{r.partial ? " (YTD)" : ""}</td>
+                <td className="r num"><strong>{r.average.toFixed(1)}</strong></td>
+                <td className="r num">{r.delta == null ? <span className="muted">—</span> : <span className={r.delta >= 0 ? "positive" : "negative"}>{r.delta >= 0 ? "▲ +" : "▼ "}{r.delta.toFixed(1)}</span>}</td>
+                <td className="r num">{comma(r.miles.toFixed(0))}</td>
+                <td className="r num">{r.weeks}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <PatternChart className="compact" data={[...chartData].reverse()} metric="distance" color="var(--chart-1)" label="Weekly distance average per year"
+          format={v => `${v.toFixed(1)} mi/wk`} />
+      </div>
+      <p className="hint">Total miles in the year ÷ weeks in the year: full 52/53 ISO weeks for completed years, weeks elapsed so far (day of year ÷ 7, rounded up) for the current year. Follows the global filters.</p>
+    </Card>
   );
 }
 
@@ -260,6 +290,7 @@ export default function Patterns() {
             </Card>
           </div>
           <MonthPatterns activities={filtered.activities} metric={metric} />
+          <WeeklyAverages activities={filtered.activities} />
           <Card title="Activity types">
             <div className="grid three">
               {counts.map(([type, count]) => {

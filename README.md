@@ -59,6 +59,12 @@ over the internet, since the password is sent in a request header.
 
 Segments excluded in the Records view (Segment summary / By distance / By elevation) are stored globally on the server in `settings.json` (gitignored), so they persist across browsers and sessions.
 
+## Records, Patterns and Overview additions
+
+- **Records & Segments > By distance** has 10+, 15+ and 20+ mile buckets alongside the existing `5.0+ mi` bucket (cumulative, longest-first ties). This tab has no selector, so there is no selection state to persist. The **Records** tab is grouped into headline records, Bikes, Biggest weeks and Activities.
+- **Patterns > Weekly distance average per year**: miles per week per year, newest first. Completed years divide by 52/53 ISO weeks; the current year divides by weeks elapsed so far (day of year ÷ 7, rounded up).
+- **Overview > Streaks & context > Current week streak**: consecutive Monday-start weeks with an activity, counted back from the current week. An empty current week does not break the streak if last week was active; if the latest active week is older than last week the streak is 0.
+
 ## Matched rides (Patterns page)
 
 Strava's own "Matched Activities" is not in the public API, so StravaV2 matches routes itself. The
