@@ -14,6 +14,11 @@ const port = Number(process.env.PORT || local.port || 5001);
 const client_id = process.env.STRAVA_CLIENT_ID || local.client_id;
 const client_secret = process.env.STRAVA_CLIENT_SECRET || local.client_secret;
 const admin_password = process.env.ADMIN_PASSWORD || local.ADMIN_PASSWORD || "";
+const bike_types = local.bike_types && typeof local.bike_types === "object" && !Array.isArray(local.bike_types)
+  ? local.bike_types
+  : {};
+
+const getBikeType = gearId => bike_types[gearId] || "unknown";
 
 if (!client_id || !client_secret) {
   console.error(
@@ -27,6 +32,8 @@ module.exports = {
   client_id,
   client_secret,
   admin_password,
+  bike_types,
+  getBikeType,
   port,
   redirect_uri: `http://localhost:${port}/exchange_token`
 };
