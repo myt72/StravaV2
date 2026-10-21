@@ -83,9 +83,6 @@ function MonthPatterns({ activities, metric }) {
   const bestLabel = row => row ? MONTHS[row.month - 1] : "—";
   return (
     <>
-      <Card title="Month by year">
-        <MonthYearMatrix activities={activities} metric={metric} />
-      </Card>
       <div className="patterns-split">
         <Card title="Monthly highlights" className="patterns-highlights">
           {highlights.highlights.length ? (
@@ -137,7 +134,7 @@ function WeeklyAverages({ activities }) {
   return (
     <Card title="Weekly distance average per year">
       <div className="grid two">
-        <div className="table-wrap scroll-region" role="region" aria-label="Weekly distance average per year" tabIndex={0}>
+        <div className="table-wrap scroll-region tall" role="region" aria-label="Weekly distance average per year" tabIndex={0}>
           <table className="data">
             <caption className="sr-only">Average miles per week by year, newest first</caption>
             <thead><tr><th scope="col">Year</th><th scope="col" className="r">Mi / week</th><th scope="col" className="r">vs prior year</th><th scope="col" className="r">Total mi</th><th scope="col" className="r">Weeks</th></tr></thead>
@@ -152,7 +149,7 @@ function WeeklyAverages({ activities }) {
             ))}</tbody>
           </table>
         </div>
-        <PatternChart className="compact" data={[...chartData].reverse()} metric="distance" color="var(--chart-1)" label="Weekly distance average per year"
+        <PatternChart className="tall" data={[...chartData].reverse()} metric="distance" color="var(--chart-1)" label="Weekly distance average per year"
           format={v => `${v.toFixed(1)} mi/wk`} />
       </div>
       <p className="hint">Total miles in the year ÷ weeks in the year: full 52/53 ISO weeks for completed years, weeks elapsed so far (day of year ÷ 7, rounded up) for the current year. Follows the global filters.</p>
@@ -282,15 +279,18 @@ export default function Patterns() {
       </PageHead>
       {!filtered.activities.length ? <Empty /> : (
         <>
+          <Card title="Month by year">
+            <MonthYearMatrix activities={filtered.activities} metric={metric} />
+          </Card>
+          <WeeklyAverages activities={filtered.activities} />
           <div className="grid two">
-            <Card title="Day of week"><PatternChart data={weekday} metric={metric} color="var(--chart-1)" paramKey="dow" label="Bar chart by day of week" /></Card>
+            <Card title="Day of week"><PatternChart data={weekday} metric={metric} color="var(--chart-1)" paramKey="dow" className="dow" label="Bar chart by day of week" /></Card>
             <Card title="Time of day">
-              <PatternChart data={tod} metric={metric} color="var(--chart-3)" paramKey="tod" label="Bar chart by time of day" />
+              <PatternChart data={tod} metric={metric} color="var(--chart-3)" paramKey="tod" className="dow" label="Bar chart by time of day" />
               <p className="hint">Early AM 0–6 · Morning 6–12 · Afternoon 12–17 · Evening 17–21 · Night 21–24</p>
             </Card>
           </div>
           <MonthPatterns activities={filtered.activities} metric={metric} />
-          <WeeklyAverages activities={filtered.activities} />
           <Card title="Activity types">
             <div className="grid three">
               {counts.map(([type, count]) => {

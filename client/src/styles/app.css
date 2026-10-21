@@ -125,7 +125,10 @@ select:hover, input:hover { border-color: var(--text-muted); }
 .chart-box { height: 280px; min-width: 0; }
 .chart-box.short { height: 240px; }
 .chart-box.compact { height: 170px; }
+.chart-box.tall { height: 340px; }
+.chart-box.dow { height: 187px; }
 .scroll-region { max-height: 130px; overflow-y: auto; scrollbar-gutter: stable; padding-right: 14px; }
+.scroll-region.tall { max-height: 340px; }
 .scroll-region:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 .scroll-head { position: sticky; top: 0; z-index: 1; background: var(--surface); }
 .week-list.scroll-region { padding-left: 0; padding-right: 14px; }
