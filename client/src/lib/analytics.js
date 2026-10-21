@@ -1089,6 +1089,41 @@ export function buildSegmentLeaderboard(segmentData, activities, excludedSegment
   return rows;
 }
 
+/**
+ * Segments ridden in at least 2 calendar years, ranked by consistency: most years with efforts, then lowest
+ * coefficient of variation of the yearly counts (across years with efforts), then most total efforts.
+ */
+export function buildSegmentConsistency(segmentData, activities, excludedSegmentIds, { limit = 20 } = {}) {
+  const byId = new Map((activities || []).map(a => [String(a.id), a]));
+  const map = new Map();
+  Object.entries(segmentData || {}).forEach(([activityId, efforts]) => {
+    if (!byId.has(String(activityId))) return;
+    const seen = new Set();
+    (efforts || []).forEach(e => {
+      if (!e?.segment_id || !e.start_date) return;
+      const sid = String(e.segment_id);
+      const year = new Date(e.start_date).getFullYear();
+      if (excludedSegmentIds?.has(sid) || seen.has(sid) || !Number.isFinite(year)) return;
+      seen.add(sid);
+      let row = map.get(sid);
+      if (!row) {
+        row = { key: sid, segmentId: sid, name: e.segment_name || `Segment ${sid}`, counts: {}, total: 0 };
+        map.set(sid, row);
+      }
+      row.counts[year] = (row.counts[year] || 0) + 1;
+      row.total++;
+    });
+  });
+  const rows = [...map.values()].map(row => {
+    const values = Object.values(row.counts);
+    const mean = row.total / values.length;
+    const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
+    return { ...row, yearsActive: values.length, cv: Math.sqrt(variance) / mean };
+  }).filter(r => r.yearsActive >= 2);
+  rows.sort((a, b) => b.yearsActive - a.yearsActive || a.cv - b.cv || b.total - a.total || a.name.localeCompare(b.name));
+  return rows.slice(0, limit);
+}
+
 /** Years present in the activities (descending), for the period picker. */
 export const activityYears = activities =>
   [...new Set((activities || []).map(a => new Date(a.start_date).getFullYear()).filter(Number.isFinite))].sort((a, b) => b - a);
