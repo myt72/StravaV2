@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAppData } from "../context/AppData.jsx";
 import {
-  METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentLeaderboard,
+  METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentConsistency, buildSegmentLeaderboard,
   buildMonthHighlights, buildMonthYearMatrix, buildWeeklyDistanceAverages,
   buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown
 } from "../lib/analytics.js";
@@ -38,6 +38,7 @@ function PatternChart({ data, metric, color, paramKey, label, format, className 
 
 const LIMIT_OPTIONS = [10, 20, 50].map(n => ({ value: n, label: String(n) }));
 const PERIOD_OPTIONS = [{ value: "all", label: "All time" }, { value: "year", label: "Year" }, { value: "month", label: "Month" }];
+const SEGMENT_PERIOD_OPTIONS = [...PERIOD_OPTIONS, { value: "consistency", label: "Consistency" }];
 const KIND_OPTIONS = [{ value: "routes", label: "Routes" }, { value: "segments", label: "Segments" }];
 const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, allowEscapeViewBox: { x: true, y: true } };
 
@@ -149,7 +150,7 @@ function WeeklyAverages({ activities }) {
             ))}</tbody>
           </table>
         </div>
-        <PatternChart className="tall" data={[...chartData].reverse()} metric="distance" color="var(--chart-1)" label="Weekly distance average per year"
+        <PatternChart className="tall" data={chartData} metric="distance" color="var(--chart-1)" label="Weekly distance average per year"
           format={v => `${v.toFixed(1)} mi/wk`} />
       </div>
       <p className="hint">Total miles in the year ÷ weeks in the year: full 52/53 ISO weeks for completed years, weeks elapsed so far (day of year ÷ 7, rounded up) for the current year. Follows the global filters.</p>
@@ -170,7 +171,7 @@ function RouteThumb({ polyline, name }) {
 function MatchedRides() {
   const { raw, filtered, excludedSet, status } = useAppData();
   const [limit, setLimit] = usePersistentState("matchedLimit", 20);
-  const [period, setPeriod] = usePersistentState("matchedPeriod", "all");
+  const [savedPeriod, setPeriod] = usePersistentState("matchedPeriod", "all");
   const [year, setYear] = usePersistentState("matchedYear", null);
   const [month, setMonth] = usePersistentState("matchedMonth", new Date().getMonth() + 1);
   const [savedKind, setKind] = usePersistentState("matchedKind", "routes");
@@ -182,15 +183,30 @@ function MatchedRides() {
   const kind = hasRides ? savedKind : "routes";
   const noun = hasFoot && !hasRides ? "Walked" : hasFoot ? "Done" : "Ridden";
 
+  const consistency = kind === "segments" && savedPeriod === "consistency";
+  const period = kind === "routes" && savedPeriod === "consistency" ? "all" : savedPeriod;
   const years = useMemo(() => activityYears(filtered.activities), [filtered.activities]);
   const activeYear = years.includes(year) ? year : years[0] ?? null;
   const opts = useMemo(() => ({
     limit,
-    year: period === "all" ? null : activeYear,
+    year: period === "all" || consistency ? null : activeYear,
     month: period === "month" ? month : null
-  }), [limit, period, activeYear, month]);
+  }), [limit, period, consistency, activeYear, month]);
 
   const coverage = useMemo(() => buildGeoCoverage(raw?.activities), [raw]);
+  const consistencyRows = useMemo(() => (
+    consistency ? buildSegmentConsistency(raw?.segmentData, filtered.activities, excludedSet, { limit }) : []
+  ), [consistency, raw, filtered.activities, excludedSet, limit]);
+  const consistencyColumns = [
+    { key: "rank", label: "#", sortable: false, render: r => consistencyRows.indexOf(r) + 1 },
+    { key: "name", label: "Segment", wrap: true, render: r => <a href={getStravaSegmentUrl(r.segmentId)} target="_blank" rel="noopener noreferrer">{r.name}</a> },
+    ...years.map(y => ({
+      key: `y${y}`, label: String(y), align: "r", value: r => r.counts[y] || 0,
+      render: r => (r.counts[y] ? comma(r.counts[y]) : <span className="muted" aria-label="No efforts">—</span>)
+    })),
+    { key: "yearsActive", label: "Years active", align: "r", render: r => comma(r.yearsActive) },
+    { key: "total", label: "Total", align: "r", render: r => comma(r.total) }
+  ];
   const rows = useMemo(() => (
     kind === "routes"
       ? buildRouteLeaderboard(raw?.routeClusters, filtered.activities, opts)
@@ -225,13 +241,13 @@ function MatchedRides() {
       <div className="toolbar">
         {hasRides && <Segmented label="Leaderboard type" value={kind} options={KIND_OPTIONS} onChange={setKind} />}
         <Segmented label="Rows" value={limit} options={LIMIT_OPTIONS} onChange={setLimit} />
-        <Segmented label="Period" value={period} options={PERIOD_OPTIONS} onChange={setPeriod} />
-        {period !== "all" && (
+        <Segmented label="Period" value={period} options={kind === "segments" ? SEGMENT_PERIOD_OPTIONS : PERIOD_OPTIONS} onChange={setPeriod} />
+        {!consistency && period !== "all" && (
           <select aria-label="Year" value={activeYear ?? ""} onChange={e => setYear(Number(e.target.value))}>
             {years.map(y => <option key={y} value={y}>{y}</option>)}
           </select>
         )}
-        {period === "month" && (
+        {!consistency && period === "month" && (
           <select aria-label="Month" value={month} onChange={e => setMonth(Number(e.target.value))}>
             {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
           </select>
@@ -245,7 +261,10 @@ function MatchedRides() {
           <button type="button" className="cell-link" onClick={() => navigate("/admin")}>Open Data &amp; Admin</button>
         </div>
       )}
-      {status === "loading" ? <p className="muted" role="status">Loading…</p> : (
+      {status === "loading" ? <p className="muted" role="status">Loading…</p> : consistency ? (
+        <DataTable columns={consistencyColumns} rows={consistencyRows} rowKey={r => r.key} caption="Segment consistency by year"
+          empty="No segments with efforts in multiple years." />
+      ) : (
         <DataTable columns={columns} rows={rows} rowKey={r => r.key} caption="Matched rides leaderboard"
           empty={kind === "routes" ? "No matched routes for this period yet." : "No segment efforts for this period."}
           expand={{
@@ -258,6 +277,7 @@ function MatchedRides() {
       <p className="hint">
         Routes are matched from GPS summaries (start/finish, Hausdorff, DTW, overlap and, for rides, shared segments); reversed rides count as a different route.
         Rides, and Walks + Hikes, are matched separately. Counts follow the global filters above, including the activity type. Expand a row to see its rides.
+        {consistency && " Consistency ranks segments ridden in 2+ years by years with efforts, then the most even yearly counts (lowest coefficient of variation), then total efforts."}
       </p>
     </Card>
   );

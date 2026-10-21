@@ -21,3 +21,23 @@ test("buildSegmentRankings groups exclusive tiers with efforts and last ridden",
   const rows = buildSegmentLeaderboard(data.segmentData, data.activities, new Set());
   assert.ok(rows.length && rows.every(row => row.segmentId === row.key));
 });
+
+test("buildSegmentConsistency ranks multi-year segments", async () => {
+  const { buildSegmentConsistency } = await import("../client/src/lib/analytics.js");
+  const e = (id, d) => ({ segment_id: id, segment_name: `S${id}`, start_date: d });
+  const acts = [1, 2, 3, 4, 5].map(id => ({ id }));
+  const data = {
+    1: [e(1, "2022-05-01T00:00:00Z"), e(2, "2022-05-01T00:00:00Z"), e(3, "2022-05-01T00:00:00Z")],
+    2: [e(1, "2023-05-01T00:00:00Z"), e(2, "2023-05-01T00:00:00Z")],
+    3: [e(1, "2024-05-01T00:00:00Z"), e(2, "2024-05-01T00:00:00Z")],
+    4: [e(2, "2024-06-01T00:00:00Z")],
+    5: [e(1, "2024-06-01T00:00:00Z")],
+    9: [e(1, "2024-06-01T00:00:00Z")]
+  };
+  const rows = buildSegmentConsistency(data, acts, new Set(["3"]));
+  assert.deepStrictEqual(rows.map(r => r.segmentId), ["1", "2"]);
+  assert.deepStrictEqual(rows[0].counts, { 2022: 1, 2023: 1, 2024: 2 });
+  assert.strictEqual(rows[0].yearsActive, 3);
+  assert.strictEqual(rows[0].total, 4);
+  assert.strictEqual(buildSegmentConsistency(data, acts, new Set(), { limit: 1 }).length, 1);
+});
