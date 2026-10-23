@@ -112,6 +112,17 @@ How rides are matched (`lib/routeMatching.js`, defaults in `DEFAULT_MATCH_CONFIG
 
 Thresholds can be overridden by `settings.json`'s `routeMatching` key or `PUT /api/settings/route-matching`, then run *Recompute routes* on the Data page (`POST /api/matched-rides/recompute`). Top-level keys apply to every group; `GROUP_OVERRIDES` sets per-group values, e.g. `{ "OVERLAP_MIN_FRACTION": 0.9, "GROUP_OVERRIDES": { "WalkHike": { "START_END_RADIUS_M": 100 } } }`. Precedence: defaults < group defaults < top-level settings < `GROUP_OVERRIDES`. `SPORT_TYPES` (default `Ride`, `Walk`, `Hike`) limits which types are matched. The settings endpoint rejects values outside the supported bounds; unlisted values keep their defaults.
 
+## Elapsed time backfill (Trends Time column)
+
+Activities cached before `elapsed_time` was added to the sync have no elapsed time, so the Trends **Time** column
+cannot show its elapsed line for them. On the **Data & Admin** tab use *Elapsed time backfill* → *Start elapsed backfill*
+(admin password required). It re-pages `/athlete/activities?per_page=200` and only fills in a missing `elapsed_time`
+(other cached fields are untouched), so it costs about `ceil(n / 200)` API calls — no per-activity requests.
+It is resumable (progress is saved per page in `cache.json` under `elapsedBackfill`), respects the rate-limit reserve,
+waits on 429s, and cannot run at the same time as the PR, geo or segment-rank backfills.
+When it finishes, the Trends Time column shows the elapsed line. Endpoints: `POST /api/elapsed-backfill/start|stop`
+and `GET /api/elapsed-backfill/status`. A normal refresh also fills `elapsed_time` for activities on the fetched page.
+
 ## Segment rankings (Records > Segment summary)
 
 **Currently disabled.** Strava returns HTTP 403 for the segment leaderboard endpoint for this app, so the panels are hidden.

@@ -9,7 +9,7 @@ function Row({ label, children }) {
 }
 
 export default function Admin() {
-  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks } = useAppData();
+  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks } = useAppData();
   const [confirmFull, setConfirmFull] = useState(false);
   const [auth, setAuth] = useState({ state: "checking", message: "" });
 
@@ -50,6 +50,10 @@ export default function Admin() {
   const geoTotal = geoBackfill?.totalRides || 0;
   const geoDone = geoBackfill?.processed || 0;
   const geoPct = geoTotal > 0 ? Math.min(100, (geoDone / geoTotal) * 100) : 0;
+  const elapsedTotal = elapsedBackfill?.total || 0;
+  const elapsedDone = elapsedBackfill?.withElapsed || 0;
+  const elapsedPct = elapsedTotal > 0 ? Math.min(100, (elapsedDone / elapsedTotal) * 100) : 0;
+  const elapsedState = !elapsedBackfill ? "Idle" : elapsedBackfill.completed && !elapsedActive ? "Complete" : (elapsedBackfill.mode || "Idle");
   const geoState = !geoBackfill ? "Idle" : geoBackfill.completed ? "Complete" : (geoBackfill.mode || "Idle");
 
   const rankTotal = segmentRank?.totalCandidates || 0;
@@ -131,6 +135,29 @@ export default function Admin() {
             <button type="button" className="btn primary" disabled={working || geoActive || geoBackfill?.completed} onClick={startGeoBackfill}>Start geo backfill</button>
             <button type="button" className="btn" disabled={working || !geoActive} onClick={stopGeoBackfill}>Stop</button>
             <button type="button" className="btn" disabled={working || geoActive} onClick={recomputeRoutes}>Recompute routes</button>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid two">
+        <Card title="Elapsed time backfill (Trends)" right={elapsedActive && <span className="nav-badge pulse">Running</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Re-reads your activity list once to add elapsed time to cached activities (about {comma(elapsedBackfill?.estimatedPages || 0)} API
+            calls, 200 activities each — not one per activity). Needed once for existing caches; it resumes where it left off.
+          </p>
+          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={elapsedTotal} aria-valuenow={elapsedDone} aria-label="Elapsed time backfill progress"><div style={{ width: `${elapsedPct}%` }} /></div>
+          <div style={{ marginTop: 8 }}>
+            <Row label="Status">{elapsedState}</Row>
+            <Row label="Activities with elapsed time">{comma(elapsedDone)} / {comma(elapsedTotal)}</Row>
+            <Row label="Pages fetched">{comma(elapsedBackfill?.pagesDone || 0)}</Row>
+            <Row label="Last run">{elapsedBackfill?.lastRunAt ? formatDateTime(elapsedBackfill.lastRunAt) : "—"}</Row>
+            <Row label="Next retry">{elapsedBackfill?.nextRetryAt ? formatDateTime(elapsedBackfill.nextRetryAt) : "—"}</Row>
+            <Row label="Last error">{elapsedBackfill?.lastError || "—"}</Row>
+          </div>
+          <p className="hint">{elapsedBackfill?.message || "Idle"}</p>
+          <div className="toolbar" style={{ marginTop: 12 }}>
+            <button type="button" className="btn primary" disabled={working || elapsedActive || elapsedBackfill?.completed} onClick={startElapsedBackfill}>{elapsedBackfill?.pagesDone ? "Resume elapsed backfill" : "Start elapsed backfill"}</button>
+            <button type="button" className="btn" disabled={working || !elapsedActive} onClick={stopElapsedBackfill}>Stop</button>
           </div>
         </Card>
       </div>

@@ -99,6 +99,22 @@ export async function stopGeoBackfill() {
   return data;
 }
 
+export async function fetchElapsedBackfillStatus() {
+  const { data } = await request("/api/elapsed-backfill/status", undefined, adminFetch);
+  return data.elapsedBackfill;
+}
+
+export async function startElapsedBackfill() {
+  const { data } = await request("/api/elapsed-backfill/start", { method: "POST" }, adminFetch);
+  if (data.error) throw new ApiError(data.error);
+  return data;
+}
+
+export async function stopElapsedBackfill() {
+  const { data } = await request("/api/elapsed-backfill/stop", { method: "POST" }, adminFetch);
+  return data;
+}
+
 export async function fetchSegmentRankStatus() {
   const { data } = await request("/api/segment-ranks/status", undefined, adminFetch);
   return data.segmentRanks;

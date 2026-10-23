@@ -39,6 +39,7 @@ export function AppDataProvider({ children }) {
 
   const [prBackfill, setPrBackfill] = useState(null);
   const [geoBackfill, setGeoBackfill] = useState(null);
+  const [elapsedBackfill, setElapsedBackfill] = useState(null);
   const [segmentRank, setSegmentRank] = useState(null);
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -48,9 +49,11 @@ export function AppDataProvider({ children }) {
 
   const pollTimer = useRef(null);
   const geoPollTimer = useRef(null);
+  const elapsedPollTimer = useRef(null);
   const rankPollTimer = useRef(null);
   const wasRankActive = useRef(false);
   const wasGeoActive = useRef(false);
+  const wasElapsedActive = useRef(false);
   const wasActive = useRef(false);
   const mounted = useRef(true);
 
@@ -58,6 +61,7 @@ export function AppDataProvider({ children }) {
   const applyPayload = useCallback(data => {
     if (data.prBackfill) setPrBackfill(data.prBackfill);
     if (data.geoBackfillStatus) setGeoBackfill(data.geoBackfillStatus);
+    if (data.elapsedBackfillStatus) setElapsedBackfill(data.elapsedBackfillStatus);
     if (SEGMENT_RANKINGS_ENABLED && data.segmentRankStatus) setSegmentRank(data.segmentRankStatus);
     setServerMessage(data.message || "");
     if (Array.isArray(data.activities)) {
@@ -122,6 +126,7 @@ export function AppDataProvider({ children }) {
       mounted.current = false;
       clearTimeout(pollTimer.current);
       clearTimeout(geoPollTimer.current);
+      clearTimeout(elapsedPollTimer.current);
       clearTimeout(rankPollTimer.current);
     };
   }, [load]);
@@ -134,6 +139,18 @@ export function AppDataProvider({ children }) {
       if (!mounted.current) return;
       setPrBackfill(s);
       if (isBackfillActive(s)) pollTimer.current = setTimeout(pollPrBackfill, POLL_MS);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const pollElapsedBackfill = useCallback(async () => {
+    clearTimeout(elapsedPollTimer.current);
+    try {
+      const s = await api.fetchElapsedBackfillStatus();
+      if (!mounted.current) return;
+      setElapsedBackfill(s);
+      if (isBackfillActive(s)) elapsedPollTimer.current = setTimeout(pollElapsedBackfill, POLL_MS);
     } catch (err) {
       console.error(err);
     }
@@ -182,6 +199,13 @@ export function AppDataProvider({ children }) {
     if (!geoActive && wasGeoActive.current) load({ quiet: true });
     wasGeoActive.current = geoActive;
   }, [geoActive, pollGeoBackfill, load]);
+
+  const elapsedActive = isBackfillActive(elapsedBackfill);
+  useEffect(() => {
+    if (elapsedActive && !wasElapsedActive.current) pollElapsedBackfill();
+    if (!elapsedActive && wasElapsedActive.current) load({ quiet: true });
+    wasElapsedActive.current = elapsedActive;
+  }, [elapsedActive, pollElapsedBackfill, load]);
 
   const rankActive = SEGMENT_RANKINGS_ENABLED && isBackfillActive(segmentRank);
   useEffect(() => {
@@ -259,6 +283,28 @@ export function AppDataProvider({ children }) {
   const stopGeoBackfill = useCallback(
     () => runGeoAction(api.stopGeoBackfill, "Stopping geo backfill…", "Geo backfill stop requested.", "Failed to stop geo backfill."),
     [runGeoAction]
+  );
+  const runElapsedAction = useCallback(async (start, pending, done, fail) => {
+    setBusy("elapsed");
+    setNotice({ type: "info", text: pending });
+    try {
+      const data = await start();
+      if (data.elapsedBackfill) setElapsedBackfill(data.elapsedBackfill);
+      setNotice({ type: "success", text: data.message || done });
+      pollElapsedBackfill();
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || fail });
+    } finally {
+      setBusy(null);
+    }
+  }, [pollElapsedBackfill]);
+  const startElapsedBackfill = useCallback(
+    () => runElapsedAction(api.startElapsedBackfill, "Starting elapsed time backfill…", "Elapsed time backfill started.", "Failed to start elapsed time backfill."),
+    [runElapsedAction]
+  );
+  const stopElapsedBackfill = useCallback(
+    () => runElapsedAction(api.stopElapsedBackfill, "Stopping elapsed time backfill…", "Elapsed time backfill stop requested.", "Failed to stop elapsed time backfill."),
+    [runElapsedAction]
   );
   const runRankAction = useCallback(async (start, pending, done, fail) => {
     setBusy("ranks");
@@ -381,6 +427,7 @@ export function AppDataProvider({ children }) {
     excludeSegment, restoreSegment,
     prBackfill, backfillActive: active, busy, notice, setNotice, pull, startBackfill, stopBackfill, unlockAdmin,
     geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes,
+    elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill,
     segmentRank, rankActive, startSegmentRanks, stopSegmentRanks,
     bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)
