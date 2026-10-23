@@ -99,6 +99,19 @@ export default function Trends() {
 
   const trendCell = v => (v == null ? <span className="muted">–</span>
     : <span className={v >= 0 ? "positive" : "negative"}>{v >= 0 ? "▲ +" : "▼ "}{v.toFixed(0)}%</span>);
+  const timeCell = r => (
+    <>
+      {formatDuration(r.moving_time)}
+      {r.elapsed_time > 0 && (
+        <>
+          <br />
+          <span className="small muted" aria-label={`Elapsed ${formatDuration(r.elapsed_time)}, ${Math.round(((r.moving_time || 0) / r.elapsed_time) * 100)} percent moving`}>
+            elapsed {formatDuration(r.elapsed_time)} · {Math.round(((r.moving_time || 0) / r.elapsed_time) * 100)}%
+          </span>
+        </>
+      )}
+    </>
+  );
   const columns = [
     { key: "year", label: "Year",
       render: r => (r.isTotals
@@ -108,7 +121,7 @@ export default function Trends() {
     { key: "distance", label: "Distance", align: "r", render: r => `${comma(miles(r.distance).toFixed(1))} mi` },
     { key: "elevation", label: "Elevation", align: "r", render: r => `${comma(feet(r.elevation).toFixed(0))} ft` },
     { key: "count", label: "Activities", align: "r", render: r => comma(r.count) },
-    { key: "moving_time", label: "Time", align: "r", render: r => formatDuration(r.moving_time) },
+    { key: "moving_time", label: "Time", align: "r", render: r => timeCell(r), renderChild: c => timeCell(c) },
     { key: "activeDaysCount", label: "Active days", align: "r", render: r => num(r.activeDaysCount, comma) },
     { key: "maxStreak", label: "Max streak", align: "r", render: r => num(r.maxStreak, v => `${comma(v)} days`) },
     { key: "maxRideDistance", label: "Max ride", align: "r", render: r => num(r.maxRideDistance, v => `${comma(miles(v).toFixed(1))} mi`) },
