@@ -3,7 +3,7 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { useAppData } from "../context/AppData.jsx";
 import {
   METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentConsistency, buildSegmentLeaderboard,
-  buildMonthHighlights, buildMonthYearMatrix, buildWeeklyDistanceAverages,
+  buildLongRideBands, buildMonthHighlights, buildMonthYearMatrix, buildWeeklyDistanceAverages,
   buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown
 } from "../lib/analytics.js";
 import { comma, fmtFeet, fmtMiles, formatDate, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
@@ -158,6 +158,48 @@ function WeeklyAverages({ activities }) {
   );
 }
 
+const LONG_RIDE_BANDS = ["20-25", "25-30", "30-35", "35-40", "40-45", "45-50", "50+"];
+const LONG_RIDE_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)", "color-mix(in srgb, var(--chart-1) 55%, var(--chart-4))"];
+
+function LongRidesByYear({ activities }) {
+  const rows = useMemo(() => buildLongRideBands(activities), [activities]);
+  if (!rows.length) return null;
+  return (
+    <Card title="Long rides by year">
+      <div className="grid two">
+        <div className="table-wrap scroll-region tall" role="region" aria-label="Long rides by distance band and year" tabIndex={0}>
+          <table className="data">
+            <caption className="sr-only">Long rides by exclusive distance band and year, newest first</caption>
+            <thead><tr><th scope="col">Year</th>{LONG_RIDE_BANDS.map(band => <th scope="col" className="r" key={band}>{band} mi</th>)}<th scope="col" className="r">Total</th></tr></thead>
+            <tbody>{rows.map(row => (
+              <tr key={row.year}>
+                <td>{row.year}{row.partial ? " (YTD)" : ""}</td>
+                {LONG_RIDE_BANDS.map(band => (
+                  <td className="r num" key={band}>{row.bands[band] ? comma(row.bands[band]) : <span className="muted" aria-label={`No rides ${band} miles`}>—</span>}</td>
+                ))}
+                <td className="r num">{comma(row.total)}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+        <div className="chart-box tall" role="img" aria-label="Grouped bar chart of long rides by exclusive distance band and year">
+          <ResponsiveContainer>
+            <BarChart data={rows.map(row => ({ ...row, label: `${row.year}${row.partial ? " (YTD)" : ""}` }))} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+              <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
+              <Tooltip {...tooltipProps} content={<ChartTip format={value => comma(value)} />} cursor={{ fill: "var(--surface-hover)" }} />
+              <Legend />
+              {LONG_RIDE_BANDS.map((band, i) => <Bar key={band} dataKey={`bands.${band}`} name={`${band} mi`} fill={LONG_RIDE_COLORS[i]} />)}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      <p className="hint">Bands are exclusive: each ride is counted once. Rides under 20 mi are not counted. Follows the global filters.</p>
+    </Card>
+  );
+}
+
 function RouteThumb({ polyline, name }) {
   const d = polylineToSvgPath(polyline);
   if (!d) return <span className="muted small" aria-hidden="true">—</span>;
@@ -303,6 +345,7 @@ export default function Patterns() {
             <MonthYearMatrix activities={filtered.activities} metric={metric} />
           </Card>
           <WeeklyAverages activities={filtered.activities} />
+          <LongRidesByYear activities={filtered.activities} />
           <div className="grid two">
             <Card title="Day of week"><PatternChart data={weekday} metric={metric} color="var(--chart-1)" paramKey="dow" className="dow" label="Bar chart by day of week" /></Card>
             <Card title="Time of day">

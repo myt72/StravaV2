@@ -231,6 +231,33 @@ export function buildWeeklyDistanceAverages(activities, now = new Date()) {
   return rows;
 }
 
+export function buildLongRideBands(activities, now = new Date()) {
+  const labels = ["20-25", "25-30", "30-35", "35-40", "40-45", "45-50", "50+"];
+  const years = new Map();
+  (activities || []).forEach(a => {
+    const d = new Date(a.start_date);
+    if (Number.isNaN(d.getTime())) return;
+    const distance = miles(a.distance);
+    if (distance < 20) return;
+
+    const rowYear = d.getFullYear();
+    if (!years.has(rowYear)) {
+      years.set(rowYear, { year: rowYear, partial: rowYear === now.getFullYear(), bands: Object.fromEntries(labels.map(label => [label, 0])), total: 0 });
+    }
+    const row = years.get(rowYear);
+    const band = distance >= 50 ? "50+"
+      : distance >= 45 ? "45-50"
+        : distance >= 40 ? "40-45"
+          : distance >= 35 ? "35-40"
+            : distance >= 30 ? "30-35"
+              : distance >= 25 ? "25-30"
+                : "20-25";
+    row.bands[band] += 1;
+    row.total += 1;
+  });
+  return [...years.values()].sort((a, b) => b.year - a.year);
+}
+
 export function buildKpis(activities, gearTotals) {
   const sum = key => activities.reduce((s, a) => s + (a[key] || 0), 0);
   const allDayKeys = activities.map(a => getDateKey(a.start_date));
@@ -390,18 +417,19 @@ export function rankYearValues(valuesByYear) {
 
 export function buildAnnualBreakdowns(activities) {
   const annual = {};
-  let totalDistance = 0, totalElevation = 0, totalCount = 0, totalMovingTime = 0;
+  let totalDistance = 0, totalElevation = 0, totalCount = 0, totalMovingTime = 0, totalElapsedTime = 0;
 
   for (const a of activities) {
     const year = new Date(a.start_date).getFullYear();
     if (!annual[year]) {
-      annual[year] = { distance: 0, elevation: 0, count: 0, moving_time: 0, dayKeys: [], maxRideDistance: 0, maxRideElevation: 0 };
+      annual[year] = { distance: 0, elevation: 0, count: 0, moving_time: 0, elapsed_time: 0, dayKeys: [], maxRideDistance: 0, maxRideElevation: 0 };
     }
     const y = annual[year];
     y.distance += a.distance || 0;
     y.elevation += a.total_elevation_gain || 0;
     y.count += 1;
     y.moving_time += a.moving_time || 0;
+    y.elapsed_time += a.elapsed_time || 0;
     y.dayKeys.push(getDateKey(a.start_date));
     y.maxRideDistance = Math.max(y.maxRideDistance, a.distance || 0);
     y.maxRideElevation = Math.max(y.maxRideElevation, a.total_elevation_gain || 0);
@@ -410,24 +438,26 @@ export function buildAnnualBreakdowns(activities) {
     totalElevation += a.total_elevation_gain || 0;
     totalCount += 1;
     totalMovingTime += a.moving_time || 0;
+    totalElapsedTime += a.elapsed_time || 0;
   }
 
   Object.values(annual).forEach(y => {
     y.activeDaysCount = new Set(y.dayKeys).size;
     y.maxStreak = computeMaxStreak(y.dayKeys);
   });
-  return { annual, totalDistance, totalElevation, totalCount, totalMovingTime };
+  return { annual, totalDistance, totalElevation, totalCount, totalMovingTime, totalElapsedTime };
 }
 
 /** Aggregate of ALL activities passed in, shaped like a buildAnnualBreakdowns year row. */
 export function buildAnnualTotals(activities) {
-  const t = { distance: 0, elevation: 0, count: 0, moving_time: 0, maxRideDistance: 0, maxRideElevation: 0 };
+  const t = { distance: 0, elevation: 0, count: 0, moving_time: 0, elapsed_time: 0, maxRideDistance: 0, maxRideElevation: 0 };
   const dayKeys = [];
   for (const a of activities || []) {
     t.distance += a.distance || 0;
     t.elevation += a.total_elevation_gain || 0;
     t.count += 1;
     t.moving_time += a.moving_time || 0;
+    t.elapsed_time += a.elapsed_time || 0;
     t.maxRideDistance = Math.max(t.maxRideDistance, a.distance || 0);
     t.maxRideElevation = Math.max(t.maxRideElevation, a.total_elevation_gain || 0);
     dayKeys.push(getDateKey(a.start_date));
@@ -451,7 +481,7 @@ export function buildAnnualSubRows(activities, mode, { segmentData = {}, gearNam
   const buckets = new Map();
   const bucketFor = (key, extra) => {
     if (!buckets.has(key)) {
-      buckets.set(key, { key, ...extra, distance: 0, elevation: 0, count: 0, moving_time: 0, pr_count: 0, maxRideDistance: 0, maxRideElevation: 0, days: new Set() });
+      buckets.set(key, { key, ...extra, distance: 0, elevation: 0, count: 0, moving_time: 0, elapsed_time: 0, pr_count: 0, maxRideDistance: 0, maxRideElevation: 0, days: new Set() });
     }
     return buckets.get(key);
   };
@@ -477,6 +507,7 @@ export function buildAnnualSubRows(activities, mode, { segmentData = {}, gearNam
     b.elevation += a.total_elevation_gain || 0;
     b.count += 1;
     b.moving_time += a.moving_time || 0;
+    b.elapsed_time += a.elapsed_time || 0;
     b.pr_count += prCountFor(segmentData, a);
     b.maxRideDistance = Math.max(b.maxRideDistance, a.distance || 0);
     b.maxRideElevation = Math.max(b.maxRideElevation, a.total_elevation_gain || 0);

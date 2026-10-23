@@ -83,6 +83,38 @@ test("month/year patterns and ride-timing summaries aggregate by local date", ()
   assert.strictEqual(analytics.buildSeasonalityIndex(rides, "count").length, 12);
 });
 
+test("long ride bands count exact boundaries exclusively and group newest year first", () => {
+  const rides = [
+    activity("2023-06-01T08:00:00", { distance: 19.99 * 1609.34 }),
+    activity("2023-06-02T08:00:00", { distance: 20 * 1609.34 }),
+    activity("2023-06-03T08:00:00", { distance: 25 * 1609.34 }),
+    activity("2023-06-04T08:00:00", { distance: 50 * 1609.34 }),
+    activity("2024-06-01T08:00:00", { distance: 24 * 1609.34 })
+  ];
+  const rows = analytics.buildLongRideBands(rides, new Date("2024-07-01"));
+  assert.deepStrictEqual(rows.map(row => row.year), [2024, 2023]);
+  assert.deepStrictEqual(rows.map(row => row.partial), [true, false]);
+  assert.deepStrictEqual(rows[0].bands, { "20-25": 1, "25-30": 0, "30-35": 0, "35-40": 0, "40-45": 0, "45-50": 0, "50+": 0 });
+  assert.deepStrictEqual(rows[1].bands, { "20-25": 1, "25-30": 1, "30-35": 0, "35-40": 0, "40-45": 0, "45-50": 0, "50+": 1 });
+  assert.deepStrictEqual(rows.map(row => row.total), [1, 3]);
+});
+
+test("annual totals and month, week and bike subrows sum elapsed time", () => {
+  const rides = [
+    activity("2024-01-02T08:00:00", { gear_id: "bike", moving_time: 100, elapsed_time: 150 }),
+    activity("2024-01-09T08:00:00", { gear_id: "bike", moving_time: 200, elapsed_time: 300 }),
+    activity("2025-02-01T08:00:00", { moving_time: 50 })
+  ];
+  const breakdowns = analytics.buildAnnualBreakdowns(rides);
+  assert.strictEqual(breakdowns.annual[2024].elapsed_time, 450);
+  assert.strictEqual(breakdowns.annual[2025].elapsed_time, 0);
+  assert.strictEqual(breakdowns.totalElapsedTime, 450);
+  assert.strictEqual(analytics.buildAnnualTotals(rides).elapsed_time, 450);
+  assert.strictEqual(analytics.buildAnnualSubRows(rides, "monthly", { combineYears: true }).find(row => row.label === "Jan").elapsed_time, 450);
+  assert.strictEqual(analytics.buildAnnualSubRows(rides.slice(0, 2), "weekly").reduce((sum, row) => sum + row.elapsed_time, 0), 450);
+  assert.strictEqual(analytics.buildAnnualSubRows(rides, "bike")[0].elapsed_time, 450);
+});
+
 test("unmapped bikes are listed with gear ids and names", () => {
   const rides = [
     activity("2024-01-01T08:00:00", { gear_id: "b1", bike_type: "road", bike_name: "Road" }),

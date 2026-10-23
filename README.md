@@ -63,6 +63,7 @@ Segments excluded in the Records view (Segment summary / By distance / By elevat
 
 - **Records & Segments > By distance** has 10+, 15+ and 20+ mile buckets alongside the existing `5.0+ mi` bucket (cumulative, longest-first ties). This tab has no selector, so there is no selection state to persist. The **Records** tab is grouped into headline records, Bikes, Biggest weeks and Activities.
 - **Patterns > Weekly distance average per year**: miles per week per year, newest first. Completed years divide by 52/53 ISO weeks; the current year divides by weeks elapsed so far (day of year ÷ 7, rounded up).
+- **Patterns > Long rides by year**: yearly ride counts in exclusive 5-mile bands from 20 mi upward; rides under 20 mi are excluded.
 - **Overview > Streaks & context > Current week streak**: consecutive Monday-start weeks with an activity, counted back from the current week. An empty current week does not break the streak if last week was active; if the latest active week is older than last week the streak is 0.
 
 ## Matched rides (Patterns page)
