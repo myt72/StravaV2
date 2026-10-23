@@ -6,6 +6,8 @@ const crypto = require("crypto");
 const { client_id, client_secret, admin_password, redirect_uri, port, bike_types, applyBikeTypes, findUnmatchedBikeTypes } = require("./config");
 const routeMatching = require("./lib/routeMatching");
 const segmentRanks = require("./lib/segmentRanks");
+const elapsedBackfill = require("./lib/elapsedBackfill");
+const { findChangedActivities } = require("./lib/activitySync");
 
 const app = express();
 app.use(cors());
@@ -54,6 +56,19 @@ let geoBackfillJob = {
   message: "Idle",
   page: 1,
   pagesDone: 0,
+  reserve: 25
+};
+
+/* Background elapsed_time backfill job state (re-pages /athlete/activities to add elapsed_time) */
+let elapsedBackfillJob = {
+  running: false,
+  stopRequested: false,
+  startedAt: null,
+  lastRunAt: null,
+  nextRetryAt: null,
+  mode: "idle",
+  message: "Idle",
+  lastError: null,
   reserve: 25
 };
 
@@ -170,6 +185,9 @@ function ensureCacheShape(cache) {
   }
   if (!base.geoBackfill || typeof base.geoBackfill !== "object") {
     base.geoBackfill = { nextPage: 1, completed: false, lastRunAt: null, pagesDone: 0 };
+  }
+  if (!base.elapsedBackfill || typeof base.elapsedBackfill !== "object") {
+    base.elapsedBackfill = elapsedBackfill.defaultElapsedBackfill();
   }
   if (!base.segmentRanks || typeof base.segmentRanks !== "object" || Array.isArray(base.segmentRanks)) {
     base.segmentRanks = {};
@@ -382,25 +400,6 @@ function mapGeoFields(a) {
   };
 }
 
-function activitySignature(activity, { includeGeo = true } = {}) {
-  if (!activity) return "";
-  const geo = includeGeo
-    ? { summary_polyline: activity.summary_polyline, start_latlng: activity.start_latlng, end_latlng: activity.end_latlng }
-    : {};
-  return JSON.stringify({
-    id: activity.id,
-    name: activity.name,
-    sport_type: activity.sport_type,
-    distance: activity.distance,
-    moving_time: activity.moving_time,
-    elapsed_time: activity.elapsed_time,
-    total_elevation_gain: activity.total_elevation_gain,
-    start_date: activity.start_date,
-    gear_id: activity.gear_id,
-    ...geo
-  });
-}
-
 async function fetchAllActivitiesOnce() {
   let page = 1;
   let all = [];
@@ -467,29 +466,6 @@ function mergeActivitiesById(preferredActivities, existingActivities) {
   return Array.from(merged.values()).sort(
     (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
   );
-}
-
-function findChangedActivities(incomingActivities, existingActivities) {
-  const existingById = new Map((existingActivities || []).map(a => [String(a.id), a]));
-  const changed = [];
-  const added = [];
-
-  for (const activity of incomingActivities || []) {
-    const existing = existingById.get(String(activity.id));
-    if (!existing) {
-      added.push(activity);
-      changed.push(activity);
-      continue;
-    }
-
-    // Legacy cached activities have no geo fields yet; don't treat that as a change (it would re-fetch segment data).
-    const includeGeo = existing.summary_polyline !== undefined;
-    if (activitySignature(activity, { includeGeo }) !== activitySignature(existing, { includeGeo })) {
-      changed.push(activity);
-    }
-  }
-
-  return { changed, added };
 }
 
 async function fetchActivitiesBefore(beforeDate) {
@@ -1137,6 +1113,148 @@ async function runGeoBackfillJobLoop() {
   }
 }
 
+/* ELAPSED TIME BACKFILL (about ceil(activities / 200) API calls; no per-activity requests) */
+
+function getElapsedBackfillStatus() {
+  const cache = ensureCacheShape(loadCache());
+  const meta = cache.elapsedBackfill;
+  return {
+    running: elapsedBackfillJob.running,
+    stopRequested: elapsedBackfillJob.stopRequested,
+    startedAt: elapsedBackfillJob.startedAt,
+    lastRunAt: elapsedBackfillJob.lastRunAt || meta.lastRunAt || null,
+    nextRetryAt: elapsedBackfillJob.nextRetryAt,
+    mode: elapsedBackfillJob.mode,
+    message: elapsedBackfillJob.message,
+    lastError: elapsedBackfillJob.lastError || meta.lastError || null,
+    nextPage: meta.nextPage || 1,
+    pagesDone: meta.pagesDone || 0,
+    estimatedPages: Math.ceil(cache.activities.length / 200),
+    total: cache.activities.length,
+    withElapsed: cache.activities.filter(elapsedBackfill.hasElapsedTime).length,
+    completed: Boolean(meta.completed),
+    reserve: elapsedBackfillJob.reserve
+  };
+}
+
+async function runElapsedBackfillJobLoop() {
+  if (elapsedBackfillJob.running) return;
+
+  elapsedBackfillJob.running = true;
+  elapsedBackfillJob.stopRequested = false;
+  elapsedBackfillJob.mode = "running";
+  elapsedBackfillJob.message = "Elapsed time backfill running";
+
+  while (!elapsedBackfillJob.stopRequested) {
+    if (elapsedBackfillJob.nextRetryAt) {
+      const retryAt = new Date(elapsedBackfillJob.nextRetryAt).getTime();
+      if (retryAt > Date.now()) {
+        elapsedBackfillJob.mode = "waiting";
+        elapsedBackfillJob.message = `Waiting until ${new Date(elapsedBackfillJob.nextRetryAt).toLocaleString()} to retry`;
+        await sleep(Math.min(retryAt - Date.now(), 60000));
+        continue;
+      }
+      elapsedBackfillJob.nextRetryAt = null;
+      elapsedBackfillJob.mode = "running";
+    }
+
+    if (!access_token) {
+      elapsedBackfillJob.mode = "error";
+      elapsedBackfillJob.message = "Not authenticated";
+      break;
+    }
+
+    // Keep a safety reserve of the rate limit for other jobs.
+    if (rateLimitRemaining <= elapsedBackfillJob.reserve || rateLimitShortRemaining <= 2) {
+      const nextRetry = getNextRetryTime();
+      elapsedBackfillJob.nextRetryAt = nextRetry.toISOString();
+      elapsedBackfillJob.mode = "waiting";
+      elapsedBackfillJob.message = `Rate limit reserve reached. Waiting until ${nextRetry.toLocaleString()}`;
+      rateLimitRemaining = Math.max(rateLimitRemaining, elapsedBackfillJob.reserve + 1);
+      rateLimitShortRemaining = Math.max(rateLimitShortRemaining, 3);
+      continue;
+    }
+
+    const cache = ensureCacheShape(loadCache());
+    if (!cache.activities.length) {
+      elapsedBackfillJob.mode = "error";
+      elapsedBackfillJob.message = "No cache available. Run a full data pull first.";
+      break;
+    }
+
+    const meta = cache.elapsedBackfill;
+    try {
+      const page = meta.nextPage || 1;
+      requestCount = 0;
+      const res = await stravaFetch(`https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}`);
+
+      if (res.status === 429) {
+        const nextRetry = getNextRetryTime();
+        elapsedBackfillJob.nextRetryAt = nextRetry.toISOString();
+        elapsedBackfillJob.mode = "waiting";
+        elapsedBackfillJob.message = `Rate limited (429). Waiting until ${nextRetry.toLocaleString()}`;
+        continue;
+      }
+      if (!res.ok) {
+        const message = `Strava responded ${res.status}`;
+        meta.lastError = message;
+        saveCache(cache, { skipClusters: true });
+        elapsedBackfillJob.lastError = message;
+        elapsedBackfillJob.mode = "error";
+        elapsedBackfillJob.message = message;
+        break;
+      }
+
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error("Unexpected response from Strava");
+
+      meta.lastRunAt = new Date().toISOString();
+      meta.lastError = null;
+      elapsedBackfillJob.lastRunAt = meta.lastRunAt;
+      elapsedBackfillJob.lastError = null;
+
+      if (data.length === 0) {
+        // End of the list. A second pass picks up anything shifted between pages; leftovers have no elapsed_time on Strava.
+        const stillPending = cache.activities.some(a => !elapsedBackfill.hasElapsedTime(a));
+        if (stillPending && !meta.secondPass) {
+          meta.secondPass = true;
+          meta.nextPage = 1;
+          saveCache(cache, { skipClusters: true });
+          continue;
+        }
+        meta.completed = true;
+        meta.secondPass = false;
+        saveCache(cache, { skipClusters: true });
+        elapsedBackfillJob.mode = "complete";
+        elapsedBackfillJob.message = "Elapsed time backfill complete";
+        elapsedBackfillJob.running = false;
+        return;
+      }
+
+      elapsedBackfill.mergeElapsedTime(cache.activities, data);
+      meta.nextPage = page + 1;
+      meta.pagesDone = (meta.pagesDone || 0) + 1;
+      saveCache(cache, { skipClusters: true });
+      elapsedBackfillJob.mode = "running";
+      elapsedBackfillJob.message = `Processed page ${page} (${data.length} activities)`;
+      await sleep(1000);
+    } catch (err) {
+      console.error("[Elapsed Backfill Job] Error:", err);
+      const nextRetry = getNextQuarterHourUtc();
+      elapsedBackfillJob.nextRetryAt = nextRetry.toISOString();
+      elapsedBackfillJob.lastError = err.message;
+      elapsedBackfillJob.mode = "error";
+      elapsedBackfillJob.message = `Error encountered. Retrying at ${nextRetry.toLocaleString()}`;
+    }
+  }
+
+  elapsedBackfillJob.running = false;
+  if (elapsedBackfillJob.stopRequested) {
+    elapsedBackfillJob.mode = "stopped";
+    elapsedBackfillJob.message = "Elapsed time backfill stopped";
+  }
+}
+
 /* SEGMENT RANK BACKFILL (one leaderboard request per candidate segment, plus one /athlete request per run) */
 
 function getSegmentRankCandidates(cache) {
@@ -1322,6 +1440,7 @@ app.get("/api/analytics/auto", async (req, res) => {
       ...cache,
       prBackfill: getPrBackfillStatus(),
       geoBackfillStatus: getGeoBackfillStatus(),
+      elapsedBackfillStatus: getElapsedBackfillStatus(),
       segmentRankStatus: getSegmentRankStatus(),
       message: "Loaded from local cache.json"
     });
@@ -1343,6 +1462,9 @@ app.post("/api/pr-backfill/start", requireAdmin, async (req, res) => {
 
   if (geoBackfillJob.running) {
     return res.status(409).json({ error: "Geo backfill is running. Stop it before starting the PR backfill." });
+  }
+  if (elapsedBackfillJob.running) {
+    return res.status(409).json({ error: "Elapsed time backfill is running. Stop it before starting the PR backfill." });
   }
 
   if (prBackfillJob.running) {
@@ -1412,6 +1534,9 @@ app.post("/api/geo-backfill/start", requireAdmin, async (req, res) => {
   if (prBackfillJob.running) {
     return res.status(409).json({ error: "PR backfill is running. Stop it before starting the geo backfill." });
   }
+  if (elapsedBackfillJob.running) {
+    return res.status(409).json({ error: "Elapsed time backfill is running. Stop it before starting the geo backfill." });
+  }
 
   const restart = req.query.restart === "1" || (req.body && req.body.restart === true);
   const status = getGeoBackfillStatus();
@@ -1458,6 +1583,9 @@ app.post("/api/segment-ranks/start", requireAdmin, async (req, res) => {
   }
   if (segmentRankJob.running) {
     return res.json({ ok: true, alreadyRunning: true, segmentRanks: getSegmentRankStatus(), message: "Segment rank backfill already running" });
+  }
+  if (elapsedBackfillJob.running) {
+    return res.status(409).json({ error: "Elapsed time backfill is running. Stop it before starting the segment rank backfill." });
   }
 
   const body = req.body || {};
@@ -1530,13 +1658,71 @@ app.get("/api/matched-rides", async (req, res) => {
         excludedSegmentIds: loadSettings().excludedSegments || []
       })
     : routeMatching.routeLeaderboard(cache.routeClusters, cache.activities, opts);
-  return res.json({ type, period, year: opts.year ?? null, month: opts.month ?? null, limit, rows, geoBackfill: getGeoBackfillStatus() });
+  return res.json({ type, period, year: opts.year ?? null, month: opts.month ?? null, limit, rows, geoBackfill: getGeoBackfillStatus(), elapsedBackfill: getElapsedBackfillStatus() });
+});
+
+app.post("/api/elapsed-backfill/start", requireAdmin, async (req, res) => {
+  if (!access_token) return res.status(401).json({ error: "Not authenticated" });
+
+  const cache = ensureCacheShape(loadCache());
+  if (!cache.activities.length) {
+    return res.status(400).json({ error: "No cache available. Run a full data pull first." });
+  }
+  if (elapsedBackfillJob.running) {
+    return res.json({ ok: true, alreadyRunning: true, elapsedBackfill: getElapsedBackfillStatus(), message: "Elapsed time backfill already running" });
+  }
+  if (prBackfillJob.running) {
+    return res.status(409).json({ error: "PR backfill is running. Stop it before starting the elapsed time backfill." });
+  }
+  if (geoBackfillJob.running) {
+    return res.status(409).json({ error: "Geo backfill is running. Stop it before starting the elapsed time backfill." });
+  }
+  if (segmentRankJob.running) {
+    return res.status(409).json({ error: "Segment rank backfill is running. Stop it before starting the elapsed time backfill." });
+  }
+
+  const restart = req.query.restart === "1" || (req.body && req.body.restart === true);
+  const status = getElapsedBackfillStatus();
+  if (status.completed && !restart) {
+    return res.json({ ok: true, elapsedBackfill: status, message: "Elapsed time backfill already complete" });
+  }
+  if (restart || status.completed) {
+    cache.elapsedBackfill = { ...elapsedBackfill.defaultElapsedBackfill(), lastRunAt: cache.elapsedBackfill.lastRunAt };
+    saveCache(cache, { skipClusters: true });
+  }
+
+  const reserve = Number(req.query.reserve || (req.body && req.body.reserve) || 25);
+  elapsedBackfillJob = {
+    ...elapsedBackfillJob,
+    running: false,
+    stopRequested: false,
+    startedAt: new Date().toISOString(),
+    nextRetryAt: null,
+    lastError: null,
+    mode: "starting",
+    message: "Elapsed time backfill starting",
+    reserve: Number.isFinite(reserve) && reserve >= 0 ? reserve : 25
+  };
+
+  runElapsedBackfillJobLoop();
+
+  return res.json({ ok: true, elapsedBackfill: getElapsedBackfillStatus(), message: "Elapsed time backfill started" });
+});
+
+app.post("/api/elapsed-backfill/stop", requireAdmin, async (req, res) => {
+  elapsedBackfillJob.stopRequested = true;
+  return res.json({ ok: true, elapsedBackfill: getElapsedBackfillStatus(), message: "Elapsed time backfill stop requested" });
+});
+
+app.get("/api/elapsed-backfill/status", requireAdmin, async (req, res) => {
+  return res.json({ ok: true, elapsedBackfill: getElapsedBackfillStatus() });
 });
 
 app.post("/api/matched-rides/recompute", requireAdmin, async (req, res) => {
   const cache = ensureCacheShape(loadCache());
   if (!cache.activities.length) return res.status(400).json({ error: "No cache available. Run a full data pull first." });
   if (geoBackfillJob.running) return res.status(409).json({ error: "Geo backfill is running. Try again when it finishes." });
+  if (elapsedBackfillJob.running) return res.status(409).json({ error: "Elapsed time backfill is running. Try again when it finishes." });
   cache.routeClusters = routeMatching.emptyRouteClusters();
   saveCache(cache); // rebuilds every cluster from scratch
   const clusters = cache.routeClusters.clusters;
@@ -1588,6 +1774,7 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
       segmentData,
       segmentRanks: cache.segmentRanks,
       segmentRankMeta: cache.segmentRankMeta,
+      elapsedBackfill: cache.elapsedBackfill,
       activityCounts,
       gearTotals,
       gearDetails,
@@ -1696,6 +1883,7 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
       segmentData,
       segmentRanks: cache.segmentRanks,
       segmentRankMeta: cache.segmentRankMeta,
+      elapsedBackfill: cache.elapsedBackfill,
       activityCounts,
       gearTotals,
       gearDetails,
