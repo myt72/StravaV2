@@ -198,6 +198,10 @@ and `notMatchedIds` to the seeds in `calibration/seeds.json`.
 
 Run the unit tests with `npm test`.
 
+## Imperial / Metric units
+
+The top filter bar has a **Units** selector (Imperial or Metric, default Imperial). The choice is saved in `localStorage` as `stravaV2:unitSystem`. It switches miles/kilometres, feet/metres, mph/km/h, min/mi pace and ft/mi (m/km) across Overview, Trends, Patterns, Records, Garage and Activities, including charts, tooltips and axis labels. The server and cached data stay in native units (metres, seconds); conversion happens only in the client (`client/src/lib/units.js`, with the `useUnits()` hook in `client/src/context/Units.jsx`). Threshold-based views use equivalent round metric values in metric mode: mileage milestones are 1,000 / 2,500 / 5,000 / 10,000 / 20,000 / 25,000 / 30,000 / 40,000 km and onward, long-ride bands start at 30 km, and segment distance and elevation buckets use km and m.
+
 ## Collapsible navigation
 
 The left navigation has a toggle button at the top that switches between

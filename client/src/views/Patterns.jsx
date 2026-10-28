@@ -2,24 +2,25 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAppData } from "../context/AppData.jsx";
 import {
-  METRICS, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentConsistency, buildSegmentLeaderboard,
+  getMetrics, longRideBandLabels, activityYears, buildGeoCoverage, buildRouteLeaderboard, buildSegmentConsistency, buildSegmentLeaderboard,
   buildLongRideBands, buildMonthHighlights, buildMonthYearMatrix, buildWeeklyDistanceAverages,
   buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown
 } from "../lib/analytics.js";
-import { comma, fmtFeet, fmtMiles, formatDate, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
+import { comma, formatDate, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
 import { polylineToSvgPath } from "../lib/polyline.js";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
+import { useUnits } from "../context/Units.jsx";
 import { Card, ChartTip, DataTable, Empty, PageHead, Segmented } from "../components/ui.jsx";
 
-const OPTIONS = [
-  { value: "distance", label: "Miles" },
+const metricOptions = units => [
+  { value: "distance", label: units.metric ? "Kilometers" : "Miles" },
   { value: "moving_time", label: "Hours" },
   { value: "count", label: "Count" }
 ];
 
 function PatternChart({ data, metric, color, paramKey, label, format, className = "" }) {
-  const m = METRICS[metric];
+  const m = getMetrics(useUnits())[metric];
   return (
     <div className={`chart-box ${className}`.trim()} role="img" aria-label={label}>
       <ResponsiveContainer>
@@ -43,7 +44,9 @@ const KIND_OPTIONS = [{ value: "routes", label: "Routes" }, { value: "segments",
 const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, allowEscapeViewBox: { x: true, y: true } };
 
 function MonthYearMatrix({ activities, metric }) {
-  const { years, rows } = useMemo(() => buildMonthYearMatrix(activities, metric), [activities, metric]);
+  const units = useUnits();
+  const METRICS = getMetrics(units);
+  const { years, rows } = useMemo(() => buildMonthYearMatrix(activities, metric, units), [activities, metric, units]);
   const maximum = Math.max(0, ...rows.flatMap(row => years.map(year => row[year] || 0)));
   if (!years.length) return null;
   const columns = `repeat(${years.length + 1}, minmax(64px, 1fr))`;
@@ -77,9 +80,10 @@ function MonthYearMatrix({ activities, metric }) {
 }
 
 function MonthPatterns({ activities, metric }) {
-  const highlights = useMemo(() => buildMonthHighlights(activities, metric), [activities, metric]);
-  const seasonality = useMemo(() => buildSeasonalityIndex(activities, metric), [activities, metric]);
-  const m = METRICS[metric];
+  const units = useUnits();
+  const highlights = useMemo(() => buildMonthHighlights(activities, metric, units), [activities, metric, units]);
+  const seasonality = useMemo(() => buildSeasonalityIndex(activities, metric, units), [activities, metric, units]);
+  const m = getMetrics(units)[metric];
   const rolling = highlights.rolling;
   const bestLabel = row => row ? MONTHS[row.month - 1] : "—";
   return (
@@ -129,7 +133,8 @@ function MonthPatterns({ activities, metric }) {
 }
 
 function WeeklyAverages({ activities }) {
-  const rows = useMemo(() => buildWeeklyDistanceAverages(activities), [activities]);
+  const units = useUnits();
+  const rows = useMemo(() => buildWeeklyDistanceAverages(activities, new Date(), units), [activities, units]);
   if (!rows.length) return null;
   const chartData = rows.map(r => ({ label: String(r.year), value: r.average }));
   return (
@@ -137,32 +142,33 @@ function WeeklyAverages({ activities }) {
       <div className="grid two">
         <div className="table-wrap scroll-region tall" role="region" aria-label="Weekly distance average per year" tabIndex={0}>
           <table className="data">
-            <caption className="sr-only">Average miles per week by year, newest first</caption>
-            <thead><tr><th scope="col">Year</th><th scope="col" className="r">Mi / week</th><th scope="col" className="r">vs prior year</th><th scope="col" className="r">Total mi</th><th scope="col" className="r">Weeks</th></tr></thead>
+            <caption className="sr-only">Average distance per week by year, newest first</caption>
+            <thead><tr><th scope="col">Year</th><th scope="col" className="r">{units.distUnit} / week</th><th scope="col" className="r">vs prior year</th><th scope="col" className="r">Total {units.distUnit}</th><th scope="col" className="r">Weeks</th></tr></thead>
             <tbody>{rows.map(r => (
               <tr key={r.year}>
                 <td>{r.year}{r.partial ? " (YTD)" : ""}</td>
                 <td className="r num"><strong>{r.average.toFixed(1)}</strong></td>
                 <td className="r num">{r.delta == null ? <span className="muted">—</span> : <span className={r.delta >= 0 ? "positive" : "negative"}>{r.delta >= 0 ? "▲ +" : "▼ "}{r.delta.toFixed(1)}</span>}</td>
-                <td className="r num">{comma(r.miles.toFixed(0))}</td>
+                <td className="r num">{comma(r.total.toFixed(0))}</td>
                 <td className="r num">{r.weeks}</td>
               </tr>
             ))}</tbody>
           </table>
         </div>
         <PatternChart className="tall" data={chartData} metric="distance" color="var(--chart-1)" label="Weekly distance average per year"
-          format={v => `${v.toFixed(1)} mi/wk`} />
+          format={v => `${v.toFixed(1)} ${units.distUnit}/wk`} />
       </div>
-      <p className="hint">Total miles in the year ÷ weeks in the year: full 52/53 ISO weeks for completed years, weeks elapsed so far (day of year ÷ 7, rounded up) for the current year. Follows the global filters.</p>
+      <p className="hint">Total distance in the year ÷ weeks in the year: full 52/53 ISO weeks for completed years, weeks elapsed so far (day of year ÷ 7, rounded up) for the current year. Follows the global filters.</p>
     </Card>
   );
 }
 
-const LONG_RIDE_BANDS = ["20-25", "25-30", "30-35", "35-40", "40-45", "45-50", "50+"];
 const LONG_RIDE_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)", "var(--chart-6)", "color-mix(in srgb, var(--chart-1) 55%, var(--chart-4))"];
 
 function LongRidesByYear({ activities }) {
-  const rows = useMemo(() => buildLongRideBands(activities), [activities]);
+  const units = useUnits();
+  const LONG_RIDE_BANDS = longRideBandLabels(units);
+  const rows = useMemo(() => buildLongRideBands(activities, new Date(), units), [activities, units]);
   if (!rows.length) return null;
   return (
     <Card title="Long rides by year">
@@ -170,12 +176,12 @@ function LongRidesByYear({ activities }) {
         <div className="table-wrap scroll-region tall" role="region" aria-label="Long rides by distance band and year" tabIndex={0}>
           <table className="data">
             <caption className="sr-only">Long rides by exclusive distance band and year, newest first</caption>
-            <thead><tr><th scope="col">Year</th>{LONG_RIDE_BANDS.map(band => <th scope="col" className="r" key={band}>{band} mi</th>)}<th scope="col" className="r">Total</th></tr></thead>
+            <thead><tr><th scope="col">Year</th>{LONG_RIDE_BANDS.map(band => <th scope="col" className="r" key={band}>{band} {units.distUnit}</th>)}<th scope="col" className="r">Total</th></tr></thead>
             <tbody>{rows.map(row => (
               <tr key={row.year}>
                 <td>{row.year}{row.partial ? " (YTD)" : ""}</td>
                 {LONG_RIDE_BANDS.map(band => (
-                  <td className="r num" key={band}>{row.bands[band] ? comma(row.bands[band]) : <span className="muted" aria-label={`No rides ${band} miles`}>—</span>}</td>
+                  <td className="r num" key={band}>{row.bands[band] ? comma(row.bands[band]) : <span className="muted" aria-label={`No rides ${band} ${units.metric ? "kilometers" : "miles"}`}>—</span>}</td>
                 ))}
                 <td className="r num">{comma(row.total)}</td>
               </tr>
@@ -190,12 +196,12 @@ function LongRidesByYear({ activities }) {
               <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={value => comma(Math.round(value))} />
               <Tooltip {...tooltipProps} content={<ChartTip format={value => comma(value)} />} cursor={{ fill: "var(--surface-hover)" }} />
               <Legend />
-              {LONG_RIDE_BANDS.map((band, i) => <Bar key={band} dataKey={`bands.${band}`} name={`${band} mi`} fill={LONG_RIDE_COLORS[i]} />)}
+              {LONG_RIDE_BANDS.map((band, i) => <Bar key={band} dataKey={`bands.${band}`} name={`${band} ${units.distUnit}`} fill={LONG_RIDE_COLORS[i]} />)}
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
-      <p className="hint">Bands are exclusive: each ride is counted once. Rides under 20 mi are not counted. Follows the global filters.</p>
+      <p className="hint">Bands are exclusive: each ride is counted once. Rides under {LONG_RIDE_BANDS[0].split("-")[0]} {units.distUnit} are not counted. Follows the global filters.</p>
     </Card>
   );
 }
@@ -212,6 +218,7 @@ function RouteThumb({ polyline, name }) {
 
 function MatchedRides() {
   const { raw, filtered, excludedSet, status } = useAppData();
+  const units = useUnits();
   const [limit, setLimit] = usePersistentState("matchedLimit", 20);
   const [savedPeriod, setPeriod] = usePersistentState("matchedPeriod", "all");
   const [year, setYear] = usePersistentState("matchedYear", null);
@@ -274,8 +281,8 @@ function MatchedRides() {
     { key: "count", label: "Rides", align: "r", render: r => comma(r.count), renderChild: none },
     { key: "firstRidden", label: `First ${noun.toLowerCase()}`, value: r => new Date(r.firstRidden).getTime(), render: r => formatDate(r.firstRidden), renderChild: c => formatDate(c.activity.start_date) },
     { key: "lastRidden", label: `Last ${noun.toLowerCase()}`, value: r => new Date(r.lastRidden).getTime(), render: r => formatDate(r.lastRidden), renderChild: none },
-    { key: "distance", label: "Distance", align: "r", render: r => (r.distance ? fmtMiles(r.distance) : "—"), renderChild: c => fmtMiles(c.activity.distance) },
-    { key: "elevation", label: "Elevation", align: "r", render: r => (r.elevation ? fmtFeet(r.elevation) : "—"), renderChild: c => fmtFeet(c.activity.total_elevation_gain) }
+    { key: "distance", label: "Distance", align: "r", render: r => (r.distance ? units.fmtDistance(r.distance) : "—"), renderChild: c => units.fmtDistance(c.activity.distance) },
+    { key: "elevation", label: "Elevation", align: "r", render: r => (r.elevation ? units.fmtElevation(r.elevation) : "—"), renderChild: c => units.fmtElevation(c.activity.total_elevation_gain) }
   ];
 
   return (
@@ -327,16 +334,17 @@ function MatchedRides() {
 
 export default function Patterns() {
   const { filtered } = useAppData();
+  const units = useUnits();
   const [metric, setMetric] = usePersistentState("patternMetric", "distance");
-  const weekday = useMemo(() => buildWeekdayBreakdown(filtered.activities, metric), [filtered.activities, metric]);
-  const tod = useMemo(() => buildTimeOfDayBreakdown(filtered.activities, metric), [filtered.activities, metric]);
+  const weekday = useMemo(() => buildWeekdayBreakdown(filtered.activities, metric, units), [filtered.activities, metric, units]);
+  const tod = useMemo(() => buildTimeOfDayBreakdown(filtered.activities, metric, units), [filtered.activities, metric, units]);
 
   const counts = Object.entries(filtered.activityCounts || {}).sort((a, b) => b[1] - a[1]);
   const total = counts.reduce((s, [, c]) => s + c, 0);
 
   return (
     <div className="content">
-      <PageHead title="Patterns" right={<Segmented label="Metric" value={metric} options={OPTIONS} onChange={setMetric} />}>
+      <PageHead title="Patterns" right={<Segmented label="Metric" value={metric} options={metricOptions(units)} onChange={setMetric} />}>
         When you ride. Click a bar to list those activities. Times use your browser’s local time zone.
       </PageHead>
       {!filtered.activities.length ? <Empty /> : (

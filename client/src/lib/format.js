@@ -1,4 +1,6 @@
 // Unit conversions and formatting, matching V1 conventions (API distances are meters).
+// Imperial/metric display conversion lives in units.js.
+import { IMPERIAL } from "./units.js";
 export const comma = x => Number(x).toLocaleString("en-US");
 export const miles = meters => (meters || 0) / 1609.34;
 export const feet = meters => (meters || 0) * 3.28084;
@@ -62,19 +64,11 @@ export function formatDateRange(start, end) {
   return `${formatDate(`${start}T00:00:00`)} – ${formatDate(`${end}T00:00:00`)}`;
 }
 
-export function formatSpeed(avgSpeedMph, sportType = "Ride") {
+export function formatSpeed(avgSpeedMph, sportType = "Ride", units = IMPERIAL) {
   if (!avgSpeedMph || avgSpeedMph <= 0) return null;
-  if (sportType === "Run" || sportType === "Walk") {
-    const pace = 60 / avgSpeedMph;
-    const paceMin = Math.floor(pace);
-    const paceSec = Math.round((pace - paceMin) * 60);
-    return `avg ${paceMin}:${String(paceSec).padStart(2, "0")} min/mi pace`;
-  }
-  return `avg ${avgSpeedMph.toFixed(1)} mph`;
+  if (sportType === "Run" || sportType === "Walk") return `avg ${units.fmtPace(avgSpeedMph)} pace`;
+  return `avg ${units.fmtSpeed(avgSpeedMph)}`;
 }
-
-export const fmtMiles = meters => `${comma(miles(meters).toFixed(1))} mi`;
-export const fmtFeet = meters => `${comma(feet(meters).toFixed(0))} ft`;
 
 export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const formatMonthLabel = monthIndex => MONTHS[monthIndex];

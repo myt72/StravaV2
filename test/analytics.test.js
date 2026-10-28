@@ -261,3 +261,41 @@ test("segment distance buckets include 10+, 15+ and 20+ miles", () => {
   assert.strictEqual(by["20+ mi"].segmentId, "3");
   assert.ok(by["10+ mi"].attempts >= by["15+ mi"].attempts);
 });
+
+test("units convert distance, elevation, speed and derived units for imperial and metric", async () => {
+  const { makeUnits } = await import("../client/src/lib/units.js");
+  const imp = makeUnits("imperial");
+  const met = makeUnits("metric");
+  assert.strictEqual(imp.fmtDistance(1609.34), "1.0 mi");
+  assert.strictEqual(met.fmtDistance(5000), "5.0 km");
+  assert.strictEqual(met.fmtElevation(100), "100 m");
+  assert.strictEqual(imp.fmtElevation(100), "328 ft");
+  assert.strictEqual(met.fmtSpeed(10), "16.1 km/h");
+  assert.strictEqual(imp.fmtPace(10), "6:00 min/mi");
+  assert.strictEqual(met.fmtPace(10), "3:44 min/km");
+  assert.strictEqual(met.fmtElevPerDist(100), "19 m/km");
+});
+
+test("metric analytics use km milestones and bands while defaults stay imperial", async () => {
+  const { METRIC } = await import("../client/src/lib/units.js");
+  const rides = [activity("2024-01-01T08:00:00", { distance: 1_200_000 }), activity("2024-01-02T08:00:00", { distance: 35_000 })];
+  const m = analytics.buildMileageMilestones(rides, new Date("2025-01-01T00:00:00"), 90, METRIC);
+  assert.strictEqual(m.achieved[0].target, 1000);
+  assert.ok(Math.abs(m.total - 1235) < 1e-9);
+  const bands = analytics.buildLongRideBands(rides, new Date("2025-01-01T00:00:00"), METRIC);
+  assert.strictEqual(bands[0].bands["30-40"], 1);
+  assert.strictEqual(analytics.getMetrics(METRIC).distance.fmt(12.34), "12.3 km");
+});
+
+test("annual totals and year rows aggregate PRs from segment data", () => {
+  const rides = [
+    { ...activity("2023-05-01T08:00:00"), id: 1 },
+    { ...activity("2024-05-01T08:00:00"), id: 2 },
+    { ...activity("2024-06-01T08:00:00"), id: 3 }
+  ];
+  const segmentData = { 1: [{ pr_rank: 1 }], 2: [{ pr_rank: 1 }, { pr_rank: 2 }], 3: [{ pr_rank: 1 }, { pr_rank: 1 }] };
+  const annual = analytics.buildAnnualBreakdowns(rides, segmentData);
+  assert.strictEqual(annual.annual[2023].pr_count, 1);
+  assert.strictEqual(annual.annual[2024].pr_count, 3);
+  assert.strictEqual(analytics.buildAnnualTotals(rides, segmentData).pr_count, 4);
+});

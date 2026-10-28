@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAppData } from "../context/AppData.jsx";
-import { METRICS, buildAnnualBreakdowns, buildAnnualSubRows, buildAnnualTotals, buildMonthlyTrend, buildYearOverYear, buildYearOverYearWeekly, sumMetric } from "../lib/analytics.js";
-import { comma, feet, formatDuration, miles } from "../lib/format.js";
+import { getMetrics, buildAnnualBreakdowns, buildAnnualSubRows, buildAnnualTotals, buildMonthlyTrend, buildYearOverYear, buildYearOverYearWeekly, sumMetric } from "../lib/analytics.js";
+import { comma, formatDuration } from "../lib/format.js";
+import { useUnits } from "../context/Units.jsx";
 import { navigate } from "../lib/router.js";
 import { readStored, usePersistentState } from "../lib/storage.js";
 import { Card, ChartTip, Chip, DataTable, Empty, PageHead, Segmented, YoyTip } from "../components/ui.jsx";
@@ -33,6 +34,7 @@ const tickFmt = metric => v => (metric === "count" ? comma(v) : comma(Math.round
 
 export default function Trends() {
   const { filtered, gearName } = useAppData();
+  const units = useUnits();
   const [metric, setMetric] = usePersistentState("trendsMetric", "distance");
   const [yoyMode, setYoyMode] = usePersistentState("trendsYoyMode", readStored("trendsCumulative", false) ? "cum" : "month");
   const [breakdown, setBreakdown] = usePersistentState("annualBreakdownMode", "monthly");
@@ -46,15 +48,15 @@ export default function Trends() {
     [filtered.activities, active.join("|")] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
-  const m = METRICS[metric];
-  const annual = useMemo(() => buildAnnualBreakdowns(activities), [activities]);
+  const m = getMetrics(units)[metric];
+  const annual = useMemo(() => buildAnnualBreakdowns(activities, filtered.segmentData), [activities, filtered.segmentData]);
   const years = Object.keys(annual.annual).map(Number).sort((a, b) => a - b);
-  const annualData = years.slice().reverse().map(y => ({ label: String(y), value: sumMetric(activities.filter(a => new Date(a.start_date).getFullYear() === y), metric) }));
-  const monthly = useMemo(() => buildMonthlyTrend(activities, metric).reverse(), [activities, metric]);
+  const annualData = years.slice().reverse().map(y => ({ label: String(y), value: sumMetric(activities.filter(a => new Date(a.start_date).getFullYear() === y), metric, units) }));
+  const monthly = useMemo(() => buildMonthlyTrend(activities, metric, units).reverse(), [activities, metric, units]);
   const yoyView = YOY_OPTIONS.some(o => o.value === yoyMode) ? yoyMode : "month";
   const yoy = useMemo(
-    () => (yoyView === "week" ? buildYearOverYearWeekly(activities, metric) : buildYearOverYear(activities, metric, yoyView === "cum")),
-    [activities, metric, yoyView]
+    () => (yoyView === "week" ? buildYearOverYearWeekly(activities, metric, units) : buildYearOverYear(activities, metric, yoyView === "cum", units)),
+    [activities, metric, yoyView, units]
   );
 
   const toggleType = t => setSelected(prev => {
@@ -63,7 +65,7 @@ export default function Trends() {
   });
 
   const annualRows = years.slice().reverse().map(y => ({ year: y, ...annual.annual[y] }));
-  const totalsRow = useMemo(() => ({ isTotals: true, year: TOTALS_KEY, ...buildAnnualTotals(activities) }), [activities]);
+  const totalsRow = useMemo(() => ({ isTotals: true, year: TOTALS_KEY, ...buildAnnualTotals(activities, filtered.segmentData) }), [activities, filtered.segmentData]);
   const mode = BREAKDOWN_OPTIONS.some(o => o.value === breakdown) ? breakdown : "monthly";
   const openKeys = useMemo(() => new Set(expanded.map(String)), [expanded]);
   const rowId = r => String(r.year);
@@ -118,18 +120,18 @@ export default function Trends() {
         ? <button type="button" className="cell-link" onClick={() => navigate("/activities")}>Totals</button>
         : <button type="button" className="cell-link" onClick={() => navigate("/activities", { year: r.year })}>{r.year}</button>),
       renderChild: (c, parent) => <span className="sub-label">{subLink(c.label, childParams(c, parent))}</span> },
-    { key: "distance", label: "Distance", align: "r", render: r => `${comma(miles(r.distance).toFixed(1))} mi` },
-    { key: "elevation", label: "Elevation", align: "r", render: r => `${comma(feet(r.elevation).toFixed(0))} ft` },
+    { key: "distance", label: "Distance", align: "r", render: r => units.fmtDistance(r.distance) },
+    { key: "elevation", label: "Elevation", align: "r", render: r => units.fmtElevation(r.elevation) },
     { key: "count", label: "Activities", align: "r", render: r => comma(r.count) },
     { key: "moving_time", label: "Time", align: "r", render: r => timeCell(r), renderChild: c => timeCell(c) },
     { key: "activeDaysCount", label: "Active days", align: "r", render: r => num(r.activeDaysCount, comma) },
     { key: "maxStreak", label: "Max streak", align: "r", render: r => num(r.maxStreak, v => `${comma(v)} days`) },
-    { key: "maxRideDistance", label: "Max ride", align: "r", render: r => num(r.maxRideDistance, v => `${comma(miles(v).toFixed(1))} mi`) },
-    { key: "maxRideElevation", label: "Max climb", align: "r", render: r => num(r.maxRideElevation, v => `${comma(feet(v).toFixed(0))} ft`) },
+    { key: "maxRideDistance", label: "Max ride", align: "r", render: r => num(r.maxRideDistance, v => units.fmtDistance(v)) },
+    { key: "maxRideElevation", label: "Max climb", align: "r", render: r => num(r.maxRideElevation, v => units.fmtElevation(v)) },
     ...(mode !== "bike" ? [{ key: "trend", label: mode === "weekly" ? "vs prev week" : "vs prev month", align: "r", sortable: false, render: () => "", renderChild: c => (c.trend === undefined ? "" : trendCell(c.trend)) }] : []),
+    { key: "pr_count", label: "PRs", align: "r", render: r => comma(r.pr_count || 0), renderChild: c => comma(c.pr_count || 0) },
     ...(mode === "bike" ? [
-      { key: "pr_count", label: "PRs", align: "r", sortable: false, render: () => "", renderChild: c => comma(c.pr_count) },
-      { key: "avg_speed_mph", label: "Avg speed", align: "r", sortable: false, render: () => "", renderChild: c => num(c.avg_speed_mph, v => `${v.toFixed(1)} mph`) }
+      { key: "avg_speed_mph", label: "Avg speed", align: "r", sortable: false, render: () => "", renderChild: c => num(c.avg_speed_mph, v => units.fmtSpeed(v)) }
     ] : [])
   ];
   const expand = {

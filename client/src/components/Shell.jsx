@@ -3,6 +3,8 @@ import { PROFILE } from "../lib/profile.js";
 import { THEMES } from "../lib/theme.js";
 import { DATE_RANGES, useAppData } from "../context/AppData.jsx";
 import { readStored, writeStored } from "../lib/storage.js";
+import { UNIT_SYSTEMS } from "../lib/units.js";
+import { useUnits } from "../context/Units.jsx";
 import { Icon } from "./ui.jsx";
 
 export const NAV = [
@@ -111,6 +113,7 @@ export function FilterBar() {
   const {
     filters, setDateRange, setActivityType, setBike, activityTypes, bikes, filtersActive, resetFilters, filtered, raw
   } = useAppData();
+  const { system, setSystem } = useUnits();
   const disabled = !raw;
   return (
     <div className="filterbar" role="search" aria-label="Global filters">
@@ -129,6 +132,11 @@ export function FilterBar() {
         <select value={filters.bike} onChange={e => setBike(e.target.value)} disabled={disabled}>
           <option value="all">All bikes</option>
           {bikes.map(b => <option key={b.gid} value={b.gid}>{b.name}</option>)}
+        </select>
+      </label>
+      <label>Units
+        <select value={system} onChange={e => setSystem(e.target.value)} aria-label="Units (imperial or metric)">
+          {UNIT_SYSTEMS.map(u => <option key={u.value} value={u.value}>{u.value === "imperial" ? "Imperial (mi, ft)" : "Metric (km, m)"}</option>)}
         </select>
       </label>
       {filtersActive && <button type="button" className="btn sm" onClick={resetFilters}>Reset filters</button>}

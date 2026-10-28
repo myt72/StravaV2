@@ -3,11 +3,14 @@ import { useAppData } from "../context/AppData.jsx";
 import { timeOfDayLabel, weekdayIndex, WEEKDAYS } from "../lib/analytics.js";
 import { fetchFeaturedActivities } from "../lib/api.js";
 import {
-  comma, extractStravaActivityId, feet, formatDate, formatDateTime, formatDuration, getDateKey, getWeekStartMonday, getStravaSegmentUrl, isValidHttpUrl, miles
+  comma, extractStravaActivityId, formatDate, formatDateTime, formatDuration, getDateKey, getWeekStartMonday, getStravaSegmentUrl, isValidHttpUrl
 } from "../lib/format.js";
+import { useUnits } from "../context/Units.jsx";
+import { M_PER_MI } from "../lib/units.js";
 import { Card, Chip, DataTable, Drawer, PageHead } from "../components/ui.jsx";
 
 function FeaturedActivities({ activities, gearName, open }) {
+  const units = useUnits();
   const [items, setItems] = useState(null);
   useEffect(() => {
     let live = true;
@@ -28,7 +31,7 @@ function FeaturedActivities({ activities, gearName, open }) {
               {item.caption && <p className="muted" style={{ margin: "4px 0 8px" }}>{item.caption}</p>}
               {a ? (
                 <p className="small num">
-                  {comma(miles(a.distance).toFixed(1))} mi · {comma(feet(a.total_elevation_gain).toFixed(0))} ft · {formatDuration(a.moving_time)}<br />
+                  {units.fmtDistance(a.distance)} · {units.fmtElevation(a.total_elevation_gain)} · {formatDuration(a.moving_time)}<br />
                   {formatDate(a.start_date)} · {a.sport_type || "-"} · {gearName(a.gear_id)}
                 </p>
               ) : <p className="muted small">Activity not found in dashboard data</p>}
@@ -47,17 +50,18 @@ function FeaturedActivities({ activities, gearName, open }) {
 }
 
 function ActivityDrawer({ activity, efforts, gearName, onClose }) {
+  const units = useUnits();
   return (
     <Drawer title={activity.name || activity.sport_type || "Activity"} onClose={onClose}>
       <dl className="dl">
         <dt>Date</dt><dd>{formatDateTime(activity.start_date)}</dd>
         <dt>Type</dt><dd>{activity.sport_type || "-"}</dd>
         <dt>Bike</dt><dd>{gearName(activity.gear_id)}</dd>
-        <dt>Distance</dt><dd className="num">{comma(miles(activity.distance).toFixed(2))} mi</dd>
+        <dt>Distance</dt><dd className="num">{units.fmtDistance(activity.distance, 2)}</dd>
         <dt>Moving time</dt><dd className="num">{formatDuration(activity.moving_time)}</dd>
-        <dt>Elevation</dt><dd className="num">{comma(feet(activity.total_elevation_gain).toFixed(0))} ft</dd>
+        <dt>Elevation</dt><dd className="num">{units.fmtElevation(activity.total_elevation_gain)}</dd>
         {activity.distance > 0 && activity.moving_time > 0 && (
-          <><dt>Avg speed</dt><dd className="num">{(miles(activity.distance) / (activity.moving_time / 3600)).toFixed(1)} mph</dd></>
+          <><dt>Avg speed</dt><dd className="num">{units.fmtSpeed((activity.distance / M_PER_MI) / (activity.moving_time / 3600))}</dd></>
         )}
       </dl>
       {isValidHttpUrl(activity.url) && (
@@ -82,6 +86,7 @@ function ActivityDrawer({ activity, efforts, gearName, onClose }) {
 }
 
 export default function Activities({ route }) {
+  const units = useUnits();
   const { filtered, raw, gearName } = useAppData();
   const { params, replaceParams } = route;
   const [search, setSearch] = useState(params.q || "");
@@ -118,9 +123,9 @@ export default function Activities({ route }) {
       <button type="button" className="cell-link" onClick={e => { e.stopPropagation(); open(a.id); }}>{a.name || a.sport_type || "Activity"}</button>) },
     { key: "sport_type", label: "Type", value: a => a.sport_type || "" },
     { key: "start_date", label: "Date", value: a => new Date(a.start_date).getTime(), render: a => formatDate(a.start_date) },
-    { key: "distance", label: "Distance", align: "r", value: a => a.distance || 0, render: a => `${comma(miles(a.distance).toFixed(1))} mi` },
+    { key: "distance", label: "Distance", align: "r", value: a => a.distance || 0, render: a => units.fmtDistance(a.distance) },
     { key: "moving_time", label: "Time", align: "r", value: a => a.moving_time || 0, render: a => formatDuration(a.moving_time) },
-    { key: "total_elevation_gain", label: "Elevation", align: "r", value: a => a.total_elevation_gain || 0, render: a => `${comma(feet(a.total_elevation_gain).toFixed(0))} ft` },
+    { key: "total_elevation_gain", label: "Elevation", align: "r", value: a => a.total_elevation_gain || 0, render: a => units.fmtElevation(a.total_elevation_gain) },
     { key: "gear_id", label: "Bike", value: a => gearName(a.gear_id), render: a => gearName(a.gear_id) }
   ];
 
