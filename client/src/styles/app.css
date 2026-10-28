@@ -200,12 +200,16 @@ table.data tr.pinned td { font-weight: 700; background: var(--surface-2); border
 table.data tr.child-row td { background: var(--surface-2); font-size: 0.92rem; }
 table.data tr.child-row td:first-child { padding-left: 28px; }
 table.data tr.child-row:hover { background: var(--surface-hover); }
-table.data .expand-cell { width: 1%; text-align: right; }
+table.data .expand-cell { width: 1%; min-width: 42px; padding-left: 6px; padding-right: 6px; text-align: right; }
+table.data .expand-cell-leading { text-align: left; }
 .expand-btn { display: inline-grid; place-items: center; width: 30px; height: 30px; border: 1px solid transparent; border-radius: var(--radius-sm); background: transparent; color: var(--text-muted); }
 .expand-btn:hover:not(:disabled) { background: var(--surface-hover); color: var(--text); }
+.expand-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .expand-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .expand-btn svg { transition: transform 0.15s; transform: rotate(-90deg); }
 .expand-btn[aria-expanded="true"] svg { transform: rotate(0deg); }
+table.data tr.child-row.expand-first td:first-child { padding-left: 6px; }
+table.data tr.child-row.expand-first td:nth-child(2) { padding-left: 28px; }
 .table-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 4px; flex-wrap: wrap; }
 .cell-link { background: none; border: 0; padding: 0; text-align: left; color: var(--accent-strong); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .cell-link:hover { color: var(--text); }

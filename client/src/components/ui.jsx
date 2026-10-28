@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { navigate } from "../lib/router.js";
 import { rankYearValues } from "../lib/analytics.js";
 import { ordinal } from "../lib/format.js";
@@ -125,9 +125,10 @@ export function ActivityLink({ activity, children }) {
  * sort / onSortChange (optional): controlled { key, dir } sort state, to share one sort between several tables.
  * pinnedRows: rows always rendered first, never sorted.
  * expand (optional): { isOpen(row), toggle(row), label(row), disabledReason?(row), children(row) -> child rows }
- *   adds a trailing arrow column; open rows render children directly beneath them (cells use renderChild when present).
+ *   adds an arrow column (trailing by default; set position to "start" for a leading column); open rows render children directly beneath them (cells use renderChild when present).
  */
 export function DataTable({ columns, rows, rowKey, initialSort, sort: controlledSort, onSortChange, onRowClick, pageSize, empty, caption, pinnedRows, expand }) {
+  const tableId = useId();
   const [localSort, setLocalSort] = useState(initialSort || null);
   const sort = controlledSort !== undefined ? controlledSort : localSort;
   const setSort = onSortChange || setLocalSort;
@@ -164,34 +165,40 @@ export function DataTable({ columns, rows, rowKey, initialSort, sort: controlled
     const open = expand?.isOpen(row);
     const disabledReason = expand?.disabledReason?.(row);
     const key = rowKey(row);
+    const childRows = open && !disabledReason ? expand.children(row) : [];
+    const childrenId = `${tableId}-children-${encodeURIComponent(String(key))}`;
+    const expandCell = expand && (
+      <td key="expand" className={`expand-cell ${expand.position === "start" ? "expand-cell-leading" : ""}`}>
+        <button type="button" className="expand-btn" aria-expanded={!!open} aria-controls={childrenId} aria-label={expand.label(row)}
+          title={disabledReason || expand.label(row)} disabled={!!disabledReason}
+          onClick={e => { e.stopPropagation(); expand.toggle(row); }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+      </td>
+    );
     return [
       <tr key={key} className={`${onRowClick && !pinned ? "clickable" : ""} ${pinned ? "pinned" : ""}`.trim()}
         onClick={onRowClick && !pinned ? () => onRowClick(row) : undefined}>
+        {expand?.position === "start" && expandCell}
         {columns.map(c => (
           <td key={c.key} className={`${c.align === "r" ? "r num" : ""} ${c.wrap ? "wrap" : ""}`}>
             {c.render ? c.render(row) : row[c.key]}
           </td>
         ))}
-        {expand && (
-          <td className="expand-cell">
-            <button type="button" className="expand-btn" aria-expanded={!!open} aria-label={expand.label(row)}
-              title={disabledReason || expand.label(row)} disabled={!!disabledReason}
-              onClick={e => { e.stopPropagation(); expand.toggle(row); }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </button>
-          </td>
-        )}
+        {expand?.position !== "start" && expandCell}
       </tr>,
-      ...(open && !disabledReason ? expand.children(row) : []).map(child => (
-        <tr key={`${key}/${child.key}`} className="child-row">
+      ...childRows.map((child, index) => (
+        <tr key={`${key}/${child.key}`} id={index === 0 ? childrenId : undefined}
+          className={`child-row ${expand?.position === "start" ? "expand-first" : ""}`.trim()}>
+          {expand?.position === "start" && <td className="expand-cell expand-cell-leading" />}
           {columns.map(c => (
             <td key={c.key} className={`${c.align === "r" ? "r num" : ""} ${c.wrap ? "wrap" : ""}`}>
               {c.renderChild ? c.renderChild(child, row) : c.render ? c.render(child) : child[c.key]}
             </td>
           ))}
-          {expand && <td className="expand-cell" />}
+          {expand?.position !== "start" && <td className="expand-cell" />}
         </tr>
       ))
     ];
@@ -204,6 +211,7 @@ export function DataTable({ columns, rows, rowKey, initialSort, sort: controlled
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead>
             <tr>
+              {expand?.position === "start" && <th scope="col" className="expand-cell expand-cell-leading"><span className="sr-only">Expand</span></th>}
               {columns.map(c => (
                 <th key={c.key} className={c.align === "r" ? "r" : ""} scope="col"
                   aria-sort={sort?.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}>
@@ -215,7 +223,7 @@ export function DataTable({ columns, rows, rowKey, initialSort, sort: controlled
                   )}
                 </th>
               ))}
-              {expand && <th scope="col" className="expand-cell"><span className="sr-only">Expand</span></th>}
+              {expand?.position !== "start" && expand && <th scope="col" className="expand-cell"><span className="sr-only">Expand</span></th>}
             </tr>
           </thead>
           <tbody>

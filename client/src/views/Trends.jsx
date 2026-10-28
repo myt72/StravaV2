@@ -135,6 +135,7 @@ export default function Trends() {
     ] : [])
   ];
   const expand = {
+    position: "start",
     isOpen: r => openKeys.has(rowId(r)),
     toggle: toggleExpanded,
     label: r => `Show ${mode === "bike" ? "bike" : mode} breakdown for ${r.isTotals ? "all years" : r.year}`,
