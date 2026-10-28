@@ -435,14 +435,7 @@ function YearRow({ gid, year, y }) {
   return (
     <>
       <tr>
-        <td>{year}</td>
-        <td className="r num">{units.fmtDistance(y.distance)}</td>
-        <td className="r num">{units.fmtElevation(y.elevation)}</td>
-        <td className="r num">{comma(y.count)}</td>
-        <td className="r num">{formatDuration(y.moving_time)}</td>
-        <td className="r num">{comma(y.pr_count || 0)}</td>
-        <td className="r num">{speed ? speed.replace("avg ", "") : "—"}</td>
-        <td className="expand-cell">
+        <td className="expand-cell expand-cell-leading">
           <button type="button" className="expand-btn" aria-expanded={open} aria-controls={`weeks-${gid}-${year}`}
             aria-label={`Show weekly breakdown for ${year}`} title={`Show weekly breakdown for ${year}`} onClick={() => setOpen(o => !o)}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -450,6 +443,13 @@ function YearRow({ gid, year, y }) {
             </svg>
           </button>
         </td>
+        <td>{year}</td>
+        <td className="r num">{units.fmtDistance(y.distance)}</td>
+        <td className="r num">{units.fmtElevation(y.elevation)}</td>
+        <td className="r num">{comma(y.count)}</td>
+        <td className="r num">{formatDuration(y.moving_time)}</td>
+        <td className="r num">{comma(y.pr_count || 0)}</td>
+        <td className="r num">{speed ? speed.replace("avg ", "") : "—"}</td>
       </tr>
       {open && (
         <tr id={`weeks-${gid}-${year}`}>
@@ -550,8 +550,9 @@ function BikeDetail({ bike, bikes }) {
           <table className="data">
             <caption className="sr-only">Yearly statistics for {bike.name}. Select a year to show its weekly breakdown.</caption>
             <thead><tr>
+              <th scope="col" className="expand-cell expand-cell-leading"><span className="sr-only">Expand</span></th>
               <th scope="col">Year</th><th scope="col" className="r">Distance</th><th scope="col" className="r">Elevation</th>
-              <th scope="col" className="r">Activities</th><th scope="col" className="r">Time</th><th scope="col" className="r">PRs</th><th scope="col" className="r">Avg speed</th><th scope="col" className="expand-cell"><span className="sr-only">Expand</span></th>
+              <th scope="col" className="r">Activities</th><th scope="col" className="r">Time</th><th scope="col" className="r">PRs</th><th scope="col" className="r">Avg speed</th>
             </tr></thead>
             <tbody>{bike.years.map(y => <YearRow key={y} gid={bike.gid} year={y} y={bike.bikeYearStats[y]} />)}</tbody>
           </table>
