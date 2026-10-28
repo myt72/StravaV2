@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { useAppData } from "../context/AppData.jsx";
-import { METRICS, buildHeadline, buildKpis, buildRecentPeriodStats, buildYearComparison } from "../lib/analytics.js";
-import { comma, feet, formatDate, formatDateRange, formatDuration, miles } from "../lib/format.js";
+import { getMetrics, buildHeadline, buildKpis, buildRecentPeriodStats, buildYearComparison } from "../lib/analytics.js";
+import { comma, formatDate, formatDateRange, formatDuration } from "../lib/format.js";
+import { useUnits } from "../context/Units.jsx";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
 import { ActivityLink, Card, Empty, PageHead, Segmented } from "../components/ui.jsx";
@@ -30,14 +31,16 @@ const Delta = ({ value }) => (
 
 export default function Overview() {
   const { filtered, insights, primaryMetric, setPrimaryMetric, gearName } = useAppData();
+  const units = useUnits();
+  const METRICS = getMetrics(units);
   const activities = filtered.activities;
   const [storedGranularity, setGranularity] = usePersistentState("calendarGranularity", "day");
   const granularity = GRANULARITY_OPTIONS.some(o => o.value === storedGranularity) ? storedGranularity : "day";
 
   const kpis = useMemo(() => buildKpis(activities, filtered.gearTotals), [activities, filtered.gearTotals]);
   const recent = useMemo(() => buildRecentPeriodStats(activities), [activities]);
-  const yoy = useMemo(() => buildYearComparison(activities), [activities]);
-  const headline = useMemo(() => buildHeadline(filtered, insights, primaryMetric), [filtered, insights, primaryMetric]);
+  const yoy = useMemo(() => buildYearComparison(activities, new Date(), units), [activities, units]);
+  const headline = useMemo(() => buildHeadline(filtered, insights, primaryMetric, units), [filtered, insights, primaryMetric, units]);
   const latest = useMemo(
     () => [...activities].sort((a, b) => new Date(b.start_date) - new Date(a.start_date)).slice(0, 8),
     [activities]
@@ -45,9 +48,9 @@ export default function Overview() {
 
   const cards = [
     { id: "count", label: "Activities", value: comma(kpis.count) },
-    { id: "distance", label: "Distance", value: `${comma(miles(kpis.distance).toFixed(1))} mi` },
+    { id: "distance", label: "Distance", value: units.fmtDistance(kpis.distance) },
     { id: "moving_time", label: "Moving time", value: formatDuration(kpis.movingTime) },
-    { id: "elevation", label: "Elevation", value: `${comma(feet(kpis.elevation).toFixed(0))} ft` }
+    { id: "elevation", label: "Elevation", value: units.fmtElevation(kpis.elevation) }
   ];
 
   if (!activities.length) {
@@ -87,9 +90,9 @@ export default function Overview() {
           ))}
         </Card>
         <Card title="Last 30 days">
-          <div className="stat-row"><span>Distance</span><span className="num"><strong>{comma(miles(recent.distance).toFixed(1))} mi</strong> <Delta value={recent.distanceDelta} /></span></div>
+          <div className="stat-row"><span>Distance</span><span className="num"><strong>{units.fmtDistance(recent.distance)}</strong> <Delta value={recent.distanceDelta} /></span></div>
           <div className="stat-row"><span>Moving time</span><span className="num"><strong>{formatDuration(recent.time)}</strong> <Delta value={recent.timeDelta} /></span></div>
-          <div className="stat-row"><span>Elevation</span><span className="num"><strong>{comma(feet(recent.elevation).toFixed(0))} ft</strong> <Delta value={recent.elevationDelta} /></span></div>
+          <div className="stat-row"><span>Elevation</span><span className="num"><strong>{units.fmtElevation(recent.elevation)}</strong> <Delta value={recent.elevationDelta} /></span></div>
           <p className="hint">Change vs the prior 30 days.</p>
         </Card>
         <Card title="Streaks & context">
@@ -118,7 +121,7 @@ export default function Overview() {
               <div className="list-btn" style={{ cursor: "default" }}>
                 <span><ActivityLink activity={a} /><br /><span className="muted small">{formatDate(a.start_date)} · {a.sport_type} · {gearName(a.gear_id)}</span></span>
                 <span className="num small" style={{ textAlign: "right" }}>
-                  {comma(miles(a.distance).toFixed(1))} mi · {comma(feet(a.total_elevation_gain).toFixed(0))} ft · {formatDuration(a.moving_time)}
+                  {units.fmtDistance(a.distance)} · {units.fmtElevation(a.total_elevation_gain)} · {formatDuration(a.moving_time)}
                 </span>
               </div>
             </li>

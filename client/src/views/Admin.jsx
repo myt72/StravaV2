@@ -137,9 +137,7 @@ export default function Admin() {
             <button type="button" className="btn" disabled={working || geoActive} onClick={recomputeRoutes}>Recompute routes</button>
           </div>
         </Card>
-      </div>
 
-      <div className="grid two">
         <Card title="Elapsed time backfill (Trends)" right={elapsedActive && <span className="nav-badge pulse">Running</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>
             Re-reads your activity list once to add elapsed time to cached activities (about {comma(elapsedBackfill?.estimatedPages || 0)} API

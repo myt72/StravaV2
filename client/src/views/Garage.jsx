@@ -6,8 +6,9 @@ import {
   buildEverestStats, buildMileageMilestones, buildWeeklyRamp, buildBikeSummaryRows
 } from "../lib/analytics.js";
 import {
-  comma, feet, formatDate, formatDayDifference, formatDuration, formatHms, formatShortDate, formatSpeed, getMondayForIsoWeek, getStravaSegmentUrl, miles
+  comma, formatDate, formatDayDifference, formatDuration, formatHms, formatShortDate, formatSpeed, getMondayForIsoWeek, getStravaSegmentUrl
 } from "../lib/format.js";
+import { useUnits } from "../context/Units.jsx";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
 import { ActivityLink, Card, ChartTip, DataTable, Drawer, Empty, Icon, PageHead, Segmented } from "../components/ui.jsx";
@@ -22,15 +23,15 @@ const SORTS = [
   { value: "name-desc", label: "Name (Z–A)" }
 ];
 
-const TYPE_METRICS = [
-  { value: "distance", label: "Miles" },
+const typeMetrics = units => [
+  { value: "distance", label: units.metric ? "Kilometers" : "Miles" },
   { value: "elevation", label: "Elevation" },
   { value: "count", label: "Rides" },
   { value: "hours", label: "Hours" }
 ];
-const typeMetricValue = (row, metric) => (
-  metric === "distance" ? miles(row.distance)
-    : metric === "elevation" ? feet(row.elevation)
+const typeMetricValue = (row, metric, units) => (
+  metric === "distance" ? units.distance(row.distance)
+    : metric === "elevation" ? units.elevation(row.elevation)
       : metric === "hours" ? row.hours
         : row.count
 );
@@ -39,28 +40,31 @@ const plural = (n, w) => `${comma(n)} ${w}${n === 1 ? "" : "s"}`;
 const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, allowEscapeViewBox: { x: true, y: true } };
 
 function EverestTip({ active, payload, label }) {
+  const units = useUnits();
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   return (
     <div className="chart-tip">
       <strong>{label}</strong>
-      <div style={{ color: payload[0].color || payload[0].fill }}>{comma(row.value.toFixed(0))} ft</div>
+      <div style={{ color: payload[0].color || payload[0].fill }}>{units.fmtElevationValue(row.value, 0)}</div>
       <div>{row.everests.toFixed(1)}x Everests</div>
     </div>
   );
 }
 
 function GarageAnalytics({ activities }) {
+  const units = useUnits();
+  const TYPE_METRICS = typeMetrics(units);
   const rides = useMemo(() => activities.filter(a => a.sport_type === "Ride"), [activities]);
-  const bikeTypes = useMemo(() => buildBikeTypeStats(rides), [rides]);
+  const bikeTypes = useMemo(() => buildBikeTypeStats(rides, units), [rides, units]);
   const unmapped = useMemo(() => buildUnmappedBikes(rides), [rides]);
   const consistency = useMemo(() => buildConsistencyStats(rides), [rides]);
-  const ramp = useMemo(() => buildWeeklyRamp(rides), [rides]);
-  const everest = useMemo(() => buildEverestStats(rides), [rides]);
-  const milestones = useMemo(() => buildMileageMilestones(rides), [rides]);
+  const ramp = useMemo(() => buildWeeklyRamp(rides, "distance", new Date(), units), [rides, units]);
+  const everest = useMemo(() => buildEverestStats(rides, units), [rides, units]);
+  const milestones = useMemo(() => buildMileageMilestones(rides, new Date(), 90, units), [rides, units]);
 
   const [typeMetric, setTypeMetric] = usePersistentState("bikeTypeMetric", "distance");
-  const typeMax = Math.max(0, ...bikeTypes.map(row => typeMetricValue(row, typeMetric)));
+  const typeMax = Math.max(0, ...bikeTypes.map(row => typeMetricValue(row, typeMetric, units)));
   const everestRows = [...everest.years].reverse().map(row => ({ label: String(row.year), value: row.elevation, everests: row.everests }));
   const rampRows = [...ramp].reverse();
   const nextMilestone = milestones.upcomingList[0] || null;
@@ -78,21 +82,21 @@ function GarageAnalytics({ activities }) {
             <table className="data type-table">
               <caption className="sr-only">Ride totals by bike type</caption>
               <thead><tr>
-                <th scope="col">Type</th><th scope="col" className="r">Rides</th><th scope="col" className="r">Miles</th>
-                <th scope="col" className="r">Elevation (ft)</th><th scope="col" className="r">Avg ride (mi)</th>
-                <th scope="col" className="r">ft / mi</th><th scope="col" className="r">Avg mph</th>
+                <th scope="col">Type</th><th scope="col" className="r">Rides</th><th scope="col" className="r">{units.metric ? "Kilometers" : "Miles"}</th>
+                <th scope="col" className="r">Elevation ({units.elevUnit})</th><th scope="col" className="r">Avg ride ({units.distUnit})</th>
+                <th scope="col" className="r">{units.elevUnit} / {units.distUnit}</th><th scope="col" className="r">Avg {units.speedUnit}</th>
                 <th scope="col">{TYPE_METRICS.find(o => o.value === typeMetric).label}</th>
               </tr></thead>
               <tbody>{bikeTypes.map(row => {
-                const value = typeMetricValue(row, typeMetric);
+                const value = typeMetricValue(row, typeMetric, units);
                 return (
                   <tr key={row.type}>
                     <th scope="row" style={{ position: "static" }}>{row.type}</th>
                     <td className="r num">{comma(row.count)}</td>
-                    <td className="r num">{comma(miles(row.distance).toFixed(1))}</td>
-                    <td className="r num">{comma(feet(row.elevation).toFixed(0))}</td>
-                    <td className="r num">{row.avgRideMiles.toFixed(1)}</td>
-                    <td className="r num">{row.elevationPerMile.toFixed(0)}</td>
+                    <td className="r num">{comma(units.distance(row.distance).toFixed(1))}</td>
+                    <td className="r num">{comma(units.elevation(row.elevation).toFixed(0))}</td>
+                    <td className="r num">{row.avgRide.toFixed(1)}</td>
+                    <td className="r num">{row.elevationPerDistance.toFixed(0)}</td>
                     <td className="r num">{row.avgSpeed > 0 ? row.avgSpeed.toFixed(1) : "—"}</td>
                     <td className="bar-cell">
                       <div className="bar-track" role="img" aria-label={`${row.type}: ${comma(value.toFixed(typeMetric === "count" ? 0 : 1))} ${TYPE_METRICS.find(o => o.value === typeMetric).label.toLowerCase()}`}>
@@ -129,7 +133,7 @@ function GarageAnalytics({ activities }) {
         </Card>
         <Card title="Weekly mileage ramp" className="fill">
           <div className="scroll-region grow" role="region" aria-label="Weekly ride mileage, newest week first" tabIndex={0}>
-            <div className="ramp-row head"><span>Week of</span><span aria-hidden="true" /><span className="r">Miles</span><span className="r">Change</span></div>
+            <div className="ramp-row head"><span>Week of</span><span aria-hidden="true" /><span className="r">{units.metric ? "Km" : "Miles"}</span><span className="r">Change</span></div>
             {rampRows.map(row => (
               <div className={`ramp-row num${row.warning ? " warn" : ""}`} key={row.key}>
                 <span>{row.label}, {row.key.slice(0, 4)}</span>
@@ -158,29 +162,29 @@ function GarageAnalytics({ activities }) {
           </div>
         </Card>
         <Card title="Mileage milestones" className="fill">
-          <div className="record-value num">{comma(milestones.total.toFixed(1))} mi</div>
+          <div className="record-value num">{units.fmtDistanceValue(milestones.total, 1)}</div>
           <p className="hint">Lifetime mileage across the current filtered rides.</p>
           {nextMilestone && (
             <div className="milestone-next">
               <div className="stat-row">
-                <span>Next: <strong className="num">{comma(nextMilestone.target)} mi</strong></span>
+                <span>Next: <strong className="num">{comma(nextMilestone.target)} {units.distUnit}</strong></span>
                 <span className="num">{nextMilestone.date ? `${formatDate(nextMilestone.date)} (projected)` : "not projected"}</span>
               </div>
-              <div className="bar-track" role="progressbar" aria-label={`Progress to ${comma(nextMilestone.target)} miles`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(nextProgress * 100)}>
+              <div className="bar-track" role="progressbar" aria-label={`Progress to ${comma(nextMilestone.target)} ${units.metric ? "kilometers" : "miles"}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(nextProgress * 100)}>
                 <div className="bar-fill" style={{ width: `${nextProgress * 100}%` }} />
               </div>
-              <div className="hint num">{comma((nextMilestone.target - milestones.total).toFixed(1))} mi to go</div>
+              <div className="hint num">{units.fmtDistanceValue(nextMilestone.target - milestones.total, 1)} to go</div>
             </div>
           )}
           <div className="milestone-grid scroll-region grow" role="region" aria-label="Mileage milestones, passed and projected" tabIndex={0}>
             {milestones.achieved.map(item => (
               <div className="milestone-tile done" key={`${item.target}-${item.date}`}>
-                <span className="num">{comma(item.target)} mi</span><span className="num">{formatDate(item.date)}</span>
+                <span className="num">{comma(item.target)} {units.distUnit}</span><span className="num">{formatDate(item.date)}</span>
               </div>
             ))}
             {laterMilestones.map(item => (
               <div className="milestone-tile" key={`next-${item.target}`}>
-                <span className="num">{comma(item.target)} mi</span>
+                <span className="num">{comma(item.target)} {units.distUnit}</span>
                 <span className="num">{item.date ? `${formatDate(item.date)} (projected)` : "not projected"}</span>
               </div>
             ))}
@@ -214,11 +218,12 @@ function useBikes() {
 }
 
 function BikeStats({ total, gid, name }) {
-  const speed = formatSpeed(total.avg_speed_mph, "Ride");
+  const units = useUnits();
+  const speed = formatSpeed(total.avg_speed_mph, "Ride", units);
   return (
     <div className="metrics num">
-      <span>{comma(miles(total.distance).toFixed(1))} mi</span>
-      <span>{comma(feet(total.elevation).toFixed(0))} ft</span>
+      <span>{units.fmtDistance(total.distance)}</span>
+      <span>{units.fmtElevation(total.elevation)}</span>
       <span>
         <a href={`#/activities?bike=${encodeURIComponent(gid)}`} aria-label={`View ${plural(total.count, "activity").replace("activitys", "activities")} for ${name}`}>
           {plural(total.count, "activity").replace("activitys", "activities")}
@@ -279,30 +284,32 @@ function PrSegmentsDrawer({ bike, onClose }) {
 }
 
 function BikeSummary({ bikes }) {
+  const units = useUnits();
   const [sort, setSort] = useState({ key: "distance", dir: "desc" });
   const [retiredOpen, setRetiredOpen] = usePersistentState("bikeSummaryRetiredOpen", false);
   const [prBike, setPrBike] = useState(null);
   const { rows, total } = useMemo(() => buildBikeSummaryRows(
     Object.fromEntries(bikes.rows.map(r => [r.gid, r.total])),
     Object.fromEntries(bikes.rows.map(r => [r.gid, { name: r.name }])),
-    gid => bikes.rows.find(r => r.gid === gid)?.isRetired
-  ), [bikes.rows]);
+    gid => bikes.rows.find(r => r.gid === gid)?.isRetired,
+    units
+  ), [bikes.rows, units]);
   if (!rows.length) return null;
   const f1 = n => comma(n.toFixed(1));
   const f0 = n => comma(n.toFixed(0));
-  const speed = n => (n > 0 ? n.toFixed(1) : "-");
+  const speed = n => (n > 0 ? n.toFixed(1) : "-"); // avgSpeed is already in the display unit
   const columns = [
     { key: "name", label: "Name", render: r => r.name },
     { key: "count", label: "Count", align: "r", render: r => r.gid
       ? <a href={`#/activities?bike=${encodeURIComponent(r.gid)}`} aria-label={`View ${comma(r.count)} activities for ${r.name}`}>{comma(r.count)}</a>
       : comma(r.count) },
-    { key: "distance", label: "Total distance (mi)", align: "r", render: r => f1(r.distance) },
-    { key: "avgDistance", label: "Avg distance (mi)", align: "r", render: r => f1(r.avgDistance) },
-    { key: "elevation", label: "Total elevation (ft)", align: "r", render: r => f0(r.elevation) },
-    { key: "avgElevation", label: "Avg elevation (ft)", align: "r", render: r => f0(r.avgElevation) },
+    { key: "distance", label: `Total distance (${units.distUnit})`, align: "r", render: r => f1(r.distance) },
+    { key: "avgDistance", label: `Avg distance (${units.distUnit})`, align: "r", render: r => f1(r.avgDistance) },
+    { key: "elevation", label: `Total elevation (${units.elevUnit})`, align: "r", render: r => f0(r.elevation) },
+    { key: "avgElevation", label: `Avg elevation (${units.elevUnit})`, align: "r", render: r => f0(r.avgElevation) },
     { key: "time", label: "Total time", align: "r", render: r => formatHms(r.time) },
     { key: "avgTime", label: "Avg time", align: "r", render: r => formatHms(r.avgTime) },
-    { key: "avgSpeed", label: "Avg speed (mph)", align: "r", render: r => speed(r.avgSpeed) },
+    { key: "avgSpeed", label: `Avg speed (${units.speedUnit})`, align: "r", render: r => speed(r.avgSpeed) },
     // PR counts open the list of PR segments for that bike (segmentData joined with the bike's activities).
     { key: "prs", label: "PRs", align: "r", render: r => r.gid && r.prs > 0
       ? <button type="button" className="cell-link" aria-haspopup="dialog" aria-label={`Show ${comma(r.prs)} PR segments for ${r.name}`} onClick={() => setPrBike(r)}>{comma(r.prs)}</button>
@@ -414,6 +421,7 @@ function GarageList({ bikes, activities }) {
 }
 
 function YearRow({ gid, year, y }) {
+  const units = useUnits();
   const [open, setOpen] = useState(false);
   const weeks = useMemo(() => Object.entries(y.weeks || {}).map(([key, value]) => {
     const n = Number(key);
@@ -422,28 +430,36 @@ function YearRow({ gid, year, y }) {
     const sortDate = value.week_start ? new Date(value.week_start).getTime() : iso ? iso.getTime() : n || 0;
     return { ...value, label, sortDate };
   }).sort((a, b) => b.sortDate - a.sortDate), [y, year]);
-  const speed = formatSpeed(y.avg_speed_mph, "Ride");
+  const speed = formatSpeed(y.avg_speed_mph, "Ride", units);
 
   return (
     <>
       <tr>
-        <td><button type="button" className="cell-link" aria-expanded={open} aria-controls={`weeks-${gid}-${year}`} onClick={() => setOpen(o => !o)}>{open ? "▾" : "▸"} {year}</button></td>
-        <td className="r num">{comma(miles(y.distance).toFixed(1))} mi</td>
-        <td className="r num">{comma(feet(y.elevation).toFixed(0))} ft</td>
+        <td>{year}</td>
+        <td className="r num">{units.fmtDistance(y.distance)}</td>
+        <td className="r num">{units.fmtElevation(y.elevation)}</td>
         <td className="r num">{comma(y.count)}</td>
         <td className="r num">{formatDuration(y.moving_time)}</td>
         <td className="r num">{comma(y.pr_count || 0)}</td>
         <td className="r num">{speed ? speed.replace("avg ", "") : "—"}</td>
+        <td className="expand-cell">
+          <button type="button" className="expand-btn" aria-expanded={open} aria-controls={`weeks-${gid}-${year}`}
+            aria-label={`Show weekly breakdown for ${year}`} title={`Show weekly breakdown for ${year}`} onClick={() => setOpen(o => !o)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+        </td>
       </tr>
       {open && (
         <tr id={`weeks-${gid}-${year}`}>
-          <td colSpan={7}>
+          <td colSpan={8}>
             <div className="week-list">
               {weeks.length ? weeks.map(w => (
                 <div className="week-row num" key={w.sortDate + w.label}>
                   <span>{w.label}</span>
-                  <span>{comma(miles(w.distance).toFixed(1))} mi</span>
-                  <span>{comma(feet(w.elevation).toFixed(0))} ft</span>
+                  <span>{units.fmtDistance(w.distance)}</span>
+                  <span>{units.fmtElevation(w.elevation)}</span>
                   <span>{comma(w.count)} act.</span>
                   <span>{formatDuration(w.moving_time)}</span>
                   {w.trend ? <span className={w.trend > 0 ? "positive" : "negative"}>{w.trend > 0 ? "▲" : "▼"} {Math.abs(w.trend * 100).toFixed(0)}%</span> : null}
@@ -458,12 +474,13 @@ function YearRow({ gid, year, y }) {
 }
 
 function BikeDetail({ bike, bikes }) {
+  const units = useUnits();
   const { insights, bikeImages, setBikeImages, bikePhotoPrefs, getCoverPhoto } = useAppData();
   const [galleryAt, setGalleryAt] = useState(null);
   const urls = bikeImages[bike.gid] || [];
   const cover = getCoverPhoto(bike.gid);
   const ins = insights.perBike[bike.gid] || {};
-  const chart = [...bike.years].reverse().map(y => ({ label: y, value: miles(bike.bikeYearStats[y].distance) }));
+  const chart = [...bike.years].reverse().map(y => ({ label: y, value: units.distance(bike.bikeYearStats[y].distance) }));
 
   const onImagesChange = (gid, images) => setBikeImages(prev => {
     const next = { ...prev };
@@ -472,10 +489,10 @@ function BikeDetail({ bike, bikes }) {
   });
 
   const insightCards = [
-    ["Biggest mileage week", ins.biggestMileageWeek ? `${comma(miles(ins.biggestMileageWeek.distance).toFixed(1))} mi` : "-", ins.biggestMileageWeek?.label],
-    ["Biggest climbing week", ins.biggestClimbingWeek ? `${comma(feet(ins.biggestClimbingWeek.elevation).toFixed(0))} ft` : "-", ins.biggestClimbingWeek?.label],
+    ["Biggest mileage week", ins.biggestMileageWeek ? units.fmtDistance(ins.biggestMileageWeek.distance) : "-", ins.biggestMileageWeek?.label],
+    ["Biggest climbing week", ins.biggestClimbingWeek ? units.fmtElevation(ins.biggestClimbingWeek.elevation) : "-", ins.biggestClimbingWeek?.label],
     ["Most active week", ins.mostActiveWeek ? `${comma(ins.mostActiveWeek.count)} rides` : "-", ins.mostActiveWeek?.label],
-    ["Share of ride mileage", `${((ins.distanceShare || 0) * 100).toFixed(1)}%`, "Of all Ride miles"],
+    ["Share of ride mileage", `${((ins.distanceShare || 0) * 100).toFixed(1)}%`, units.metric ? "Of all Ride kilometers" : "Of all Ride miles"],
     ["Share of ride count", `${((ins.countShare || 0) * 100).toFixed(1)}%`, "Of all Ride activities"],
     ["First / last ride", formatDate(ins.firstRide), `${formatDate(ins.lastRide)} · ${formatDayDifference(ins.firstRide, ins.lastRide)}`]
   ];
@@ -503,14 +520,14 @@ function BikeDetail({ bike, bikes }) {
       </div>
 
       <div className="grid two">
-        <Card title="Miles per year">
-          <div className="chart-box short" role="img" aria-label={`Miles per year for ${bike.name}`}>
+        <Card title={`${units.metric ? "Kilometers" : "Miles"} per year`}>
+          <div className="chart-box short" role="img" aria-label={`${units.metric ? "Kilometers" : "Miles"} per year for ${bike.name}`}>
             <ResponsiveContainer>
               <BarChart data={chart} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} width={48} tickFormatter={v => comma(Math.round(v))} />
-                <Tooltip wrapperStyle={{ zIndex: 1000, pointerEvents: "none" }} allowEscapeViewBox={{ x: true, y: true }} content={<ChartTip format={v => `${comma(v.toFixed(1))} mi`} />} cursor={{ fill: "var(--surface-hover)" }} />
+                <Tooltip wrapperStyle={{ zIndex: 1000, pointerEvents: "none" }} allowEscapeViewBox={{ x: true, y: true }} content={<ChartTip format={v => units.fmtDistanceValue(v, 1)} />} cursor={{ fill: "var(--surface-hover)" }} />
                 <Bar dataKey="value" name="Distance" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -534,7 +551,7 @@ function BikeDetail({ bike, bikes }) {
             <caption className="sr-only">Yearly statistics for {bike.name}. Select a year to show its weekly breakdown.</caption>
             <thead><tr>
               <th scope="col">Year</th><th scope="col" className="r">Distance</th><th scope="col" className="r">Elevation</th>
-              <th scope="col" className="r">Activities</th><th scope="col" className="r">Time</th><th scope="col" className="r">PRs</th><th scope="col" className="r">Avg speed</th>
+              <th scope="col" className="r">Activities</th><th scope="col" className="r">Time</th><th scope="col" className="r">PRs</th><th scope="col" className="r">Avg speed</th><th scope="col" className="expand-cell"><span className="sr-only">Expand</span></th>
             </tr></thead>
             <tbody>{bike.years.map(y => <YearRow key={y} gid={bike.gid} year={y} y={bike.bikeYearStats[y]} />)}</tbody>
           </table>
@@ -550,14 +567,15 @@ function BikeDetail({ bike, bikes }) {
 }
 
 function Compare({ bikes }) {
+  const units = useUnits();
   const picked = bikes.selected.map(id => bikes.rows.find(r => r.gid === id)).filter(Boolean);
   const metrics = [
-    ["Distance", t => `${comma(miles(t.distance).toFixed(1))} mi`],
-    ["Elevation", t => `${comma(feet(t.elevation).toFixed(0))} ft`],
+    ["Distance", t => units.fmtDistance(t.distance)],
+    ["Elevation", t => units.fmtElevation(t.elevation)],
     ["Activities", t => comma(t.count)],
     ["Time", t => formatDuration(t.moving_time || 0)],
     ["PRs", t => `${comma(t.pr_count || 0)} PRs`],
-    ["Avg speed", t => (t.avg_speed_mph ? `${t.avg_speed_mph.toFixed(1)} mph` : "—")]
+    ["Avg speed", t => (t.avg_speed_mph ? units.fmtSpeed(t.avg_speed_mph) : "—")]
   ];
   return (
     <div className="content">

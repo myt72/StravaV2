@@ -138,12 +138,13 @@ select:hover, input:hover { border-color: var(--text-muted); }
 .grid.garage-stats > .card { min-height: 0; }
 .milestone-next { padding: 8px 0 4px; }
 .milestone-next .bar-track { margin-top: 4px; height: 10px; }
-.milestone-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; align-content: start; margin-top: 8px; }
+.milestone-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-content: start; margin-top: 8px; }
 .milestone-tile { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.8rem; min-width: 0; }
 .milestone-tile.done { background: var(--accent-soft); }
 .milestone-tile > :first-child { font-weight: 600; }
 .milestone-tile > :last-child { color: var(--text-muted); }
-@media (max-width: 1100px) { .milestone-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 1100px) { .milestone-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 640px) { .milestone-grid { grid-template-columns: repeat(2, 1fr); } }
 .ramp-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 72px 52px; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.85rem; }
 .ramp-row.head { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); background: var(--surface); position: sticky; top: 0; z-index: 1; }
 .ramp-row .r { text-align: right; }

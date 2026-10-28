@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { METRICS } from "../lib/analytics.js";
+import { getMetrics } from "../lib/analytics.js";
+import { useUnits } from "../context/Units.jsx";
 import { MONTHS, formatDate, getDateKey } from "../lib/format.js";
 
 const WEEKS = 53;
@@ -30,6 +31,8 @@ export function HeatLegend({ children }) {
 
 /** GitHub-style calendar. Arrow keys move between days, Enter opens that day. */
 export default function Heatmap({ activities, metric, onSelectDay }) {
+  const units = useUnits();
+  const METRICS = getMetrics(units);
   const m = METRICS[metric] || METRICS.distance;
   const [focus, setFocus] = useState(null);
   const wrapRef = useRef(null);

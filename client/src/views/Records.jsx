@@ -2,11 +2,12 @@ import { useMemo, useState } from "react";
 import { SEGMENT_RANKINGS_ENABLED } from "../lib/features.js";
 import { useAppData } from "../context/AppData.jsx";
 import {
-  buildSegmentDistanceHighlights, buildSegmentElevationHighlights, buildSegmentRankings, buildSegmentSummaryHighlights
+  buildSegmentDistanceHighlights, buildSegmentElevationHighlights, buildSegmentRankings, buildSegmentSummaryHighlights, minSegmentElevation
 } from "../lib/analytics.js";
 import {
-  comma, feet, formatDate, formatDuration, formatYearsBetween, getStravaSegmentUrl, miles
+  comma, formatDate, formatDuration, formatYearsBetween, getStravaSegmentUrl
 } from "../lib/format.js";
+import { useUnits } from "../context/Units.jsx";
 import { navigate } from "../lib/router.js";
 import { ActivityLink, Card, DataTable, Empty, PageHead } from "../components/ui.jsx";
 
@@ -23,26 +24,26 @@ const RECORD_SECTIONS = [
   { id: "activities", title: "Activities" }
 ];
 
-function buildRecordCards(h, gearName) {
+function buildRecordCards(h, gearName, units) {
   const bike = (group, key, label, b, value, sub = "", hero = false) => ({ group, key, label, hero, bike: b, title: b ? b.name : "-", value: value || "-", sub });
   const act = (key, label, a, value, hero = false) => ({ group: "activities", key, label, hero, activity: a, title: a ? (a.name || a.sport_type || "Activity") : "-", value: value || "-", sub: a ? `${formatDate(a.start_date)} • ${gearName(a.gear_id)}` : "" });
   return [
-    bike("bikes", "miles", "Most-used bike by miles", h.mostUsedByMiles, h.mostUsedByMiles && `${comma(miles(h.mostUsedByMiles.distance).toFixed(1))} mi`, "", true),
+    bike("bikes", "miles", "Most-used bike by distance", h.mostUsedByMiles, h.mostUsedByMiles && units.fmtDistance(h.mostUsedByMiles.distance), "", true),
     bike("bikes", "count", "Most-used bike by count", h.mostUsedByCount, h.mostUsedByCount && `${comma(h.mostUsedByCount.count)} activities`),
     bike("bikes", "time", "Most total activity time", h.mostTotalTimeBike, h.mostTotalTimeBike && formatDuration(h.mostTotalTimeBike.moving_time)),
-    bike("bikes", "fastest", "Fastest bike", h.fastestBike, h.fastestBike && `${h.fastestBike.avg_speed_mph.toFixed(1)} mph avg`),
-    bike("bikes", "climbing", "Best climbing bike", h.climbingBike, h.climbingBike && `${comma(feet(h.climbingBike.avg_elevation_per_ride).toFixed(0))} ft/ride`),
-    bike("bikes", "avgride", "Longest average ride bike", h.longestAverageRideBike, h.longestAverageRideBike && `${comma(miles(h.longestAverageRideBike.avg_distance_per_ride).toFixed(1))} mi/ride`),
+    bike("bikes", "fastest", "Fastest bike", h.fastestBike, h.fastestBike && `${units.fmtSpeed(h.fastestBike.avg_speed_mph)} avg`),
+    bike("bikes", "climbing", "Best climbing bike", h.climbingBike, h.climbingBike && `${units.fmtElevation(h.climbingBike.avg_elevation_per_ride)}/ride`),
+    bike("bikes", "avgride", "Longest average ride bike", h.longestAverageRideBike, h.longestAverageRideBike && `${units.fmtDistance(h.longestAverageRideBike.avg_distance_per_ride)}/ride`),
     bike("bikes", "recent", "Most recent bike", h.mostRecentBike, h.mostRecentBike && formatDate(h.mostRecentBike.lastRide)),
     bike("bikes", "longestused", "Longest-used bike", h.longestUsedBike, h.longestUsedBike && formatYearsBetween(h.longestUsedBike.firstRide, h.longestUsedBike.lastRide),
       h.longestUsedBike ? `${formatDate(h.longestUsedBike.firstRide)} – ${formatDate(h.longestUsedBike.lastRide)}` : ""),
-    bike("weeks", "mileweek", "Biggest mileage week", h.biggestMileageWeekBike, h.biggestMileageWeekBike && `${comma(miles(h.biggestMileageWeekBike.distance).toFixed(1))} mi`, h.biggestMileageWeekBike?.label, true),
-    bike("weeks", "climbweek", "Biggest climbing week", h.biggestClimbingWeekBike, h.biggestClimbingWeekBike && `${comma(feet(h.biggestClimbingWeekBike.elevation).toFixed(0))} ft`, h.biggestClimbingWeekBike?.label),
-    act("longest", "Longest single activity", h.longestActivity, h.longestActivity && `${comma(miles(h.longestActivity.distance || 0).toFixed(1))} mi`, true),
-    act("elevation", "Most elevation in a single activity", h.highestElevationActivity, h.highestElevationActivity && `${comma(feet(h.highestElevationActivity.total_elevation_gain || 0).toFixed(0))} ft`),
+    bike("weeks", "mileweek", "Biggest mileage week", h.biggestMileageWeekBike, h.biggestMileageWeekBike && units.fmtDistance(h.biggestMileageWeekBike.distance), h.biggestMileageWeekBike?.label, true),
+    bike("weeks", "climbweek", "Biggest climbing week", h.biggestClimbingWeekBike, h.biggestClimbingWeekBike && units.fmtElevation(h.biggestClimbingWeekBike.elevation), h.biggestClimbingWeekBike?.label),
+    act("longest", "Longest single activity", h.longestActivity, h.longestActivity && units.fmtDistance(h.longestActivity.distance || 0), true),
+    act("elevation", "Most elevation in a single activity", h.highestElevationActivity, h.highestElevationActivity && units.fmtElevation(h.highestElevationActivity.total_elevation_gain || 0)),
     act("time", "Longest activity time", h.longestMovingTimeActivity, h.longestMovingTimeActivity && formatDuration(h.longestMovingTimeActivity.moving_time || 0)),
-    act("speed", "Fastest ride by avg speed", h.fastestRide, h.fastestRide && `${h.fastestRide.avg_speed_mph.toFixed(1)} mph`),
-    act("steepest", "Steepest ride", h.steepestRide, h.steepestRide && `${comma(h.steepestRide.elevation_per_mile.toFixed(0))} ft/mi`)
+    act("speed", "Fastest ride by avg speed", h.fastestRide, h.fastestRide && units.fmtSpeed(h.fastestRide.avg_speed_mph)),
+    act("steepest", "Steepest ride", h.steepestRide, h.steepestRide && units.fmtElevPerDist(h.steepestRide.elevation_per_mile))
   ];
 }
 
@@ -155,6 +156,7 @@ function SegmentRankings({ rankings, status, hasRanks, search }) {
 
 export default function Records() {
   const { filtered, insights, gearName, excludedSet, excludedSegments, excludeSegment, restoreSegment, minEfforts, setMinEfforts, raw, segmentRank } = useAppData();
+  const units = useUnits();
   const [tab, setTab] = useState("records");
   const [search, setSearch] = useState("");
   const q = search.trim().toLowerCase();
@@ -164,10 +166,10 @@ export default function Records() {
   const summary = useMemo(() => buildSegmentSummaryHighlights(filtered, excludedSet), [filtered, excludedSet]);
   const rankings = useMemo(() => (SEGMENT_RANKINGS_ENABLED ? buildSegmentRankings(filtered, raw?.segmentRanks) : null), [filtered, raw]);
   const hasRanks = SEGMENT_RANKINGS_ENABLED && Object.keys(raw?.segmentRanks || {}).length > 0;
-  const distance = useMemo(() => buildSegmentDistanceHighlights(filtered, excludedSet), [filtered, excludedSet]);
-  const elevation = useMemo(() => buildSegmentElevationHighlights(filtered, excludedSet, min), [filtered, excludedSet, min]);
+  const distance = useMemo(() => buildSegmentDistanceHighlights(filtered, excludedSet, units), [filtered, excludedSet, units]);
+  const elevation = useMemo(() => buildSegmentElevationHighlights(filtered, excludedSet, min, units), [filtered, excludedSet, min, units]);
 
-  const records = buildRecordCards(insights.highlights, gearName).filter(r => match(r.label, r.title, r.sub));
+  const records = buildRecordCards(insights.highlights, gearName, units).filter(r => match(r.label, r.title, r.sub));
 
   const segmentColumns = (extra = []) => [
     { key: "label", label: "Bucket" },
@@ -180,12 +182,12 @@ export default function Records() {
     { key: "x", label: "", sortable: false, render: r => <button type="button" className="btn sm" onClick={() => excludeSegment(r.segmentId)}>Exclude</button> }
   ];
   const distanceColumns = segmentColumns([
-    { key: "distanceMiles", label: "Length", align: "r", render: r => `${r.distanceMiles.toFixed(1)} mi` },
-    { key: "elevationFeet", label: "Gain", align: "r", render: r => `${comma(Math.round(r.elevationFeet))} ft` }
+    { key: "distance", label: "Length", align: "r", render: r => units.fmtDistanceValue(r.distance, 1) },
+    { key: "elevation", label: "Gain", align: "r", render: r => units.fmtElevationValue(Math.round(r.elevation), 0) }
   ]);
   const elevationColumns = segmentColumns([
-    { key: "elevationFeet", label: "Gain", align: "r", render: r => `${comma(Math.round(r.elevationFeet))} ft` },
-    { key: "distanceMiles", label: "Length", align: "r", render: r => `${r.distanceMiles.toFixed(1)} mi` }
+    { key: "elevation", label: "Gain", align: "r", render: r => units.fmtElevationValue(Math.round(r.elevation), 0) },
+    { key: "distance", label: "Length", align: "r", render: r => units.fmtDistanceValue(r.distance, 1) }
   ]);
 
   const rowsOf = items => items.filter(i => !i.empty && match(i.segmentName, i.label));
@@ -265,7 +267,7 @@ export default function Records() {
                 onBlur={() => setMinEfforts(min)} />
             </label>
             <span className="muted small" aria-live="polite">
-              Most-ridden climbs of 300 ft+ per elevation bucket. {comma(elevation.belowMinimum)} segment{elevation.belowMinimum === 1 ? " is" : "s are"} hidden for having fewer than {comma(min)} efforts.
+              Most-ridden climbs of {comma(minSegmentElevation(units))} {units.elevUnit}+ per elevation bucket. {comma(elevation.belowMinimum)} segment{elevation.belowMinimum === 1 ? " is" : "s are"} hidden for having fewer than {comma(min)} efforts.
             </span>
           </div>
           <DataTable rows={rowsOf(elevation.items)} rowKey={r => r.label} columns={elevationColumns} empty="No segments meet the minimum effort count." />

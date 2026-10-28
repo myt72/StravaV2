@@ -3,6 +3,7 @@ import {
   miles, feet, comma, formatDuration, getDateKey, getWeekStartMonday, getWeekNumber,
   formatDate, formatShortDate, formatMonthLabel, getGearName, MONTHS
 } from "./format.js";
+import { IMPERIAL } from "./units.js";
 
 export const EXCLUDED_HIGHEST_ELEVATION_ACTIVITY_ID = "1380665549";
 
@@ -203,16 +204,16 @@ export function computeCurrentWeekStreak(dateKeys, now = new Date()) {
 }
 
 /**
- * Average miles per week for each calendar year, newest first. Completed years divide by their full
+ * Average distance (mi or km) per week for each calendar year, newest first. Completed years divide by their full
  * 52/53 ISO weeks; the current year divides by the weeks elapsed so far (day of year / 7, rounded up).
  */
-export function buildWeeklyDistanceAverages(activities, now = new Date()) {
+export function buildWeeklyDistanceAverages(activities, now = new Date(), units = IMPERIAL) {
   const totals = {};
   (activities || []).forEach(a => {
     const d = new Date(a.start_date);
     if (Number.isNaN(d.getTime())) return;
     const y = d.getFullYear();
-    totals[y] = (totals[y] || 0) + miles(a.distance || 0);
+    totals[y] = (totals[y] || 0) + units.distance(a.distance || 0);
   });
   const thisYear = now.getFullYear();
   const rows = Object.keys(totals).map(Number).sort((a, b) => b - a).map(year => {
@@ -222,7 +223,7 @@ export function buildWeeklyDistanceAverages(activities, now = new Date()) {
       const dayOfYear = Math.round((Date.UTC(year, now.getMonth(), now.getDate()) - Date.UTC(year, 0, 1)) / DAY_MS) + 1;
       weeks = Math.max(1, Math.ceil(dayOfYear / 7));
     }
-    return { year, miles: totals[year], weeks, average: totals[year] / weeks, partial: year >= thisYear, delta: null };
+    return { year, total: totals[year], weeks, average: totals[year] / weeks, partial: year >= thisYear, delta: null };
   });
   rows.forEach((r, i) => {
     const prev = rows[i + 1];
@@ -231,27 +232,32 @@ export function buildWeeklyDistanceAverages(activities, now = new Date()) {
   return rows;
 }
 
-export function buildLongRideBands(activities, now = new Date()) {
-  const labels = ["20-25", "25-30", "30-35", "35-40", "40-45", "45-50", "50+"];
+const LONG_RIDE_EDGES = { imperial: [20, 25, 30, 35, 40, 45, 50], metric: [30, 40, 50, 60, 70, 80, 90] };
+
+/** Long-ride band labels (e.g. "20-25", ..., "50+") for a unit system. */
+export function longRideBandLabels(units = IMPERIAL) {
+  const edges = LONG_RIDE_EDGES[units.system];
+  return edges.map((e, i) => (i === edges.length - 1 ? `${e}+` : `${e}-${edges[i + 1]}`));
+}
+
+export function buildLongRideBands(activities, now = new Date(), units = IMPERIAL) {
+  const edges = LONG_RIDE_EDGES[units.system];
+  const labels = longRideBandLabels(units);
   const years = new Map();
   (activities || []).forEach(a => {
     const d = new Date(a.start_date);
     if (Number.isNaN(d.getTime())) return;
-    const distance = miles(a.distance);
-    if (distance < 20) return;
+    const distance = units.distance(a.distance);
+    if (distance < edges[0]) return;
 
     const rowYear = d.getFullYear();
     if (!years.has(rowYear)) {
       years.set(rowYear, { year: rowYear, partial: rowYear === now.getFullYear(), bands: Object.fromEntries(labels.map(label => [label, 0])), total: 0 });
     }
     const row = years.get(rowYear);
-    const band = distance >= 50 ? "50+"
-      : distance >= 45 ? "45-50"
-        : distance >= 40 ? "40-45"
-          : distance >= 35 ? "35-40"
-            : distance >= 30 ? "30-35"
-              : distance >= 25 ? "25-30"
-                : "20-25";
+    let bandIndex = 0;
+    edges.forEach((edge, i) => { if (distance >= edge) bandIndex = i; });
+    const band = labels[bandIndex];
     row.bands[band] += 1;
     row.total += 1;
   });
@@ -277,14 +283,25 @@ export function buildKpis(activities, gearTotals) {
 
 /* ---------- metrics ---------- */
 
-export const METRICS = {
-  distance: { label: "Distance", unit: "mi", value: a => miles(a.distance || 0), fmt: v => `${comma(v.toFixed(1))} mi` },
-  elevation: { label: "Elevation", unit: "ft", value: a => feet(a.total_elevation_gain || 0), fmt: v => `${comma(v.toFixed(0))} ft` },
-  moving_time: { label: "Moving time", unit: "h", value: a => (a.moving_time || 0) / 3600, fmt: v => `${v.toFixed(1)} h` },
-  count: { label: "Activities", unit: "", value: () => 1, fmt: v => comma(v) }
-};
+const metricsCache = new Map();
 
-export function sumMetric(activities, metric) {
+/** Metric definitions for a unit system (see lib/units.js); values and labels are in that system's units. */
+export function getMetrics(units = IMPERIAL) {
+  if (!metricsCache.has(units)) {
+    metricsCache.set(units, {
+      distance: { label: "Distance", unit: units.distUnit, value: a => units.distance(a.distance || 0), fmt: v => units.fmtDistanceValue(v, 1) },
+      elevation: { label: "Elevation", unit: units.elevUnit, value: a => units.elevation(a.total_elevation_gain || 0), fmt: v => units.fmtElevationValue(v, 0) },
+      moving_time: { label: "Moving time", unit: "h", value: a => (a.moving_time || 0) / 3600, fmt: v => `${v.toFixed(1)} h` },
+      count: { label: "Activities", unit: "", value: () => 1, fmt: v => comma(v) }
+    });
+  }
+  return metricsCache.get(units);
+}
+
+export const METRICS = getMetrics(IMPERIAL);
+
+export function sumMetric(activities, metric, units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const m = METRICS[metric] || METRICS.distance;
   return activities.reduce((s, a) => s + m.value(a), 0);
 }
@@ -306,7 +323,8 @@ export const timeOfDayLabel = date => {
   return (TIME_OF_DAY.find(g => hour >= g.start && hour < g.end) || {}).label;
 };
 
-export function buildWeekdayBreakdown(activities, metric) {
+export function buildWeekdayBreakdown(activities, metric, units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const map = WEEKDAYS.map(label => ({ label, value: 0 }));
   (activities || []).forEach(a => {
     map[weekdayIndex(new Date(a.start_date))].value += (METRICS[metric] || METRICS.count).value(a);
@@ -314,7 +332,8 @@ export function buildWeekdayBreakdown(activities, metric) {
   return map;
 }
 
-export function buildTimeOfDayBreakdown(activities, metric) {
+export function buildTimeOfDayBreakdown(activities, metric, units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const groups = TIME_OF_DAY.map(g => ({ ...g, value: 0 }));
   (activities || []).forEach(a => {
     const bucket = groups.find(g => g.label === timeOfDayLabel(new Date(a.start_date)));
@@ -324,7 +343,8 @@ export function buildTimeOfDayBreakdown(activities, metric) {
 }
 
 /** Most recent 12 months that have activities, oldest first. */
-export function buildMonthlyTrend(activities, metric) {
+export function buildMonthlyTrend(activities, metric, units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const months = {};
   (activities || []).forEach(a => {
     const d = new Date(a.start_date);
@@ -343,7 +363,8 @@ export function buildMonthlyTrend(activities, metric) {
 }
 
 /** Per-year, per-month values for year-over-year lines. */
-export function buildYearOverYear(activities, metric, cumulative = false) {
+export function buildYearOverYear(activities, metric, cumulative = false, units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const years = {};
   (activities || []).forEach(a => {
     const d = new Date(a.start_date);
@@ -377,7 +398,8 @@ function isoWeeksInYear(y) {
 }
 
 /** Per-ISO-week-year values for year-over-year lines; rows are keyed by week number (1..53) with label "Wk N". */
-export function buildYearOverYearWeekly(activities, metric) {
+export function buildYearOverYearWeekly(activities, metric, units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const years = {};
   (activities || []).forEach(a => {
     const { isoYear, week } = isoWeekParts(new Date(a.start_date));
@@ -415,14 +437,14 @@ export function rankYearValues(valuesByYear) {
 
 /* ---------- annual ---------- */
 
-export function buildAnnualBreakdowns(activities) {
+export function buildAnnualBreakdowns(activities, segmentData = {}) {
   const annual = {};
   let totalDistance = 0, totalElevation = 0, totalCount = 0, totalMovingTime = 0, totalElapsedTime = 0;
 
   for (const a of activities) {
     const year = new Date(a.start_date).getFullYear();
     if (!annual[year]) {
-      annual[year] = { distance: 0, elevation: 0, count: 0, moving_time: 0, elapsed_time: 0, dayKeys: [], maxRideDistance: 0, maxRideElevation: 0 };
+      annual[year] = { distance: 0, elevation: 0, count: 0, moving_time: 0, elapsed_time: 0, pr_count: 0, dayKeys: [], maxRideDistance: 0, maxRideElevation: 0 };
     }
     const y = annual[year];
     y.distance += a.distance || 0;
@@ -430,6 +452,7 @@ export function buildAnnualBreakdowns(activities) {
     y.count += 1;
     y.moving_time += a.moving_time || 0;
     y.elapsed_time += a.elapsed_time || 0;
+    y.pr_count += prCountFor(segmentData, a);
     y.dayKeys.push(getDateKey(a.start_date));
     y.maxRideDistance = Math.max(y.maxRideDistance, a.distance || 0);
     y.maxRideElevation = Math.max(y.maxRideElevation, a.total_elevation_gain || 0);
@@ -449,8 +472,8 @@ export function buildAnnualBreakdowns(activities) {
 }
 
 /** Aggregate of ALL activities passed in, shaped like a buildAnnualBreakdowns year row. */
-export function buildAnnualTotals(activities) {
-  const t = { distance: 0, elevation: 0, count: 0, moving_time: 0, elapsed_time: 0, maxRideDistance: 0, maxRideElevation: 0 };
+export function buildAnnualTotals(activities, segmentData = {}) {
+  const t = { distance: 0, elevation: 0, count: 0, moving_time: 0, elapsed_time: 0, pr_count: 0, maxRideDistance: 0, maxRideElevation: 0 };
   const dayKeys = [];
   for (const a of activities || []) {
     t.distance += a.distance || 0;
@@ -458,6 +481,7 @@ export function buildAnnualTotals(activities) {
     t.count += 1;
     t.moving_time += a.moving_time || 0;
     t.elapsed_time += a.elapsed_time || 0;
+    t.pr_count += prCountFor(segmentData, a);
     t.maxRideDistance = Math.max(t.maxRideDistance, a.distance || 0);
     t.maxRideElevation = Math.max(t.maxRideElevation, a.total_elevation_gain || 0);
     dayKeys.push(getDateKey(a.start_date));
@@ -553,7 +577,8 @@ const quantileOf = (sorted, q) => (sorted.length ? sorted[Math.min(sorted.length
  * Weeks are ISO weeks (rows by ISO year). cell.params is the Activities drill-down for that period:
  * week = { week: Monday YYYY-MM-DD }, month = { month: YYYY-MM }, quarter = { quarter: YYYY-Qn }, year = { year }.
  */
-export function buildPeriodGrid(activities, metric, granularity, now = new Date()) {
+export function buildPeriodGrid(activities, metric, granularity, now = new Date(), units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const m = METRICS[metric] || METRICS.distance;
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const pad = n => String(n).padStart(2, "0");
@@ -616,7 +641,7 @@ export function buildPeriodGrid(activities, metric, granularity, now = new Date(
 }
 
 /** Same-period comparison: this calendar year to date vs. last year to the same date. */
-export function buildYearComparison(activities, now = new Date()) {
+export function buildYearComparison(activities, now = new Date(), units = IMPERIAL) {
   const thisYear = now.getFullYear();
   const cutoffThis = now.getTime();
   const cutoffLast = new Date(thisYear - 1, now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
@@ -628,8 +653,8 @@ export function buildYearComparison(activities, now = new Date()) {
     else if (d.getFullYear() === thisYear - 1 && ts <= cutoffLast) prev.push(a);
   });
   const rows = ["distance", "elevation", "moving_time", "count"].map(metric => {
-    const c = sumMetric(cur, metric);
-    const p = sumMetric(prev, metric);
+    const c = sumMetric(cur, metric, units);
+    const p = sumMetric(prev, metric, units);
     return { metric, current: c, previous: p, delta: p > 0 ? ((c - p) / p) * 100 : null };
   });
   return { thisYear, lastYear: thisYear - 1, rows };
@@ -785,19 +810,19 @@ export function deriveRideInsights(data) {
 }
 
 /** Headline sentence for the Overview, driven by the primary metric (V1 hero). */
-export function buildHeadline(data, rideInsights, metric) {
+export function buildHeadline(data, rideInsights, metric, units = IMPERIAL) {
   const h = rideInsights?.highlights || {};
-  const topWeekday = buildWeekdayBreakdown(data.activities, "distance")
+  const topWeekday = buildWeekdayBreakdown(data.activities, "distance", units)
     .reduce((b, i) => (!b || i.value > b.value ? i : b), null);
 
   if (metric === "distance" && topWeekday && h.mostUsedByMiles) {
-    return `${topWeekday.label} is your biggest mileage day, and ${h.mostUsedByMiles.name} leads your ride volume with ${comma(miles(h.mostUsedByMiles.distance).toFixed(1))} mi.`;
+    return `${topWeekday.label} is your biggest mileage day, and ${h.mostUsedByMiles.name} leads your ride volume with ${units.fmtDistance(h.mostUsedByMiles.distance)}.`;
   }
   if (metric === "moving_time" && h.mostTotalTimeBike) {
     return `${h.mostTotalTimeBike.name} has the highest total activity time at ${formatDuration(h.mostTotalTimeBike.moving_time)} in the current view.`;
   }
   if (metric === "elevation" && h.climbingBike) {
-    return `${h.climbingBike.name} leads climbing intensity at ${comma(feet(h.climbingBike.avg_elevation_per_ride).toFixed(0))} ft per ride on average.`;
+    return `${h.climbingBike.name} leads climbing intensity at ${units.fmtElevation(h.climbingBike.avg_elevation_per_ride)} per ride on average.`;
   }
   if (metric === "count" && h.mostUsedByCount) {
     return `${h.mostUsedByCount.name} has the highest ride count with ${comma(h.mostUsedByCount.count)} activities in the current view.`;
@@ -887,19 +912,32 @@ export function buildSegmentRankings(data, segmentRanks) {
   return out;
 }
 
-const DISTANCE_BUCKETS = [
-  { key: "0-0.5", label: "Under 0.5 mi", min: 0, max: 0.5 },
-  { key: "0.5-1", label: "0.5–1.0 mi", min: 0.5, max: 1.0 },
-  { key: "1-2", label: "1.0–2.0 mi", min: 1.0, max: 2.0 },
-  { key: "2-3", label: "2.0–3.0 mi", min: 2.0, max: 3.0 },
-  { key: "3-5", label: "3.0–5.0 mi", min: 3.0, max: 5.0 },
-  { key: "5plus", label: "5.0+ mi", min: 5.0, max: Infinity },
-  { key: "10plus", label: "10+ mi", min: 10, max: Infinity },
-  { key: "15plus", label: "15+ mi", min: 15, max: Infinity },
-  { key: "20plus", label: "20+ mi", min: 20, max: Infinity }
-];
+const DISTANCE_BUCKETS = {
+  imperial: [
+    { key: "0-0.5", label: "Under 0.5 mi", min: 0, max: 0.5 },
+    { key: "0.5-1", label: "0.5–1.0 mi", min: 0.5, max: 1.0 },
+    { key: "1-2", label: "1.0–2.0 mi", min: 1.0, max: 2.0 },
+    { key: "2-3", label: "2.0–3.0 mi", min: 2.0, max: 3.0 },
+    { key: "3-5", label: "3.0–5.0 mi", min: 3.0, max: 5.0 },
+    { key: "5plus", label: "5.0+ mi", min: 5.0, max: Infinity },
+    { key: "10plus", label: "10+ mi", min: 10, max: Infinity },
+    { key: "15plus", label: "15+ mi", min: 15, max: Infinity },
+    { key: "20plus", label: "20+ mi", min: 20, max: Infinity }
+  ],
+  metric: [
+    { key: "0-1", label: "Under 1 km", min: 0, max: 1 },
+    { key: "1-2", label: "1–2 km", min: 1, max: 2 },
+    { key: "2-3", label: "2–3 km", min: 2, max: 3 },
+    { key: "3-5", label: "3–5 km", min: 3, max: 5 },
+    { key: "5-8", label: "5–8 km", min: 5, max: 8 },
+    { key: "8plus", label: "8+ km", min: 8, max: Infinity },
+    { key: "16plus", label: "16+ km", min: 16, max: Infinity },
+    { key: "24plus", label: "24+ km", min: 24, max: Infinity },
+    { key: "32plus", label: "32+ km", min: 32, max: Infinity }
+  ]
+};
 
-export function buildSegmentDistanceHighlights(data, excludedSegmentIds) {
+export function buildSegmentDistanceHighlights(data, excludedSegmentIds, units = IMPERIAL) {
   const segmentData = data.segmentData || {};
   const activityById = Object.fromEntries((data.activities || []).map(a => [String(a.id), a]));
   const perSegment = new Map();
@@ -910,16 +948,16 @@ export function buildSegmentDistanceHighlights(data, excludedSegmentIds) {
 
     efforts.forEach((effort, index) => {
       const segmentId = effort?.segment_id ? String(effort.segment_id) : null;
-      const distanceMilesValue = miles(Number(effort?.distance || 0));
-      if (!segmentId || distanceMilesValue <= 0) return;
+      const distanceValue = units.distance(Number(effort?.distance || 0));
+      if (!segmentId || distanceValue <= 0) return;
       if (excludedSegmentIds.has(segmentId)) return;
 
       if (!perSegment.has(segmentId)) {
         perSegment.set(segmentId, {
           segmentId,
           segmentName: effort?.segment_name || effort?.name || `Segment ${index + 1}`,
-          distanceMiles: distanceMilesValue,
-          elevationFeet: feet(Number(effort?.elevation_gain || 0)),
+          distance: distanceValue,
+          elevation: units.elevation(Number(effort?.elevation_gain || 0)),
           attempts: 0, prCount: 0, latestActivity: activity, lastRidden: activity.start_date
         });
       }
@@ -930,13 +968,13 @@ export function buildSegmentDistanceHighlights(data, excludedSegmentIds) {
     });
   });
 
-  return DISTANCE_BUCKETS.map(bucket => {
+  return DISTANCE_BUCKETS[units.system].map(bucket => {
     const winner = Array.from(perSegment.values())
-      .filter(s => s.distanceMiles >= bucket.min && s.distanceMiles < bucket.max)
+      .filter(s => s.distance >= bucket.min && s.distance < bucket.max)
       .sort((a, b) => {
         if (b.attempts !== a.attempts) return b.attempts - a.attempts;
         if ((b.prCount || 0) !== (a.prCount || 0)) return (b.prCount || 0) - (a.prCount || 0);
-        return (b.distanceMiles || 0) - (a.distanceMiles || 0);
+        return (b.distance || 0) - (a.distance || 0);
       })[0];
 
     if (!winner) {
@@ -946,26 +984,39 @@ export function buildSegmentDistanceHighlights(data, excludedSegmentIds) {
       label: bucket.label,
       segmentId: winner.segmentId,
       segmentName: winner.segmentName,
-      distanceMiles: winner.distanceMiles,
-      elevationFeet: winner.elevationFeet,
+      distance: winner.distance,
+      elevation: winner.elevation,
       attempts: winner.attempts,
       prCount: winner.prCount,
-      statsText: `${winner.distanceMiles.toFixed(1)} mi • ${comma(Math.round(winner.elevationFeet))} ft • ${comma(winner.attempts)} efforts${winner.prCount ? ` • ${comma(winner.prCount)} PRs` : ""}`,
+      statsText: `${units.fmtDistanceValue(winner.distance, 1)} • ${units.fmtElevationValue(winner.elevation, 0)} • ${comma(winner.attempts)} efforts${winner.prCount ? ` • ${comma(winner.prCount)} PRs` : ""}`,
       latestActivity: winner.latestActivity || null,
       lastRidden: winner.lastRidden || null
     };
   });
 }
 
-const ELEVATION_BUCKETS = [
-  { key: "300-400", label: "300–400 ft", min: 300, max: 400 },
-  { key: "400-600", label: "400–600 ft", min: 400, max: 600 },
-  { key: "600-800", label: "600–800 ft", min: 600, max: 800 },
-  { key: "800-1000", label: "800–1000 ft", min: 800, max: 1000 },
-  { key: "1000-plus", label: "1000 ft+", min: 1000, max: Infinity }
-];
+const ELEVATION_BUCKETS = {
+  imperial: [
+    { key: "300-400", label: "300–400 ft", min: 300, max: 400 },
+    { key: "400-600", label: "400–600 ft", min: 400, max: 600 },
+    { key: "600-800", label: "600–800 ft", min: 600, max: 800 },
+    { key: "800-1000", label: "800–1000 ft", min: 800, max: 1000 },
+    { key: "1000-plus", label: "1000 ft+", min: 1000, max: Infinity }
+  ],
+  metric: [
+    { key: "100-125", label: "100–125 m", min: 100, max: 125 },
+    { key: "125-175", label: "125–175 m", min: 125, max: 175 },
+    { key: "175-250", label: "175–250 m", min: 175, max: 250 },
+    { key: "250-300", label: "250–300 m", min: 250, max: 300 },
+    { key: "300-plus", label: "300 m+", min: 300, max: Infinity }
+  ]
+};
 
-export function buildSegmentElevationHighlights(data, excludedSegmentIds, minAttempts) {
+/** Smallest segment gain (in the unit system's elevation unit) that Records lists. */
+export const minSegmentElevation = (units = IMPERIAL) => ELEVATION_BUCKETS[units.system][0].min;
+
+export function buildSegmentElevationHighlights(data, excludedSegmentIds, minAttempts, units = IMPERIAL) {
+  const buckets = ELEVATION_BUCKETS[units.system];
   const segmentData = data.segmentData || {};
   const activityById = Object.fromEntries((data.activities || []).map(a => [String(a.id), a]));
   const perSegment = new Map();
@@ -976,16 +1027,16 @@ export function buildSegmentElevationHighlights(data, excludedSegmentIds, minAtt
 
     efforts.forEach((effort, index) => {
       const segmentId = effort?.segment_id ? String(effort.segment_id) : null;
-      const elevationFeet = effort?.elevation_gain != null ? feet(Number(effort.elevation_gain || 0)) : null;
-      if (!segmentId || elevationFeet == null || elevationFeet < 300) return;
+      const elevationValue = effort?.elevation_gain != null ? units.elevation(Number(effort.elevation_gain || 0)) : null;
+      if (!segmentId || elevationValue == null || elevationValue < buckets[0].min) return;
       if (excludedSegmentIds.has(segmentId)) return;
 
       if (!perSegment.has(segmentId)) {
         perSegment.set(segmentId, {
           segmentId,
           segmentName: effort?.segment_name || effort?.name || `Segment ${index + 1}`,
-          elevationGainFeet: elevationFeet,
-          distanceMiles: miles(Number(effort?.distance || 0)),
+          elevation: elevationValue,
+          distance: units.distance(Number(effort?.distance || 0)),
           attempts: 0, prCount: 0, fastestElapsedTime: null,
           averageGrade: typeof effort?.average_grade === "number" ? effort.average_grade : null,
           latestActivity: activity, firstRidden: activity.start_date, lastRidden: activity.start_date
@@ -1006,13 +1057,13 @@ export function buildSegmentElevationHighlights(data, excludedSegmentIds, minAtt
   const all = Array.from(perSegment.values());
   const belowMinimum = all.filter(s => s.attempts < minAttempts).length;
 
-  const items = ELEVATION_BUCKETS.map(bucket => {
+  const items = buckets.map(bucket => {
     const winner = all
-      .filter(s => s.attempts >= minAttempts && s.elevationGainFeet >= bucket.min && s.elevationGainFeet < bucket.max)
+      .filter(s => s.attempts >= minAttempts && s.elevation >= bucket.min && s.elevation < bucket.max)
       .sort((a, b) => {
         if (b.attempts !== a.attempts) return b.attempts - a.attempts;
         if ((b.prCount || 0) !== (a.prCount || 0)) return (b.prCount || 0) - (a.prCount || 0);
-        return (b.elevationGainFeet || 0) - (a.elevationGainFeet || 0);
+        return (b.elevation || 0) - (a.elevation || 0);
       })[0];
 
     if (!winner) {
@@ -1021,8 +1072,8 @@ export function buildSegmentElevationHighlights(data, excludedSegmentIds, minAtt
 
     const statParts = [
       `${comma(winner.attempts)} effort${winner.attempts === 1 ? "" : "s"}`,
-      `${comma(Math.round(winner.elevationGainFeet))} ft`,
-      `${winner.distanceMiles.toFixed(1)} mi`
+      units.fmtElevationValue(Math.round(winner.elevation), 0),
+      units.fmtDistanceValue(winner.distance, 1)
     ];
     if (winner.prCount > 0) statParts.push(`${comma(winner.prCount)} PR${winner.prCount === 1 ? "" : "s"}`);
     if (winner.fastestElapsedTime) statParts.push(`fastest ${formatDuration(winner.fastestElapsedTime)}`);
@@ -1032,8 +1083,8 @@ export function buildSegmentElevationHighlights(data, excludedSegmentIds, minAtt
       label: bucket.label,
       segmentId: winner.segmentId,
       segmentName: winner.segmentName,
-      elevationFeet: winner.elevationGainFeet,
-      distanceMiles: winner.distanceMiles,
+      elevation: winner.elevation,
+      distance: winner.distance,
       attempts: winner.attempts,
       prCount: winner.prCount,
       statsText: statParts.join(" • "),
@@ -1171,7 +1222,8 @@ export function buildGeoCoverage(activities, types = ROUTE_SPORT_TYPES) {
   };
 }
 
-export function buildMonthYearMatrix(activities, metric) {
+export function buildMonthYearMatrix(activities, metric, units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const years = [...new Set((activities || []).map(a => new Date(a.start_date).getFullYear()))].sort((a, b) => b - a);
   const sums = {};
   (activities || []).forEach(a => {
@@ -1189,7 +1241,8 @@ export function buildMonthYearMatrix(activities, metric) {
   };
 }
 
-export function buildMonthHighlights(activities, metric) {
+export function buildMonthHighlights(activities, metric, units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const buckets = {};
   (activities || []).forEach(a => {
     const d = new Date(a.start_date);
@@ -1221,7 +1274,8 @@ export function buildMonthHighlights(activities, metric) {
   return { highlights, rolling: rolling.reverse() };
 }
 
-export function buildSeasonalityIndex(activities, metric) {
+export function buildSeasonalityIndex(activities, metric, units = IMPERIAL) {
+  const METRICS = getMetrics(units);
   const totals = {};
   (activities || []).forEach(a => {
     const d = new Date(a.start_date);
@@ -1281,12 +1335,12 @@ export function buildConsistencyStats(activities, ridesPerWeek = 3) {
   };
 }
 
-export function buildWeeklyRamp(activities, metric = "distance", now = new Date()) {
+export function buildWeeklyRamp(activities, metric = "distance", now = new Date(), units = IMPERIAL) {
   const weekly = {};
   (activities || []).forEach(a => {
     const start = getWeekStartMonday(a.start_date);
     const key = getDateKey(start);
-    weekly[key] = (weekly[key] || 0) + (metric === "moving_time" ? (a.moving_time || 0) / 3600 : miles(a.distance || 0));
+    weekly[key] = (weekly[key] || 0) + (metric === "moving_time" ? (a.moving_time || 0) / 3600 : units.distance(a.distance || 0));
   });
   const keys = Object.keys(weekly).sort();
   if (!keys.length) return [];
@@ -1297,7 +1351,7 @@ export function buildWeeklyRamp(activities, metric = "distance", now = new Date(
   for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 7)) {
     const key = getDateKey(d);
     const value = weekly[key] || 0;
-    const baseline = metric === "moving_time" ? 1 : 5;
+    const baseline = metric === "moving_time" ? 1 : units.fromMiles(5);
     rows.push({
       key,
       label: `${MONTHS[d.getMonth()]} ${d.getDate()}`,
@@ -1310,7 +1364,7 @@ export function buildWeeklyRamp(activities, metric = "distance", now = new Date(
   return rows;
 }
 
-export function buildBikeTypeStats(activities) {
+export function buildBikeTypeStats(activities, units = IMPERIAL) {
   const types = {};
   (activities || []).filter(a => a.sport_type === "Ride").forEach(a => {
     const type = a.bike_type || "unknown";
@@ -1326,9 +1380,9 @@ export function buildBikeTypeStats(activities) {
     ...row,
     names: [...row.names],
     hours: row.moving_time / 3600,
-    avgRideMiles: row.count ? miles(row.distance) / row.count : 0,
-    elevationPerMile: row.distance > 0 ? feet(row.elevation) / miles(row.distance) : 0,
-    avgSpeed: row.moving_time > 0 ? miles(row.distance) / (row.moving_time / 3600) : 0
+    avgRide: row.count ? units.distance(row.distance) / row.count : 0,
+    elevationPerDistance: row.distance > 0 ? units.elevation(row.elevation) / units.distance(row.distance) : 0,
+    avgSpeed: row.moving_time > 0 ? units.distance(row.distance) / (row.moving_time / 3600) : 0
   })).sort((a, b) => b.distance - a.distance);
 }
 
@@ -1340,7 +1394,7 @@ export function buildUnmappedBikes(activities) {
   return Object.values(bikes).sort((x, y) => x.gear_id.localeCompare(y.gear_id));
 }
 
-export function buildEverestStats(activities) {
+export function buildEverestStats(activities, units = IMPERIAL) {
   const years = {};
   let lifetimeFeet = 0;
   (activities || []).forEach(a => {
@@ -1349,29 +1403,33 @@ export function buildEverestStats(activities) {
     years[year] = (years[year] || 0) + gain;
     lifetimeFeet += gain;
   });
-  return { lifetime: lifetimeFeet / 29031.7, years: Object.entries(years).map(([year, elevation]) => ({ year: Number(year), elevation, everests: elevation / 29031.7 })).sort((a, b) => a.year - b.year) };
+  return {
+    lifetime: lifetimeFeet / 29031.7,
+    years: Object.entries(years).map(([year, elevation]) => ({ year: Number(year), elevation: units.fromFeet(elevation), everests: elevation / 29031.7 })).sort((a, b) => a.year - b.year)
+  };
 }
 
 export const MILESTONE_TARGETS = [1000, 2500, 5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000];
+export const MILESTONE_TARGETS_KM = [1000, 2500, 5000, 10000, 20000, 25000, 30000, 40000, 50000, 60000, 70000, 80000];
 const MILESTONE_HORIZON_DAYS = 100 * 365.25;
 
-export function buildMileageMilestones(activities, now = new Date(), lookbackDays = 90) {
+export function buildMileageMilestones(activities, now = new Date(), lookbackDays = 90, units = IMPERIAL) {
   const sorted = [...(activities || [])].filter(a => a.start_date).sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
-  const lifetime = sorted.reduce((sum, a) => sum + miles(a.distance || 0), 0);
-  const targets = [...MILESTONE_TARGETS];
-  while (targets[targets.length - 1] <= lifetime) targets.push(targets[targets.length - 1] + 5000);
+  const lifetime = sorted.reduce((sum, a) => sum + units.distance(a.distance || 0), 0);
+  const targets = [...(units.metric ? MILESTONE_TARGETS_KM : MILESTONE_TARGETS)];
+  while (targets[targets.length - 1] <= lifetime) targets.push(targets[targets.length - 1] + (units.metric ? 10000 : 5000));
   let total = 0;
   const achieved = [];
   sorted.forEach(a => {
     const before = total;
-    total += miles(a.distance || 0);
+    total += units.distance(a.distance || 0);
     targets.forEach(target => {
       if (before < target && total >= target) achieved.push({ target, date: a.start_date, projected: false });
     });
   });
   const cutoff = new Date(now.getTime() - lookbackDays * 86400000);
   const recent = sorted.filter(a => new Date(a.start_date) >= cutoff && new Date(a.start_date) <= now);
-  const recentMiles = recent.reduce((sum, a) => sum + miles(a.distance || 0), 0);
+  const recentMiles = recent.reduce((sum, a) => sum + units.distance(a.distance || 0), 0);
   const days = recent.length ? Math.max(1, (now - new Date(recent[0].start_date)) / 86400000) : 0;
   const pace = days ? recentMiles / days : 0;
   const paceLabel = `${lookbackDays}-day average`;
@@ -1390,10 +1448,10 @@ export function buildMileageMilestones(activities, now = new Date(), lookbackDay
   };
 }
 
-export function buildBikeSummaryRows(gearTotals, gearDetails, isRetired) {
+export function buildBikeSummaryRows(gearTotals, gearDetails, isRetired, units = IMPERIAL) {
   const rows = Object.entries(gearTotals || {}).map(([gid, t]) => {
-    const distance = miles(t.distance);
-    const elevation = feet(t.elevation);
+    const distance = units.distance(t.distance);
+    const elevation = units.elevation(t.elevation);
     const count = t.count || 0;
     const time = t.moving_time || 0;
     return {

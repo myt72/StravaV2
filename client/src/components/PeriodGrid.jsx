@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { comma, feet } from "../lib/format.js";
-import { METRICS, buildPeriodGrid } from "../lib/analytics.js";
+import { comma } from "../lib/format.js";
+import { getMetrics, buildPeriodGrid } from "../lib/analytics.js";
+import { useUnits } from "../context/Units.jsx";
 import { HeatLegend, heatLevelFor } from "./Heatmap.jsx";
 
 const MAX_YEARS = 5;
@@ -10,9 +11,11 @@ const HAS_STATS = { month: true, quarter: true, year: true };
 
 /** Intensity tiles for week / month / quarter / year, using the same 4-level heat scale as the day calendar. */
 export default function PeriodGrid({ activities, metric, granularity, onSelect }) {
+  const units = useUnits();
+  const METRICS = getMetrics(units);
   const m = METRICS[metric] || METRICS.distance;
   const [showAll, setShowAll] = useState(false);
-  const { rows, thresholds } = useMemo(() => buildPeriodGrid(activities, metric, granularity), [activities, metric, granularity]);
+  const { rows, thresholds } = useMemo(() => buildPeriodGrid(activities, metric, granularity, new Date(), units), [activities, metric, granularity, units]);
   const level = heatLevelFor(thresholds);
   const single = granularity === "year";
   const stats = HAS_STATS[granularity];
@@ -23,7 +26,7 @@ export default function PeriodGrid({ activities, metric, granularity, onSelect }
     ? rows
     : (showAll || !limited ? rows : rows.slice(0, MAX_YEARS));
 
-  const statText = c => `${comma(c.count)} ${c.count === 1 ? "act" : "acts"} · ${comma(feet(c.elevation).toFixed(0))} ft`;
+  const statText = c => `${comma(c.count)} ${c.count === 1 ? "act" : "acts"} · ${units.fmtElevation(c.elevation)}`;
   const describe = c => `${c.fullLabel}: ${c.value > 0 ? m.fmt(c.value) : "no activity"}${stats && c.count > 0 ? `, ${statText(c)}` : ""}`;
 
   return (
@@ -46,7 +49,7 @@ export default function PeriodGrid({ activities, metric, granularity, onSelect }
                       <span className="tile-stats">
                         <span>{comma(c.count)} {c.count === 1 ? "act" : "acts"}</span>
                         <span className="tile-sep" aria-hidden="true"> · </span>
-                        <span className="tile-elev">{comma(feet(c.elevation).toFixed(0))} ft</span>
+                        <span className="tile-elev">{units.fmtElevation(c.elevation)}</span>
                       </span>
                     )}
                   </>
