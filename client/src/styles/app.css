@@ -279,6 +279,12 @@ button.period-tile:focus-visible { outline: 3px solid var(--focus); outline-offs
 .tab:hover { color: var(--text); }
 .tab[aria-selected="true"] { color: var(--accent-strong); border-bottom-color: var(--accent); font-weight: 600; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+@media (max-width: 480px) {
+  .matched-speed-basis .seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .matched-speed-basis .seg button + button { border-left: 0; }
+  .matched-speed-basis .seg button:nth-child(odd) { border-right: 1px solid var(--border); }
+  .matched-speed-basis .seg button:nth-child(n+3) { border-top: 1px solid var(--border); }
+}
 .toolbar .spacer { flex: 1; }
 
 /* ---------- garage ---------- */

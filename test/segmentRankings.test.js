@@ -45,10 +45,10 @@ test("buildSegmentConsistency ranks multi-year segments", async () => {
 test("bike comparison and same-course speed", async () => {
   const a = await import("../client/src/lib/analytics.js");
   const acts = [
-    { id: 1, gear_id: "b1", distance: 16093.4, moving_time: 3600 },
-    { id: 2, gear_id: "b1", distance: 1609.34, moving_time: 360 },
-    { id: 3, gear_id: "b2", distance: 16093.4, moving_time: 2400 },
-    { id: 4, gear_id: "b2", distance: 16093.4, moving_time: 2400 },
+    { id: 1, gear_id: "b1", distance: 16093.4, moving_time: 3600, start_date: "2024-01-01" },
+    { id: 2, gear_id: "b1", distance: 1609.34, moving_time: 360, start_date: "2024-01-02" },
+    { id: 3, gear_id: "b2", distance: 16093.4, moving_time: 2400, start_date: "2024-01-03" },
+    { id: 4, gear_id: "b2", distance: 16093.4, moving_time: 2400, start_date: "2024-01-04" },
     { id: 5 }
   ];
   const e = (id, t, d = 1000) => ({ segment_id: id, segment_name: `S${id}`, start_date: "2024-01-01T00:00:00Z", elapsed_time: t, distance: d });
@@ -66,6 +66,9 @@ test("bike comparison and same-course speed", async () => {
   const row = rs.rows[0];
   // weighted: 17702.74 m / 3960 s, not mean of 16 mph and 10 mph
   assert.ok(Math.abs(row.bikes.b1.avgSpeed - (17702.74 / 1609.34) / (3960 / 3600)) < 1e-6);
+  assert.strictEqual(row.bikes.b1.avgTime, 1980);
+  assert.strictEqual(row.bikes.b1.bestTime, 360);
+  assert.strictEqual(row.bikes.b1.bestDate, "2024-01-02");
   assert.strictEqual(row.fastestBike, "b2");
   assert.ok(Math.abs(row.bikes.b2.avgSpeed - 15) < 1e-3);
   assert.strictEqual(rs.index[0].gid, "b2");
@@ -90,12 +93,42 @@ test("bike comparison and same-course speed", async () => {
   assert.ok(Math.abs(fr.bikes.b1.bestSpeed - 10) < 1e-3);
   assert.ok(Math.abs(fr.diffPct - 100) < 1e-3);
   assert.strictEqual(fast.index[0].gid, "b3");
+  assert.strictEqual(fast.rows[0].basis, "bestSpeed");
+
+  const timeActivities = [...acts, { id: 6, gear_id: "b3", distance: 16093.4, moving_time: 1800, start_date: "2024-02-02" }];
+  const timeClusters = { clusters: [{ routeId: "r", name: "R", activityIds: [1, 2, 3, 4, 6] }] };
+  const bestSpeed = a.buildRouteBikeSpeed(timeClusters, timeActivities, { basis: "bestSpeed" });
+  assert.strictEqual(bestSpeed.rows[0].fastestBike, "b3");
+  assert.strictEqual(a.buildRouteBikeSpeed(timeClusters, timeActivities, { basis: "avgSpeed" }).rows[0].fastestBike, "b2");
+  const avgTime = a.buildRouteBikeSpeed(timeClusters, timeActivities, { basis: "avgTime" });
+  assert.strictEqual(avgTime.rows[0].fastestBike, "b1");
+  assert.strictEqual(avgTime.rows[0].bikes.b3.ranked, false);
+  assert.strictEqual(avgTime.index[0].gid, "b1");
+  assert.ok(avgTime.index[0].index > 0);
+
+  const bestTime = a.buildRouteBikeSpeed(timeClusters, timeActivities, { basis: "bestTime" });
+  assert.strictEqual(bestTime.rows[0].fastestBike, "b1");
+  assert.strictEqual(bestTime.rows[0].bikes.b3.ranked, true);
+  assert.strictEqual(bestTime.index[0].gid, "b1");
+  assert.strictEqual(bestTime.rows[0].diffPct, ((2400 - 360) / 360) * 100);
+  assert.strictEqual(a.normalizeBikeSpeedBasis("average"), "avgSpeed");
+  assert.strictEqual(a.normalizeBikeSpeedBasis("fastest"), "bestSpeed");
+  assert.strictEqual(a.normalizeBikeSpeedBasis("avgTime"), "avgTime");
   const many = Array.from({ length: 9 }, (_, i) => ({ id: 100 + i, gear_id: `g${i}`, distance: 1609.34, moving_time: 300 + i }));
   const big = a.buildRouteBikeSpeed({ clusters: [{ routeId: "m", name: "M", activityIds: many.map(m => m.id) }] }, many, { mode: "fastest" });
   assert.strictEqual(big.rows[0].bikeList.length, 9);
   assert.ok(!("gX" in big.rows[0].bikes));
 
-  const ss = a.buildSegmentBikeSpeed(seg, acts, new Set(), { minRides: 1 });
+  const ss = a.buildSegmentBikeSpeed(seg, acts, new Set(), { minRides: 1, basis: "avgTime" });
   assert.ok(ss.rows.some(x => x.segmentId === "1"));
   assert.ok(!ss.rows.some(x => x.segmentId === "3"));
+  const segmentAvgTime = a.buildSegmentBikeSpeed(seg, acts, new Set(), { basis: "avgTime" });
+  const segmentBestTime = a.buildSegmentBikeSpeed(seg, acts, new Set(), { basis: "bestTime" });
+  assert.strictEqual(segmentAvgTime.rows[0].fastestBike, "b2");
+  assert.strictEqual(segmentBestTime.rows[0].fastestBike, "b2");
+  assert.strictEqual(segmentAvgTime.rows[0].bikes.b1.avgTime, 95);
+  assert.strictEqual(segmentAvgTime.rows[0].bikes.b1.bestTime, 90);
+  assert.strictEqual(segmentAvgTime.index[0].gid, "b2");
+  const noElapsedTime = { 1: [{ segment_id: 1, distance: 1000, moving_time: 60 }], 3: [{ segment_id: 1, distance: 1000, moving_time: 50 }] };
+  assert.strictEqual(a.buildSegmentBikeSpeed(noElapsedTime, acts, new Set(), { basis: "bestTime" }).rows.length, 0);
 });
