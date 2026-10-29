@@ -65,12 +65,35 @@ test("bike comparison and same-course speed", async () => {
   const rs = a.buildRouteBikeSpeed(clusters, acts);
   const row = rs.rows[0];
   // weighted: 17702.74 m / 3960 s, not mean of 16 mph and 10 mph
-  assert.ok(Math.abs(row.bikes.b1.avgMph - (17702.74 / 1609.34) / (3960 / 3600)) < 1e-6);
+  assert.ok(Math.abs(row.bikes.b1.avgSpeed - (17702.74 / 1609.34) / (3960 / 3600)) < 1e-6);
   assert.strictEqual(row.fastestBike, "b2");
-  assert.ok(Math.abs(row.bikes.b2.avgMph - 15) < 1e-3);
+  assert.ok(Math.abs(row.bikes.b2.avgSpeed - 15) < 1e-3);
   assert.strictEqual(rs.index[0].gid, "b2");
   assert.ok(Math.abs(rs.index[0].index + rs.index[1].index) < 1e-9);
   assert.strictEqual(a.buildRouteBikeSpeed(clusters, acts, { minRides: 3 }).rows.length, 0);
+
+  // average mode keeps under-qualified bikes listed but unranked
+  const one = a.buildRouteBikeSpeed({ clusters: [{ routeId: "r", name: "R", activityIds: [1, 2, 3, 4, 6] }] }, [...acts, { id: 6, gear_id: "b3", distance: 16093.4, moving_time: 1800, start_date: "2024-02-02" }], { minBikes: 2 });
+  assert.deepStrictEqual(one.rows[0].bikeList.map(b => b.gid), ["b2", "b1", "b3"]);
+  assert.strictEqual(one.rows[0].bikes.b3.ranked, false);
+  assert.strictEqual(one.rows[0].bikes.b3.rides, 1);
+  assert.strictEqual(one.rows[0].rankedCount, 2);
+  assert.deepStrictEqual(one.index.map(i => i.gid).sort(), ["b1", "b2"]);
+
+  // fastest mode: single ride is enough, ranks by best single ride, no bike cap, absent bikes not listed
+  const fast = a.buildRouteBikeSpeed({ clusters: [{ routeId: "r", name: "R", activityIds: [1, 2, 3, 4, 6] }] }, [...acts, { id: 6, gear_id: "b3", distance: 16093.4, moving_time: 1800, start_date: "2024-02-02" }], { mode: "fastest" });
+  const fr = fast.rows[0];
+  assert.strictEqual(fr.fastestBike, "b3");
+  assert.deepStrictEqual(fr.bikeList.map(b => b.gid), ["b3", "b2", "b1"]);
+  assert.ok(Math.abs(fr.bikes.b3.bestSpeed - 20) < 1e-3);
+  assert.strictEqual(fr.bikes.b3.bestDate, "2024-02-02");
+  assert.ok(Math.abs(fr.bikes.b1.bestSpeed - 10) < 1e-3);
+  assert.ok(Math.abs(fr.diffPct - 100) < 1e-3);
+  assert.strictEqual(fast.index[0].gid, "b3");
+  const many = Array.from({ length: 9 }, (_, i) => ({ id: 100 + i, gear_id: `g${i}`, distance: 1609.34, moving_time: 300 + i }));
+  const big = a.buildRouteBikeSpeed({ clusters: [{ routeId: "m", name: "M", activityIds: many.map(m => m.id) }] }, many, { mode: "fastest" });
+  assert.strictEqual(big.rows[0].bikeList.length, 9);
+  assert.ok(!("gX" in big.rows[0].bikes));
 
   const ss = a.buildSegmentBikeSpeed(seg, acts, new Set(), { minRides: 1 });
   assert.ok(ss.rows.some(x => x.segmentId === "1"));

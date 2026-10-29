@@ -1256,21 +1256,33 @@ export function buildSegmentBikeComparison(segmentData, activities, excludedSegm
   return { bikes, wins, sharedCounts: Object.fromEntries(bikeCounts), rows: rows.slice(0, limit), totalShared: rows.length };
 }
 
-function finishBikeSpeed(courses, { minRides, limit, minBikes }) {
+export const SPEED_MODES = ["average", "fastest"];
+
+function finishBikeSpeed(courses, { minRides, limit, minBikes, mode }) {
+  const fastestMode = mode === "fastest";
   const bikeCourses = new Map();
   const rows = [];
   courses.forEach(c => {
     const bikes = {};
     Object.entries(c.acc).forEach(([gid, v]) => {
-      bikes[gid] = { count: v.count, avgMph: v.time > 0 ? (v.dist / v.time) * MPH_PER_MS : 0, bestMph: v.bestMph, qualified: v.count >= minRides };
+      const avgSpeed = v.time > 0 ? (v.dist / v.time) * MPH_PER_MS : 0;
+      const qualified = v.count >= minRides;
+      const speed = fastestMode ? v.bestMph : avgSpeed;
+      bikes[gid] = {
+        rides: v.count, count: v.count, avgSpeed, bestSpeed: v.bestMph, bestDate: v.bestDate, qualified,
+        speed, ranked: speed > 0 && (fastestMode || qualified)
+      };
     });
-    const q = Object.entries(bikes).filter(([, v]) => v.qualified && v.avgMph > 0).sort((a, b) => b[1].avgMph - a[1].avgMph);
+    const list = Object.entries(bikes).sort((a, b) => (b[1].ranked - a[1].ranked) || b[1].speed - a[1].speed || b[1].rides - a[1].rides || a[0].localeCompare(b[0]));
+    const q = list.filter(([, v]) => v.ranked);
     if (q.length < minBikes) return;
     const fastest = q[0], slowest = q[q.length - 1];
     rows.push({
-      key: c.key, segmentId: c.segmentId, name: c.name, total: Object.values(bikes).reduce((s, v) => s + v.count, 0),
-      bikes, bikeCount: q.length, fastestBike: fastest[0], diffPct: (fastest[1].avgMph / slowest[1].avgMph - 1) * 100,
-      courseAvgMph: q.reduce((s, [, v]) => s + v.avgMph, 0) / q.length
+      key: c.key, segmentId: c.segmentId, name: c.name, mode: fastestMode ? "fastest" : "average",
+      total: Object.values(bikes).reduce((s, v) => s + v.rides, 0),
+      bikes, bikeList: list.map(([gid, v]) => ({ gid, ...v })), bikeCount: list.length, rankedCount: q.length,
+      fastestBike: fastest[0], diffPct: (fastest[1].speed / slowest[1].speed - 1) * 100,
+      courseSpeed: q.reduce((s, [, v]) => s + v.speed, 0) / q.length
     });
     q.forEach(([gid]) => bikeCourses.set(gid, (bikeCourses.get(gid) || 0) + 1));
   });
@@ -1278,20 +1290,26 @@ function finishBikeSpeed(courses, { minRides, limit, minBikes }) {
   return { bikes: orderBikes(bikeCourses), index: buildBikeSpeedIndex(rows), rows: rows.slice(0, limit), totalShared: rows.length };
 }
 
-function addSample(course, gid, dist, time) {
-  const v = course.acc[gid] || (course.acc[gid] = { dist: 0, time: 0, count: 0, bestMph: 0 });
+function addSample(course, gid, dist, time, date) {
+  const v = course.acc[gid] || (course.acc[gid] = { dist: 0, time: 0, count: 0, bestMph: 0, bestDate: null });
   v.dist += dist;
   v.time += time;
   v.count++;
-  v.bestMph = Math.max(v.bestMph, (dist / time) * MPH_PER_MS);
+  const mph = (dist / time) * MPH_PER_MS;
+  if (mph > v.bestMph) {
+    v.bestMph = mph;
+    v.bestDate = date || null;
+  }
 }
 
 /**
- * Same-course speed per bike on matched routes. Average speed = total distance / total moving time of that bike's
- * rides (not the mean of per-ride speeds). Bikes with fewer than `minRides` rides on a course are kept but flagged
- * `qualified: false` and excluded from the fastest/difference/index maths.
+ * Same-course speed per bike on matched routes (speeds in mph). Per bike: `avgSpeed` = total distance / total moving
+ * time (not the mean of per-ride speeds), `bestSpeed` = fastest single ride, `rides`, `bestDate`. Only bikes that rode
+ * the course are present. `mode: "average"` ranks by avgSpeed and needs `minRides` rides per bike (others are kept but
+ * `ranked: false`); `mode: "fastest"` ranks by bestSpeed and any single ride qualifies. A course needs `minBikes` ranked bikes.
+ * `bikeList` is every bike on the course, ranked ones first (fastest first).
  */
-export function buildRouteBikeSpeed(routeClusters, activities, { limit = 20, minRides = MIN_RIDES_PER_BIKE, minBikes = 2 } = {}) {
+export function buildRouteBikeSpeed(routeClusters, activities, { limit = 20, minRides = MIN_RIDES_PER_BIKE, minBikes = 2, mode = "average" } = {}) {
   const byId = new Map((activities || []).map(a => [String(a.id), a]));
   const courses = [];
   (routeClusters?.clusters || []).forEach(c => {
@@ -1299,15 +1317,15 @@ export function buildRouteBikeSpeed(routeClusters, activities, { limit = 20, min
     (c.activityIds || []).forEach(id => {
       const a = byId.get(String(id));
       const gid = gearOf(a);
-      if (gid && a.distance > 0 && a.moving_time > 0) addSample(course, gid, a.distance, a.moving_time);
+      if (gid && a.distance > 0 && a.moving_time > 0) addSample(course, gid, a.distance, a.moving_time, a.start_date);
     });
     courses.push(course);
   });
-  return finishBikeSpeed(courses, { limit, minRides, minBikes });
+  return finishBikeSpeed(courses, { limit, minRides, minBikes, mode });
 }
 
-/** Same-course speed per bike on segments, from effort distance / elapsed time. */
-export function buildSegmentBikeSpeed(segmentData, activities, excludedSegmentIds, { limit = 20, minRides = MIN_RIDES_PER_BIKE, minBikes = 2 } = {}) {
+/** Same-course speed per bike on segments, from effort distance / elapsed time. Same options and shape as routes. */
+export function buildSegmentBikeSpeed(segmentData, activities, excludedSegmentIds, { limit = 20, minRides = MIN_RIDES_PER_BIKE, minBikes = 2, mode = "average" } = {}) {
   const byId = new Map((activities || []).map(a => [String(a.id), a]));
   const map = new Map();
   Object.entries(segmentData || {}).forEach(([activityId, efforts]) => {
@@ -1322,25 +1340,25 @@ export function buildSegmentBikeSpeed(segmentData, activities, excludedSegmentId
         course = { key: sid, segmentId: sid, name: e.segment_name || `Segment ${sid}`, acc: {} };
         map.set(sid, course);
       }
-      addSample(course, gid, e.distance, t);
+      addSample(course, gid, e.distance, t, e.start_date);
     });
   });
-  return finishBikeSpeed([...map.values()], { limit, minRides, minBikes });
+  return finishBikeSpeed([...map.values()], { limit, minRides, minBikes, mode });
 }
 
 /**
  * Speed index per bike: mean over shared courses of its % difference vs the course-average speed
- * (average of the qualifying bikes' average speeds). Only courses where the bike qualified count.
+ * (average of the ranked bikes' speeds on the selected basis). Only courses where the bike is ranked count.
  */
 export function buildBikeSpeedIndex(rows) {
   const acc = {};
   (rows || []).forEach(r => {
     Object.entries(r.bikes).forEach(([gid, v]) => {
-      if (!v.qualified || !(v.avgMph > 0)) return;
+      if (!v.ranked) return;
       const a = acc[gid] || (acc[gid] = { sum: 0, courses: 0, rides: 0 });
-      a.sum += (v.avgMph / r.courseAvgMph - 1) * 100;
+      a.sum += (v.speed / r.courseSpeed - 1) * 100;
       a.courses++;
-      a.rides += v.count;
+      a.rides += v.rides;
     });
   });
   return Object.entries(acc).map(([gid, a]) => ({ gid, index: a.sum / a.courses, courses: a.courses, rides: a.rides }))

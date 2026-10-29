@@ -43,6 +43,7 @@ const PERIOD_OPTIONS = [{ value: "all", label: "All time" }, { value: "year", la
 const ROUTE_PERIOD_OPTIONS = [...PERIOD_OPTIONS, { value: "bikeSpeed", label: "Bike speed" }];
 const SEGMENT_PERIOD_OPTIONS = [...PERIOD_OPTIONS, { value: "consistency", label: "Consistency" }, { value: "bike", label: "By bike" }, { value: "bikeSpeed", label: "Bike speed" }];
 const MAX_BIKE_COLUMNS = 6;
+const SPEED_MODE_OPTIONS = [{ value: "average", label: "Average" }, { value: "fastest", label: "Fastest" }];
 const NEEDS_TWO_BIKES = "Needs rides on at least two bikes over the same route or segment.";
 const KIND_OPTIONS = [{ value: "routes", label: "Routes" }, { value: "segments", label: "Segments" }];
 const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, allowEscapeViewBox: { x: true, y: true } };
@@ -228,6 +229,8 @@ function MatchedRides() {
   const [year, setYear] = usePersistentState("matchedYear", null);
   const [month, setMonth] = usePersistentState("matchedMonth", new Date().getMonth() + 1);
   const [savedKind, setKind] = usePersistentState("matchedKind", "routes");
+  const [savedSpeedMode, setSpeedMode] = usePersistentState("matchedSpeedMode", "average");
+  const speedMode = savedSpeedMode === "fastest" ? "fastest" : "average";
   const [open, setOpen] = useState(() => new Set());
 
   // The card follows the global activity-type filter; segments only exist for rides.
@@ -270,9 +273,10 @@ function MatchedRides() {
   const speedData = useMemo(() => {
     if (!bikeSpeed) return null;
     return kind === "routes"
-      ? buildRouteBikeSpeed(raw?.routeClusters, filtered.activities, { limit })
-      : buildSegmentBikeSpeed(raw?.segmentData, filtered.activities, excludedSet, { limit });
-  }, [bikeSpeed, kind, raw, filtered.activities, excludedSet, limit]);
+      ? buildRouteBikeSpeed(raw?.routeClusters, filtered.activities, { limit, mode: speedMode })
+      : buildSegmentBikeSpeed(raw?.segmentData, filtered.activities, excludedSet, { limit, mode: speedMode });
+  }, [bikeSpeed, kind, raw, filtered.activities, excludedSet, limit, speedMode]);
+  const none = () => null;
   const bikeCmpColumns = (() => {
     if (!bikeCmpData) return [];
     const shown = bikeCmpData.bikes.slice(0, MAX_BIKE_COLUMNS);
@@ -298,29 +302,26 @@ function MatchedRides() {
   })();
   const speedColumns = (() => {
     if (!speedData) return [];
-    const shown = speedData.bikes.slice(0, MAX_BIKE_COLUMNS);
+    const fastestMode = speedMode === "fastest";
+    const hi = { color: "var(--chart-1)" };
+    const nameLink = r => (kind === "segments" ? <a href={getStravaSegmentUrl(r.segmentId)} target="_blank" rel="noopener noreferrer">{r.name}</a> : r.name);
+    const unranked = b => !b.ranked && !fastestMode;
     return [
-      {
-        key: "name", label: kind === "routes" ? "Route" : "Segment", wrap: true,
-        ...(kind === "segments" ? { render: r => <a href={getStravaSegmentUrl(r.segmentId)} target="_blank" rel="noopener noreferrer">{r.name}</a> } : {})
-      },
-      ...shown.map(gid => ({
-        key: `b${gid}`, label: gearLabel(gid), align: "r", value: r => (r.bikes[gid]?.qualified ? r.bikes[gid].avgMph : null),
-        render: r => {
-          const b = r.bikes[gid];
-          if (!b) return <span className="muted" aria-label="No rides">—</span>;
-          if (!b.qualified) return <span className="muted" title={`Fewer than ${MIN_RIDES_PER_BIKE} rides`}>— <span className="small">n={b.count}</span></span>;
-          return (
-            <span>
-              <strong style={r.fastestBike === gid ? { color: "var(--chart-1)" } : undefined}>{units.fmtSpeed(b.avgMph)}</strong>
-              <br /><span className="muted small">{comma(b.count)} rides · best {units.fmtSpeed(b.bestMph)}</span>
-            </span>
-          );
-        }
-      })),
-      { key: "fastest", label: "Fastest bike", value: r => gearLabel(r.fastestBike), render: r => gearLabel(r.fastestBike) },
-      { key: "diff", label: "Difference", align: "r", value: r => r.diffPct, render: r => `+${r.diffPct.toFixed(1)}%` },
-      { key: "total", label: "Rides", align: "r", render: r => comma(r.total) }
+      { key: "name", label: kind === "routes" ? "Route" : "Segment", wrap: true, render: nameLink, renderChild: c => (
+        <span className={unranked(c) ? "muted" : undefined}>{gearLabel(c.gid)}
+          {unranked(c) && <span className="small" title={`Fewer than ${MIN_RIDES_PER_BIKE} rides: not ranked`}> n={c.rides}</span>}
+        </span>
+      ) },
+      { key: "bikes", label: "Bikes", align: "r", value: r => r.bikeCount, render: r => comma(r.bikeCount), renderChild: none },
+      { key: "fastest", label: fastestMode ? "Fastest bike (single ride)" : "Fastest bike (average)", value: r => gearLabel(r.fastestBike), render: r => gearLabel(r.fastestBike), renderChild: none },
+      { key: "diff", label: "Difference", align: "r", value: r => r.diffPct, render: r => `+${r.diffPct.toFixed(1)}%`,
+        renderChild: (c, r) => (c.ranked && c.gid !== r.fastestBike ? <span className="muted">{`${((c.speed / r.bikes[r.fastestBike].speed - 1) * 100).toFixed(1)}%`}</span> : null) },
+      { key: "avg", label: fastestMode ? "Avg speed" : "Avg speed ★", align: "r", sortable: false, render: none,
+        renderChild: c => <span className="num" style={!fastestMode && c.ranked && c.gid === c.fastest ? hi : undefined}>{!fastestMode ? <strong>{units.fmtSpeed(c.avgSpeed)}</strong> : units.fmtSpeed(c.avgSpeed)}</span> },
+      { key: "best", label: fastestMode ? "Fastest speed ★" : "Fastest speed", align: "r", sortable: false, render: none,
+        renderChild: c => <span className="num">{fastestMode ? <strong>{units.fmtSpeed(c.bestSpeed)}</strong> : units.fmtSpeed(c.bestSpeed)}</span> },
+      { key: "rides", label: "Rides", align: "r", value: r => r.total, render: r => comma(r.total), renderChild: c => comma(c.rides) },
+      { key: "bestDate", label: "Fastest on", sortable: false, render: none, renderChild: c => (c.bestDate ? formatDate(c.bestDate) : "—") }
     ];
   })();
   const rows = useMemo(() => (
@@ -334,7 +335,6 @@ function MatchedRides() {
     return next;
   });
 
-  const none = () => null;
   const columns = [
     { key: "rank", label: "#", sortable: false, render: r => rows.indexOf(r) + 1, renderChild: none },
     {
@@ -380,13 +380,22 @@ function MatchedRides() {
       {status === "loading" ? <p className="muted" role="status">Loading…</p> : bikeCmp ? (
         <>
           {bikeCmpData.rows.length > 0 && (
-            <div className="grid three" role="list" aria-label="Segment wins by bike" style={{ marginBottom: 12 }}>
-              {bikeCmpData.bikes.map(gid => (
-                <div key={gid} role="listitem" className="stat-row">
-                  <span>{gearLabel(gid)}</span>
-                  <span className="num muted small">{comma(bikeCmpData.wins[gid] || 0)} of {comma(bikeCmpData.sharedCounts[gid])} shared segments won</span>
-                </div>
-              ))}
+            <div className="table-wrap" style={{ marginBottom: 12 }}>
+              <table className="data" aria-label="Segments won by bike: segments where each bike holds the best time, out of the shared segments that bike has ridden">
+                <thead>
+                  <tr>{bikeCmpData.bikes.map(gid => <th key={gid} scope="col" className="r">{gearLabel(gid)}</th>)}</tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    {bikeCmpData.bikes.map(gid => (
+                      <td key={gid} className="r num">
+                        <strong>{comma(bikeCmpData.wins[gid] || 0)}</strong> of {comma(bikeCmpData.sharedCounts[gid])} segments won
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+              <p className="hint">Wins count shared segments where the bike holds the best time; the total is the shared segments that bike has ridden.</p>
             </div>
           )}
           <DataTable columns={bikeCmpColumns} rows={bikeCmpData.rows} rowKey={r => r.key} caption="Best segment time by bike"
@@ -394,6 +403,9 @@ function MatchedRides() {
         </>
       ) : bikeSpeed ? (
         <>
+          <div className="toolbar" style={{ marginBottom: 8 }}>
+            <Segmented label="Speed basis" value={speedMode} options={SPEED_MODE_OPTIONS} onChange={setSpeedMode} />
+          </div>
           {speedData.index.length > 0 && (
             <div style={{ marginBottom: 12 }}>
               <h3 className="small" style={{ margin: "0 0 4px" }}>Bike speed index</h3>
@@ -405,12 +417,19 @@ function MatchedRides() {
                   </li>
                 ))}
               </ol>
-              <p className="hint">Average of each bike’s % difference from the course-average speed, across routes/segments ridden on multiple bikes only.</p>
+              <p className="hint">Average of each bike’s % difference from the course-average speed (on the selected basis), across routes/segments ridden on multiple bikes only.</p>
             </div>
           )}
           <DataTable columns={speedColumns} rows={speedData.rows} rowKey={r => r.key}
-            caption={kind === "routes" ? "Average speed by bike on the same routes" : "Average speed by bike on the same segments"}
-            initialSort={{ key: "total", dir: "desc" }} empty={NEEDS_TWO_BIKES} />
+            caption={`${speedMode === "fastest" ? "Fastest" : "Average"} speed by bike on the same ${kind === "routes" ? "routes" : "segments"}`}
+            initialSort={{ key: "rides", dir: "desc" }} empty={NEEDS_TWO_BIKES}
+            expand={{
+              position: "start",
+              isOpen: r => open.has(`speed:${r.key}`),
+              toggle: r => toggle(`speed:${r.key}`),
+              label: r => `Show ${r.bikeCount} bike${r.bikeCount === 1 ? "" : "s"} for ${r.name}`,
+              children: r => r.bikeList.map(b => ({ ...b, key: b.gid, fastest: r.fastestBike }))
+            }} />
         </>
       ) : consistency ? (
         <DataTable columns={consistencyColumns} rows={consistencyRows} rowKey={r => r.key} caption="Segment consistency by year"
@@ -429,7 +448,7 @@ function MatchedRides() {
         Routes are matched from GPS summaries (start/finish, Hausdorff, DTW, overlap and, for rides, shared segments); reversed rides count as a different route.
         Rides, and Walks + Hikes, are matched separately. Counts follow the global filters above, including the activity type. Expand a row to see its rides.
         {bikeCmp && " By bike shows your fastest time per bike on segments ridden on 2+ bikes (up to six bikes shown). Wind, group rides and e-bikes affect fairness; bikes with few efforts are less reliable."}
-        {bikeSpeed && ` Bike speed compares total distance / total time per bike on the same ${kind === "routes" ? "route" : "segment"}, needing ${MIN_RIDES_PER_BIKE}+ rides per bike (others show n=). Wind, group rides, e-bikes and few shared rides can skew results.`}
+        {bikeSpeed && ` Bike speed compares bikes on the same ${kind === "routes" ? "route" : "segment"}; expand a row to see only the bikes that rode it. Average = total distance / total time; Fastest = the single fastest ${kind === "routes" ? "ride" : "effort"}. The toggle sets the ranking basis (★), fastest bike, difference and index. Average needs ${MIN_RIDES_PER_BIKE}+ rides per bike (others are listed as n= but not ranked); Fastest needs one. Wind, group rides, e-bikes and few shared rides can skew results.`}
         {consistency && " Consistency ranks segments ridden in 2+ years by years with efforts, then the most even yearly counts (lowest coefficient of variation), then total efforts."}
       </p>
     </Card>
