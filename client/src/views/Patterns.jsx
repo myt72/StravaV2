@@ -7,7 +7,7 @@ import {
   buildLongRideBands, buildMonthHighlights, buildMonthYearMatrix, buildWeeklyDistanceAverages,
   buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown
 } from "../lib/analytics.js";
-import { comma, formatDate, formatDuration, formatDurationHms, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
+import { comma, formatDate, formatDuration, formatDurationHms, getStravaActivityUrl, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
 import { polylineToSvgPath } from "../lib/polyline.js";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
@@ -64,7 +64,7 @@ const tooltipProps = { wrapperStyle: { zIndex: 1000, pointerEvents: "none" }, al
 function MonthYearMatrix({ activities, metric }) {
   const units = useUnits();
   const METRICS = getMetrics(units);
-  const { years, rows } = useMemo(() => buildMonthYearMatrix(activities, metric, units), [activities, metric, units]);
+  const { years, rows, yearTotals } = useMemo(() => buildMonthYearMatrix(activities, metric, units), [activities, metric, units]);
   const maximum = Math.max(0, ...rows.flatMap(row => years.map(year => row[year] || 0)));
   if (!years.length) return null;
   const columns = `repeat(${years.length + 1}, minmax(64px, 1fr))`;
@@ -92,6 +92,18 @@ function MonthYearMatrix({ activities, metric }) {
             })}
           </div>
         ))}
+        <div className="pattern-matrix-row pattern-matrix-total" role="row">
+          <span role="rowheader">Total</span>
+          {years.map(year => {
+            const label = `Total ${year}: ${METRICS[metric].fmt(yearTotals[year] || 0)}`;
+            return (
+              <button type="button" role="cell" key={year} title={label} aria-label={label}
+                onClick={() => navigate("/activities", { year: String(year) })}>
+                {yearTotals[year] ? METRICS[metric].fmt(yearTotals[year]) : "—"}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -352,7 +364,14 @@ function MatchedRides() {
       { key: "bestTime", label: `Fastest time${speedBasis === "bestTime" ? " ★" : ""}`, align: "r", sortable: false, render: none,
         renderChild: (c, r) => metricCell(c, r, "bestTime", formatDurationHms, true) },
       { key: "rides", label: "Rides", align: "r", value: r => r.total, render: r => comma(r.total), renderChild: c => comma(c.rides) },
-      { key: "bestDate", label: "Fastest on", sortable: false, render: none, renderChild: c => (c.bestDate ? formatDate(c.bestDate) : "—") }
+      { key: "bestDate", label: "Fastest on", sortable: false, render: none, renderChild: c => {
+        if (!c.bestDate) return "—";
+        const date = formatDate(c.bestDate);
+        const url = getStravaActivityUrl(c.bestActivityId);
+        return url
+          ? <a href={url} target="_blank" rel="noopener noreferrer" aria-label={`Open activity from ${date} on Strava`}>{date}</a>
+          : date;
+      } }
     ];
   })();
   const rows = useMemo(() => (

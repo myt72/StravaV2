@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useAppData } from "../context/AppData.jsx";
 import { getMetrics, buildHeadline, buildKpis, buildRecentPeriodStats, buildYearComparison } from "../lib/analytics.js";
-import { comma, formatDate, formatDateRange, formatDuration } from "../lib/format.js";
+import { comma, formatDate, formatDateRange, formatDuration, formatDurationGrouped } from "../lib/format.js";
 import { useUnits } from "../context/Units.jsx";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
@@ -24,6 +24,8 @@ const GRANULARITY_OPTIONS = [
   { value: "year", label: "Year" }
 ];
 
+const COMPARISON_METRICS = ["distance", "elevation", "moving_time", "count"];
+
 const Delta = ({ value }) => (
   value == null ? <span className="muted">n/a</span> :
   <span className={value >= 0 ? "positive" : "negative"}>{value >= 0 ? "▲ +" : "▼ "}{value.toFixed(0)}%</span>
@@ -40,6 +42,12 @@ export default function Overview() {
   const kpis = useMemo(() => buildKpis(activities, filtered.gearTotals), [activities, filtered.gearTotals]);
   const recent = useMemo(() => buildRecentPeriodStats(activities), [activities]);
   const yoy = useMemo(() => buildYearComparison(activities, new Date(), units), [activities, units]);
+  const recentValues = {
+    distance: { value: recent.distance, delta: recent.distanceDelta, fmt: units.fmtDistance },
+    elevation: { value: recent.elevation, delta: recent.elevationDelta, fmt: units.fmtElevation },
+    moving_time: { value: recent.time, delta: recent.timeDelta, fmt: formatDurationGrouped },
+    count: { value: recent.count, delta: recent.countDelta, fmt: comma }
+  };
   const headline = useMemo(() => buildHeadline(filtered, insights, primaryMetric, units), [filtered, insights, primaryMetric, units]);
   const latest = useMemo(
     () => [...activities].sort((a, b) => new Date(b.start_date) - new Date(a.start_date)).slice(0, 8),
@@ -49,7 +57,7 @@ export default function Overview() {
   const cards = [
     { id: "count", label: "Activities", value: comma(kpis.count) },
     { id: "distance", label: "Distance", value: units.fmtDistance(kpis.distance) },
-    { id: "moving_time", label: "Moving time", value: formatDuration(kpis.movingTime) },
+    { id: "moving_time", label: "Moving time", value: formatDurationGrouped(kpis.movingTime) },
     { id: "elevation", label: "Elevation", value: units.fmtElevation(kpis.elevation) }
   ];
 
@@ -90,9 +98,15 @@ export default function Overview() {
           ))}
         </Card>
         <Card title="Last 30 days">
-          <div className="stat-row"><span>Distance</span><span className="num"><strong>{units.fmtDistance(recent.distance)}</strong> <Delta value={recent.distanceDelta} /></span></div>
-          <div className="stat-row"><span>Moving time</span><span className="num"><strong>{formatDuration(recent.time)}</strong> <Delta value={recent.timeDelta} /></span></div>
-          <div className="stat-row"><span>Elevation</span><span className="num"><strong>{units.fmtElevation(recent.elevation)}</strong> <Delta value={recent.elevationDelta} /></span></div>
+          {COMPARISON_METRICS.map(metric => {
+            const r = recentValues[metric];
+            return (
+              <div className="stat-row" key={metric}>
+                <span>{METRICS[metric].label}</span>
+                <span className="num"><strong>{r.fmt(r.value)}</strong> <Delta value={r.delta} /></span>
+              </div>
+            );
+          })}
           <p className="hint">Change vs the prior 30 days.</p>
         </Card>
         <Card title="Streaks & context">

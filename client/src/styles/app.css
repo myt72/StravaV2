@@ -136,6 +136,8 @@ select:hover, input:hover { border-color: var(--text-muted); }
 .card.fill > .scroll-region.grow { flex: 1 1 0; min-height: 130px; max-height: none; }
 .grid.garage-stats { grid-auto-rows: 1fr; }
 .grid.garage-stats > .card { min-height: 0; }
+.card.fill > .milestone-grid.scroll-region.grow { min-height: 172px; }
+.card.fill > .chart-box.short { flex: 1 1 240px; height: auto; min-height: 240px; }
 .milestone-next { padding: 8px 0 4px; }
 .milestone-next .bar-track { margin-top: 4px; height: 10px; }
 .milestone-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; align-content: start; margin-top: 8px; }
@@ -184,6 +186,8 @@ select:hover, input:hover { border-color: var(--text-muted); }
 .pattern-matrix-row > span:first-child { text-align: left; }
 .pattern-matrix-row > button { border: 1px solid var(--border); background: var(--surface); }
 .pattern-matrix-row > button:hover { filter: brightness(1.12); }
+.pattern-matrix-total > * { border-top: 2px solid var(--border); font-weight: 700; }
+.pattern-matrix-total > span { color: var(--text); }
 
 /* ---------- tables ---------- */
 .table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
@@ -380,7 +384,8 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
   .content { padding: 14px 12px 24px; }
   .grid.two { grid-template-columns: minmax(0, 1fr); }
   .grid.garage-stats { grid-auto-rows: auto; }
-  .card.fill > .scroll-region.grow { min-height: 220px; }
+  .card.fill > .scroll-region.grow, .card.fill > .milestone-grid.scroll-region.grow { min-height: 220px; }
+  .card.fill > .chart-box.short { flex: 0 0 auto; height: 240px; }
   .kpi-value { font-size: 1.35rem; }
 }
 @media (prefers-reduced-motion: reduce) {

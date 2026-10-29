@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAppData } from "../context/AppData.jsx";
 import { getMetrics, buildAnnualBreakdowns, buildAnnualSubRows, buildAnnualTotals, buildMonthlyTrend, buildYearOverYear, buildYearOverYearWeekly, sumMetric } from "../lib/analytics.js";
-import { comma, formatDuration } from "../lib/format.js";
+import { comma, formatDurationGrouped } from "../lib/format.js";
 import { useUnits } from "../context/Units.jsx";
 import { navigate } from "../lib/router.js";
 import { readStored, usePersistentState } from "../lib/storage.js";
@@ -103,12 +103,12 @@ export default function Trends() {
     : <span className={v >= 0 ? "positive" : "negative"}>{v >= 0 ? "▲ +" : "▼ "}{v.toFixed(0)}%</span>);
   const timeCell = r => (
     <>
-      {formatDuration(r.moving_time)}
+      {formatDurationGrouped(r.moving_time)}
       {r.elapsed_time > 0 && (
         <>
           <br />
-          <span className="small muted" aria-label={`Elapsed ${formatDuration(r.elapsed_time)}, ${Math.round(((r.moving_time || 0) / r.elapsed_time) * 100)} percent moving`}>
-            elapsed {formatDuration(r.elapsed_time)} · {Math.round(((r.moving_time || 0) / r.elapsed_time) * 100)}%
+          <span className="small muted" aria-label={`Elapsed ${formatDurationGrouped(r.elapsed_time)}, ${Math.round(((r.moving_time || 0) / r.elapsed_time) * 100)} percent moving`}>
+            elapsed {formatDurationGrouped(r.elapsed_time)} · {Math.round(((r.moving_time || 0) / r.elapsed_time) * 100)}%
           </span>
         </>
       )}

@@ -2,8 +2,9 @@ const test = require("node:test");
 const assert = require("node:assert");
 
 let formatDurationHms;
+let formatDurationGrouped;
 test.before(async () => {
-  ({ formatDurationHms } = await import("../client/src/lib/format.js"));
+  ({ formatDurationHms, formatDurationGrouped } = await import("../client/src/lib/format.js"));
 });
 
 test("formatDurationHms shows seconds with the appropriate larger units", () => {
@@ -22,4 +23,14 @@ test("formatDurationHms uses an em dash for invalid durations", () => {
   assert.strictEqual(formatDurationHms(Number.NaN), "—");
   assert.strictEqual(formatDurationHms(Number.POSITIVE_INFINITY), "—");
   assert.strictEqual(formatDurationHms(-1), "—");
+});
+
+test("formatDurationGrouped inserts thousands separators into hours", () => {
+  assert.strictEqual(formatDurationGrouped(999 * 3600), "999h");
+  assert.strictEqual(formatDurationGrouped(1000 * 3600), "1,000h");
+  assert.strictEqual(formatDurationGrouped(12345 * 3600 + 300), "12,345h 5m");
+  assert.strictEqual(formatDurationGrouped(0), "0m");
+  assert.strictEqual(formatDurationGrouped(1800), "30m");
+  assert.strictEqual(formatDurationGrouped(undefined), "0m");
+  assert.strictEqual(formatDurationGrouped("abc"), "0m");
 });
