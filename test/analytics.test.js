@@ -131,6 +131,31 @@ test("formatHms pads minutes/seconds and does not cap hours", async () => {
   assert.strictEqual(formatHms(0), "0:00:00");
 });
 
+test("matched rides builders honor a 100-row limit", () => {
+  const ids = Array.from({ length: 100 }, (_, index) => String(index + 1));
+  const rides = [
+    activity("2023-01-01T08:00:00", { id: 1, gear_id: "b1", distance: 1000, moving_time: 100 }),
+    activity("2024-01-01T08:00:00", { id: 2, gear_id: "b1", distance: 1000, moving_time: 100 }),
+    activity("2023-01-02T08:00:00", { id: 3, gear_id: "b2", distance: 1000, moving_time: 120 }),
+    activity("2024-01-02T08:00:00", { id: 4, gear_id: "b2", distance: 1000, moving_time: 120 })
+  ];
+  const routeClusters = { clusters: ids.map(id => ({
+    routeId: id, name: `Route ${id}`, activityIds: [1, 2, 3, 4], representativeId: 1, distance: 1000, elevation: 0
+  })) };
+  const segmentData = Object.fromEntries(rides.map(ride => [ride.id, ids.map(id => ({
+    segment_id: id, segment_name: `Segment ${id}`, start_date: ride.start_date,
+    elapsed_time: ride.gear_id === "b1" ? 100 : 120, distance: 1000
+  }))]));
+  const limit = { limit: 100 };
+
+  assert.strictEqual(analytics.buildRouteLeaderboard(routeClusters, rides, limit).length, 100);
+  assert.strictEqual(analytics.buildSegmentLeaderboard(segmentData, rides, new Set(), limit).length, 100);
+  assert.strictEqual(analytics.buildSegmentConsistency(segmentData, rides, new Set(), limit).length, 100);
+  assert.strictEqual(analytics.buildSegmentBikeComparison(segmentData, rides, new Set(), limit).rows.length, 100);
+  assert.strictEqual(analytics.buildRouteBikeSpeed(routeClusters, rides, limit).rows.length, 100);
+  assert.strictEqual(analytics.buildSegmentBikeSpeed(segmentData, rides, new Set(), limit).rows.length, 100);
+});
+
 test("buildBikeSummaryRows aggregates per bike with totals", () => {
   const { rows, total } = analytics.buildBikeSummaryRows(
     {

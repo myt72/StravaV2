@@ -7,7 +7,7 @@ import {
   buildLongRideBands, buildMonthHighlights, buildMonthYearMatrix, buildWeeklyDistanceAverages,
   buildSeasonalityIndex, buildTimeOfDayBreakdown, buildWeekdayBreakdown
 } from "../lib/analytics.js";
-import { comma, formatDate, formatDuration, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
+import { comma, formatDate, formatDuration, formatDurationHms, getStravaSegmentUrl, MONTHS } from "../lib/format.js";
 import { polylineToSvgPath } from "../lib/polyline.js";
 import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
@@ -38,7 +38,15 @@ function PatternChart({ data, metric, color, paramKey, label, format, className 
   );
 }
 
-const LIMIT_OPTIONS = [10, 20, 50].map(n => ({ value: n, label: String(n) }));
+const LIMIT_OPTIONS = [10, 25, 50, 100].map(n => ({ value: n, label: String(n) }));
+const normalizeMatchedLimit = value => {
+  if (value == null || value === "") return 25;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 25;
+  return LIMIT_OPTIONS.reduce((nearest, option) => (
+    Math.abs(option.value - number) < Math.abs(nearest - number) ? option.value : nearest
+  ), LIMIT_OPTIONS[0].value);
+};
 const PERIOD_OPTIONS = [{ value: "all", label: "All time" }, { value: "year", label: "Year" }, { value: "month", label: "Month" }];
 const ROUTE_PERIOD_OPTIONS = [...PERIOD_OPTIONS, { value: "bikeSpeed", label: "Bike speed" }];
 const SEGMENT_PERIOD_OPTIONS = [...PERIOD_OPTIONS, { value: "consistency", label: "Consistency" }, { value: "bike", label: "By bike" }, { value: "bikeSpeed", label: "Bike speed" }];
@@ -229,16 +237,21 @@ function RouteThumb({ polyline, name }) {
 function MatchedRides() {
   const { raw, filtered, excludedSet, status } = useAppData();
   const units = useUnits();
-  const [limit, setLimit] = usePersistentState("matchedLimit", 20);
+  const [savedLimit, setLimit] = usePersistentState("matchedLimit", 25);
+  const limit = normalizeMatchedLimit(savedLimit);
   const [savedPeriod, setPeriod] = usePersistentState("matchedPeriod", "all");
   const [year, setYear] = usePersistentState("matchedYear", null);
   const [month, setMonth] = usePersistentState("matchedMonth", new Date().getMonth() + 1);
   const [savedKind, setKind] = usePersistentState("matchedKind", "routes");
   const [savedSpeedBasis, setSpeedBasis] = usePersistentState("matchedSpeedMode", "avgSpeed");
+  const [indexOpen, setIndexOpen] = usePersistentState("matchedIndexOpen", false);
   const speedBasis = normalizeBikeSpeedBasis(savedSpeedBasis);
   const averageBasis = speedBasis === "avgSpeed" || speedBasis === "avgTime";
   const timeBasis = speedBasis === "avgTime" || speedBasis === "bestTime";
   const [open, setOpen] = useState(() => new Set());
+  useEffect(() => {
+    if (savedLimit !== limit) setLimit(limit);
+  }, [savedLimit, limit, setLimit]);
   useEffect(() => {
     if (savedSpeedBasis !== speedBasis) setSpeedBasis(speedBasis);
   }, [savedSpeedBasis, speedBasis, setSpeedBasis]);
@@ -335,9 +348,9 @@ function MatchedRides() {
       { key: "bestSpeed", label: `Fastest speed${speedBasis === "bestSpeed" ? " ★" : ""}`, align: "r", sortable: false, render: none,
         renderChild: (c, r) => metricCell(c, r, "bestSpeed", units.fmtSpeed) },
       { key: "avgTime", label: `Avg time${speedBasis === "avgTime" ? " ★" : ""}`, align: "r", sortable: false, render: none,
-        renderChild: (c, r) => metricCell(c, r, "avgTime", formatDuration, true) },
+        renderChild: (c, r) => metricCell(c, r, "avgTime", formatDurationHms, true) },
       { key: "bestTime", label: `Fastest time${speedBasis === "bestTime" ? " ★" : ""}`, align: "r", sortable: false, render: none,
-        renderChild: (c, r) => metricCell(c, r, "bestTime", formatDuration, true) },
+        renderChild: (c, r) => metricCell(c, r, "bestTime", formatDurationHms, true) },
       { key: "rides", label: "Rides", align: "r", value: r => r.total, render: r => comma(r.total), renderChild: c => comma(c.rides) },
       { key: "bestDate", label: "Fastest on", sortable: false, render: none, renderChild: c => (c.bestDate ? formatDate(c.bestDate) : "—") }
     ];
@@ -425,16 +438,27 @@ function MatchedRides() {
           </div>
           {speedData.index.length > 0 && (
             <div style={{ marginBottom: 12 }}>
-              <h3 className="small" style={{ margin: "0 0 4px" }}>{timeBasis ? "Time index" : "Bike speed index"}</h3>
-              <ol aria-label={`${timeBasis ? "Time" : "Bike speed"} index ranking`} style={{ margin: 0, paddingLeft: 20 }}>
-                {speedData.index.map(b => (
-                  <li key={b.gid}>
-                    {gearLabel(b.gid)}: <strong className="num">{b.index >= 0 ? "+" : ""}{b.index.toFixed(1)}%</strong>
-                    <span className="muted small"> vs course average {timeBasis ? "time" : "speed"} · {comma(b.courses)} course{b.courses === 1 ? "" : "s"} · {comma(b.rides)} rides</span>
-                  </li>
-                ))}
-              </ol>
-              <p className="hint">Average percent difference from the course-average {timeBasis ? "time" : "speed"} on shared routes/segments. Positive means faster; lower times count as better.</p>
+              <h3 className="small" style={{ margin: "0 0 4px" }}>
+                <button type="button" className="cell-link" aria-expanded={indexOpen} aria-controls="matched-bike-speed-index"
+                  onClick={() => setIndexOpen(value => !value)}>
+                  {indexOpen ? "▾" : "▸"} {timeBasis ? "Time index" : "Speed index"}
+                </button>
+              </h3>
+              <div id="matched-bike-speed-index">
+                {indexOpen && (
+                  <>
+                    <ol aria-label={`${timeBasis ? "Time" : "Speed"} index ranking`} style={{ margin: 0, paddingLeft: 20 }}>
+                      {speedData.index.map(b => (
+                        <li key={b.gid}>
+                          {gearLabel(b.gid)}: <strong className="num">{b.index >= 0 ? "+" : ""}{b.index.toFixed(1)}%</strong>
+                          <span className="muted small"> vs course average {timeBasis ? "time" : "speed"} · {comma(b.courses)} course{b.courses === 1 ? "" : "s"} · {comma(b.rides)} rides</span>
+                        </li>
+                      ))}
+                    </ol>
+                    <p className="hint">Average percent difference from the course-average {timeBasis ? "time" : "speed"} on shared routes/segments. Positive means faster; lower times count as better.</p>
+                  </>
+                )}
+              </div>
             </div>
           )}
           <DataTable columns={speedColumns} rows={speedData.rows} rowKey={r => r.key}
