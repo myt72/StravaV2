@@ -41,3 +41,38 @@ test("buildSegmentConsistency ranks multi-year segments", async () => {
   assert.strictEqual(rows[0].total, 4);
   assert.strictEqual(buildSegmentConsistency(data, acts, new Set(), { limit: 1 }).length, 1);
 });
+
+test("bike comparison and same-course speed", async () => {
+  const a = await import("../client/src/lib/analytics.js");
+  const acts = [
+    { id: 1, gear_id: "b1", distance: 16093.4, moving_time: 3600 },
+    { id: 2, gear_id: "b1", distance: 1609.34, moving_time: 360 },
+    { id: 3, gear_id: "b2", distance: 16093.4, moving_time: 2400 },
+    { id: 4, gear_id: "b2", distance: 16093.4, moving_time: 2400 },
+    { id: 5 }
+  ];
+  const e = (id, t, d = 1000) => ({ segment_id: id, segment_name: `S${id}`, start_date: "2024-01-01T00:00:00Z", elapsed_time: t, distance: d });
+  const seg = { 1: [e(1, 100), e(2, 50)], 2: [e(1, 90)], 3: [e(1, 80), e(3, 10)], 4: [e(1, 85)], 5: [e(1, 1)] };
+  const r = a.buildSegmentBikeComparison(seg, acts, new Set(["2"]));
+  assert.deepStrictEqual(r.rows.map(x => x.segmentId), ["1"]);
+  assert.strictEqual(r.rows[0].bikes.b1.best, 90);
+  assert.strictEqual(r.rows[0].bikes.b2.best, 80);
+  assert.strictEqual(r.rows[0].bestBike, "b2");
+  assert.strictEqual(r.rows[0].gapSeconds, 10);
+  assert.deepStrictEqual(r.wins, { b2: 1 });
+
+  const clusters = { clusters: [{ routeId: "r", name: "R", activityIds: [1, 2, 3, 4, 5] }] };
+  const rs = a.buildRouteBikeSpeed(clusters, acts);
+  const row = rs.rows[0];
+  // weighted: 17702.74 m / 3960 s, not mean of 16 mph and 10 mph
+  assert.ok(Math.abs(row.bikes.b1.avgMph - (17702.74 / 1609.34) / (3960 / 3600)) < 1e-6);
+  assert.strictEqual(row.fastestBike, "b2");
+  assert.ok(Math.abs(row.bikes.b2.avgMph - 15) < 1e-3);
+  assert.strictEqual(rs.index[0].gid, "b2");
+  assert.ok(Math.abs(rs.index[0].index + rs.index[1].index) < 1e-9);
+  assert.strictEqual(a.buildRouteBikeSpeed(clusters, acts, { minRides: 3 }).rows.length, 0);
+
+  const ss = a.buildSegmentBikeSpeed(seg, acts, new Set(), { minRides: 1 });
+  assert.ok(ss.rows.some(x => x.segmentId === "1"));
+  assert.ok(!ss.rows.some(x => x.segmentId === "3"));
+});
