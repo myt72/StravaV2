@@ -73,6 +73,7 @@ test("month/year patterns and ride-timing summaries aggregate by local date", ()
   assert.deepStrictEqual(matrix.years, [2024, 2023]);
   assert.strictEqual(matrix.rows[0][2023], 1);
   assert.strictEqual(matrix.rows[0][2024], 2);
+  assert.deepStrictEqual(matrix.yearTotals, { 2024: 3, 2023: 1 });
 
   const monthHighlights = analytics.buildMonthHighlights(rides, "distance");
   assert.strictEqual(monthHighlights.highlights.find(row => row.year === 2024).best.month, 1);

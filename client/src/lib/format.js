@@ -22,6 +22,16 @@ export function formatDuration(seconds) {
   return `${hours}h ${minutes}m`;
 }
 
+/** Like formatDuration but with a thousands separator in the hours (e.g. "1,234h 5m"). */
+export function formatDurationGrouped(seconds) {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (hours === 0) return `${minutes}m`;
+  if (minutes === 0) return `${comma(hours)}h`;
+  return `${comma(hours)}h ${minutes}m`;
+}
+
 export function formatDurationHms(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return "—";
   const total = Math.round(seconds);
@@ -143,3 +153,4 @@ export function extractStravaActivityId(activityUrl) {
 }
 
 export const getStravaSegmentUrl = segmentId => `https://www.strava.com/segments/${segmentId}`;
+export const getStravaActivityUrl = activityId => (activityId == null || activityId === "" ? null : `https://www.strava.com/activities/${encodeURIComponent(activityId)}`);

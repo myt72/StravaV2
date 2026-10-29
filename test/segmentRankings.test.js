@@ -69,6 +69,7 @@ test("bike comparison and same-course speed", async () => {
   assert.strictEqual(row.bikes.b1.avgTime, 1980);
   assert.strictEqual(row.bikes.b1.bestTime, 360);
   assert.strictEqual(row.bikes.b1.bestDate, "2024-01-02");
+  assert.strictEqual(row.bikes.b1.bestActivityId, 2);
   assert.strictEqual(row.fastestBike, "b2");
   assert.ok(Math.abs(row.bikes.b2.avgSpeed - 15) < 1e-3);
   assert.strictEqual(rs.index[0].gid, "b2");
@@ -90,6 +91,9 @@ test("bike comparison and same-course speed", async () => {
   assert.deepStrictEqual(fr.bikeList.map(b => b.gid), ["b3", "b2", "b1"]);
   assert.ok(Math.abs(fr.bikes.b3.bestSpeed - 20) < 1e-3);
   assert.strictEqual(fr.bikes.b3.bestDate, "2024-02-02");
+  assert.strictEqual(fr.bikes.b3.bestActivityId, 6);
+  const segFast = a.buildSegmentBikeSpeed(seg, acts, new Set(), { basis: "bestTime" });
+  assert.strictEqual(segFast.rows[0].bikes.b2.bestActivityId, "3");
   assert.ok(Math.abs(fr.bikes.b1.bestSpeed - 10) < 1e-3);
   assert.ok(Math.abs(fr.diffPct - 100) < 1e-3);
   assert.strictEqual(fast.index[0].gid, "b3");

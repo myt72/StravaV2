@@ -674,7 +674,9 @@ export function buildRecentPeriodStats(activities, now = Date.now()) {
   const d = [sum(last30, "distance"), sum(prev30, "distance")];
   const t = [sum(last30, "moving_time"), sum(prev30, "moving_time")];
   const e = [sum(last30, "total_elevation_gain"), sum(prev30, "total_elevation_gain")];
+  const c = [last30.length, prev30.length];
   return {
+    count: c[0], countDelta: delta(...c),
     distance: d[0], distanceDelta: delta(...d),
     time: t[0], timeDelta: delta(...t),
     elevation: e[0], elevationDelta: delta(...e)
@@ -1265,6 +1267,7 @@ export const normalizeBikeSpeedBasis = value => (
 function finishBikeSpeed(courses, { minRides, limit, minBikes, basis }) {
   const averageBasis = basis === "avgSpeed" || basis === "avgTime";
   const timeBasis = basis === "avgTime" || basis === "bestTime";
+  const speedBasis = basis === "bestSpeed";
   const compare = (a, b) => timeBasis ? a - b : b - a;
   const bikeCourses = new Map();
   const rows = [];
@@ -1279,7 +1282,8 @@ function finishBikeSpeed(courses, { minRides, limit, minBikes, basis }) {
           : basis === "avgTime" ? avgTime : v.bestTime;
       bikes[gid] = {
         rides: v.count, count: v.count, avgSpeed, bestSpeed: v.bestMph, avgTime, bestTime: v.bestTime,
-        bestDate: v.bestDate, qualified, rankValue, speed: rankValue, ranked: rankValue > 0 && qualified
+        bestDate: speedBasis ? v.bestSpeedDate : v.bestDate,
+        bestActivityId: speedBasis ? v.bestSpeedActivityId : v.bestActivityId, qualified, rankValue, speed: rankValue, ranked: rankValue > 0 && qualified
       };
     });
     const list = Object.entries(bikes).sort((a, b) => (b[1].ranked - a[1].ranked) || compare(a[1].rankValue, b[1].rankValue) || b[1].rides - a[1].rides || a[0].localeCompare(b[0]));
@@ -1303,18 +1307,21 @@ function finishBikeSpeed(courses, { minRides, limit, minBikes, basis }) {
   return { bikes: orderBikes(bikeCourses), index: buildBikeSpeedIndex(rows), rows: rows.slice(0, limit), totalShared: rows.length };
 }
 
-function addSample(course, gid, dist, time, date) {
-  const v = course.acc[gid] || (course.acc[gid] = { dist: 0, time: 0, count: 0, bestMph: 0, bestTime: Infinity, bestDate: null });
+function addSample(course, gid, dist, time, date, activityId) {
+  const v = course.acc[gid] || (course.acc[gid] = { dist: 0, time: 0, count: 0, bestMph: 0, bestSpeedDate: null, bestSpeedActivityId: null, bestTime: Infinity, bestDate: null, bestActivityId: null });
   v.dist += dist;
   v.time += time;
   v.count++;
   const mph = (dist / time) * MPH_PER_MS;
   if (mph > v.bestMph) {
     v.bestMph = mph;
+    v.bestSpeedDate = date || null;
+    v.bestSpeedActivityId = activityId ?? null;
   }
   if (time < v.bestTime) {
     v.bestTime = time;
     v.bestDate = date || null;
+    v.bestActivityId = activityId ?? null;
   }
 }
 
@@ -1331,7 +1338,7 @@ export function buildRouteBikeSpeed(routeClusters, activities, { limit = 20, min
     (c.activityIds || []).forEach(id => {
       const a = byId.get(String(id));
       const gid = gearOf(a);
-      if (gid && a.distance > 0 && a.moving_time > 0) addSample(course, gid, a.distance, a.moving_time, a.start_date);
+      if (gid && a.distance > 0 && a.moving_time > 0) addSample(course, gid, a.distance, a.moving_time, a.start_date, a.id);
     });
     courses.push(course);
   });
@@ -1355,7 +1362,7 @@ export function buildSegmentBikeSpeed(segmentData, activities, excludedSegmentId
         course = { key: sid, segmentId: sid, name: e.segment_name || `Segment ${sid}`, acc: {} };
         map.set(sid, course);
       }
-      addSample(course, gid, e.distance, t, e.start_date);
+      addSample(course, gid, e.distance, t, e.start_date, activityId);
     });
   });
   return finishBikeSpeed([...map.values()], { limit, minRides, minBikes, basis });
@@ -1405,8 +1412,13 @@ export function buildMonthYearMatrix(activities, metric, units = IMPERIAL) {
     const key = `${d.getFullYear()}-${d.getMonth()}`;
     sums[key] = (sums[key] || 0) + (METRICS[metric] || METRICS.distance).value(a);
   });
+  const yearTotals = Object.fromEntries(years.map(year => [
+    year,
+    MONTHS.reduce((sum, _, month) => sum + (sums[`${year}-${month}`] || 0), 0)
+  ]));
   return {
     years,
+    yearTotals,
     rows: MONTHS.map((label, month) => ({
       label,
       month,
