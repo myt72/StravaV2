@@ -381,20 +381,19 @@ function MatchedRides() {
         <>
           {bikeCmpData.rows.length > 0 && (
             <div className="table-wrap" style={{ marginBottom: 12 }}>
-              <table className="data" aria-label="Segments won by bike: segments where each bike holds the best time, out of the shared segments that bike has ridden">
-                <thead>
-                  <tr>{bikeCmpData.bikes.map(gid => <th key={gid} scope="col" className="r">{gearLabel(gid)}</th>)}</tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {bikeCmpData.bikes.map(gid => (
-                      <td key={gid} className="r num">
-                        <strong>{comma(bikeCmpData.wins[gid] || 0)}</strong> of {comma(bikeCmpData.sharedCounts[gid])} segments won
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
+              <ul role="list" aria-label="Segments won by bike" style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 6, gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))" }}>
+                {bikeCmpData.bikes.map(gid => {
+                  const won = bikeCmpData.wins[gid] || 0;
+                  const total = bikeCmpData.sharedCounts[gid];
+                  const lead = won > 0 && bikeCmpData.bikes.every(g => (bikeCmpData.wins[g] || 0) <= won);
+                  return (
+                    <li key={gid} className={`milestone-tile${lead ? " done" : ""}`} aria-label={`${gearLabel(gid)}: ${won} of ${total} segments won`}>
+                      <span>{gearLabel(gid)}</span>
+                      <span><strong>{comma(won)}</strong> of {comma(total)} segments won</span>
+                    </li>
+                  );
+                })}
+              </ul>
               <p className="hint">Wins count shared segments where the bike holds the best time; the total is the shared segments that bike has ridden.</p>
             </div>
           )}
