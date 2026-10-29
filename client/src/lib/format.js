@@ -22,6 +22,17 @@ export function formatDuration(seconds) {
   return `${hours}h ${minutes}m`;
 }
 
+export function formatDurationHms(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "—";
+  const total = Math.round(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const remainingSeconds = total % 60;
+  if (hours > 0) return `${hours}h ${minutes}m ${remainingSeconds}s`;
+  if (minutes > 0) return `${minutes}m ${remainingSeconds}s`;
+  return `${remainingSeconds}s`;
+}
+
 export function formatHms(seconds) {
   const total = Math.max(0, Math.round(seconds || 0));
   const pad = n => String(n).padStart(2, "0");
