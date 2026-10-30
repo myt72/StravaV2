@@ -9,7 +9,7 @@ function Row({ label, children }) {
 }
 
 export default function Admin() {
-  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks } = useAppData();
+  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill, engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks } = useAppData();
   const [confirmFull, setConfirmFull] = useState(false);
   const [auth, setAuth] = useState({ state: "checking", message: "" });
 
@@ -54,6 +54,10 @@ export default function Admin() {
   const elapsedDone = elapsedBackfill?.withElapsed || 0;
   const elapsedPct = elapsedTotal > 0 ? Math.min(100, (elapsedDone / elapsedTotal) * 100) : 0;
   const elapsedState = !elapsedBackfill ? "Idle" : elapsedBackfill.completed && !elapsedActive ? "Complete" : (elapsedBackfill.mode || "Idle");
+  const engagementTotal = engagementBackfill?.total || 0;
+  const engagementDone = engagementBackfill?.withEngagement || 0;
+  const engagementPct = engagementTotal > 0 ? Math.min(100, (engagementDone / engagementTotal) * 100) : 0;
+  const engagementState = !engagementBackfill ? "Idle" : engagementBackfill.mode && engagementBackfill.mode !== "idle" ? engagementBackfill.mode : engagementBackfill.completed ? "Complete" : "Idle";
   const geoState = !geoBackfill ? "Idle" : geoBackfill.completed ? "Complete" : (geoBackfill.mode || "Idle");
 
   const rankTotal = segmentRank?.totalCandidates || 0;
@@ -156,6 +160,31 @@ export default function Admin() {
           <div className="toolbar" style={{ marginTop: 12 }}>
             <button type="button" className="btn primary" disabled={working || elapsedActive || elapsedBackfill?.completed} onClick={startElapsedBackfill}>{elapsedBackfill?.pagesDone ? "Resume elapsed backfill" : "Start elapsed backfill"}</button>
             <button type="button" className="btn" disabled={working || !elapsedActive} onClick={stopElapsedBackfill}>Stop</button>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid two">
+        <Card title="Engagement backfill (kudos, comments, photos)" right={engagementActive && <span className="nav-badge pulse">Running</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Re-reads your activity list once to add kudos, comment and photo counts (counts only, no photos) to cached activities (about {comma(engagementBackfill?.estimatedPages || 0)} API
+            calls, 200 activities each — not one per activity). It resumes where it left off. Refresh recent re-reads only the latest {comma(engagementBackfill?.maxPages || 2)} pages
+            to update counts on recent rides. Kudos you have given are not available from Strava.
+          </p>
+          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={engagementTotal} aria-valuenow={engagementDone} aria-label="Engagement backfill progress"><div style={{ width: `${engagementPct}%` }} /></div>
+          <div style={{ marginTop: 8 }}>
+            <Row label="Status">{engagementState}</Row>
+            <Row label="Activities with engagement data">{comma(engagementDone)} / {comma(engagementTotal)}</Row>
+            <Row label="Pages fetched">{comma(engagementBackfill?.pagesDone || 0)}</Row>
+            <Row label="Last run">{engagementBackfill?.lastRunAt ? formatDateTime(engagementBackfill.lastRunAt) : "—"}</Row>
+            <Row label="Next retry">{engagementBackfill?.nextRetryAt ? formatDateTime(engagementBackfill.nextRetryAt) : "—"}</Row>
+            <Row label="Last error">{engagementBackfill?.lastError || "—"}</Row>
+          </div>
+          <p className="hint">{engagementBackfill?.message || "Idle"}</p>
+          <div className="toolbar" style={{ marginTop: 12 }}>
+            <button type="button" className="btn primary" disabled={working || engagementActive || engagementBackfill?.completed} onClick={() => startEngagementBackfill(false)}>{engagementBackfill?.pagesDone ? "Resume engagement backfill" : "Start engagement backfill"}</button>
+            <button type="button" className="btn" disabled={working || engagementActive || !engagementDone} onClick={() => startEngagementBackfill(true)}>Refresh recent</button>
+            <button type="button" className="btn" disabled={working || !engagementActive} onClick={stopEngagementBackfill}>Stop</button>
           </div>
         </Card>
       </div>

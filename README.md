@@ -123,6 +123,42 @@ waits on 429s, and cannot run at the same time as the PR, geo or segment-rank ba
 When it finishes, the Trends Time column shows the elapsed line. Endpoints: `POST /api/elapsed-backfill/start|stop`
 and `GET /api/elapsed-backfill/status`. A normal refresh also fills `elapsed_time` for activities on the fetched page.
 
+## Engagement counts (kudos, comments, photos)
+
+**What is stored.** Each cached activity gets `kudos_count`, `comment_count` and `photo_count` (non-negative integers, taken
+from the `/athlete/activities` summary, so no per-activity requests). A missing field means "not backfilled yet" and is
+different from `0`. `photo_count` is used; `total_photo_count` is only a fallback when `photo_count` is missing. These are
+**counts only**: no photos or photo URLs are downloaded, stored or shown. The fields are not part of the activity change
+signature, so a changing kudos count never triggers segment re-fetches.
+
+**Backfill.** On **Data & Admin** use the *Engagement backfill* card → *Start engagement backfill* (admin password
+required). It re-pages `/athlete/activities?per_page=200` (about `ceil(activities / 200)` calls) and merges the counts by id
+without touching other fields. It is resumable (progress saved per page in `cache.json` under `engagementBackfill`),
+respects the rate-limit reserve, waits on 429 and stops with `lastError` on other errors. It cannot run at the same time as
+the PR, geo, segment-rank or elapsed backfills, and route recompute is refused while it runs.
+
+**Keeping counts fresh.** Kudos keep arriving after a ride. A normal *Refresh* re-fetches page 1 (the latest 200
+activities) and the fresh values replace the cached ones, so recent rides stay current. *Refresh recent* (or
+`POST /api/engagement-backfill/start?refresh=1`, optional `&maxPages=N`, default 2) re-pages only the first N pages to update
+recent rides cheaply, without touching the backfill progress.
+
+**Endpoints** (admin password): `POST /api/engagement-backfill/start|stop` and `GET /api/engagement-backfill/status`. The
+status is also included in `/api/analytics/auto` as `engagementBackfillStatus`.
+
+**Limits.** Kudos *given* are not available from Strava's API and are not tracked. Strava only reports the *current* count per
+activity, not when each kudos arrived, so charts attribute counts to the activity date ("kudos on rides done in March").
+
+**Followers / following.** When the `/athlete` response fetched during a sync (one call per refresh/pull) contains numeric
+`follower_count` and `friend_count`, a `{ date, followers, following }` snapshot is stored in `cache.athleteSnapshots` (max one
+per day, capped at 5000). It only starts recording from the day it is deployed and may never populate if Strava omits the
+fields; nothing is stored and nothing is shown in that case.
+
+**Trends > Engagement panel.** KPI tiles (totals, kudos per activity, activities with data), a Kudos | Comments | Photos
+selector, a Month | Year | Week chart (Total or Per activity) with a table, a breakdown (by bike, sport, year or distance
+band), the top 10 activities for the selected metric, and a followers/following chart when at least 2 snapshots exist. It
+honours the global filters and the Trends activity-type chips, and shows a notice when counts are missing or only partly
+backfilled.
+
 ## Segment rankings (Records > Segment summary)
 
 **Currently disabled.** Strava returns HTTP 403 for the segment leaderboard endpoint for this app, so the panels are hidden.

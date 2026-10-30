@@ -407,3 +407,9 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
 /* Macrodata Refinement page: isolated app in an iframe filling the main area (no filter bar on this route) */
 .mdr-frame { display: block; width: 100%; height: 100vh; border: 0; }
 @media (max-width: 860px) { .mdr-frame { height: calc(100vh - 64px); } }
+
+/* ---------- engagement panel ---------- */
+.grid.engagement-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.engagement-top { list-style: none; margin: 0; padding: 0; }
+@media (max-width: 900px) { .grid.engagement-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 480px) { .grid.engagement-kpis { grid-template-columns: minmax(0, 1fr); } }

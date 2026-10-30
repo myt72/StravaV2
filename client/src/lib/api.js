@@ -115,6 +115,22 @@ export async function stopElapsedBackfill() {
   return data;
 }
 
+export async function fetchEngagementBackfillStatus() {
+  const { data } = await request("/api/engagement-backfill/status", undefined, adminFetch);
+  return data.engagementBackfill;
+}
+
+export async function startEngagementBackfill({ refresh = false } = {}) {
+  const { data } = await request(`/api/engagement-backfill/start${refresh ? "?refresh=1" : ""}`, { method: "POST" }, adminFetch);
+  if (data.error) throw new ApiError(data.error);
+  return data;
+}
+
+export async function stopEngagementBackfill() {
+  const { data } = await request("/api/engagement-backfill/stop", { method: "POST" }, adminFetch);
+  return data;
+}
+
 export async function fetchSegmentRankStatus() {
   const { data } = await request("/api/segment-ranks/status", undefined, adminFetch);
   return data.segmentRanks;
