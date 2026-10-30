@@ -5,6 +5,7 @@ import {
   buildEngagementTotals, buildTopEngagementActivities
 } from "../lib/analytics.js";
 import { comma } from "../lib/format.js";
+import { useAppData } from "../context/AppData.jsx";
 import { useUnits } from "../context/Units.jsx";
 import { usePersistentState } from "../lib/storage.js";
 import { ActivityLink, Card, ChartTip, DataTable, Segmented } from "../components/ui.jsx";
@@ -27,6 +28,7 @@ const avg = v => (v == null ? "—" : v.toLocaleString("en-US", { minimumFractio
 
 export default function EngagementPanel({ activities, gearName, snapshots }) {
   const units = useUnits();
+  const { photoBackfill } = useAppData();
   const [metric, setMetric] = usePersistentState("engagementMetric", "kudos");
   const [period, setPeriod] = usePersistentState("engagementPeriod", "month");
   const [valueMode, setValueMode] = usePersistentState("engagementValueMode", "total");
@@ -89,6 +91,11 @@ export default function EngagementPanel({ activities, gearName, snapshots }) {
       {partial && (
         <div className="notice" role="status">
           {comma(totals.withData)} of {comma(totals.activities)} activities have engagement data. Run or resume the Engagement backfill on the <a href="#/admin">Data page</a> to fill in the rest.
+        </div>
+      )}
+      {photoBackfill && photoBackfill.total > 0 && photoBackfill.checked < photoBackfill.total && (
+        <div className="notice" role="status">
+          Photo counts are {comma(photoBackfill.checked)} of {comma(photoBackfill.total)} verified; run the Photo backfill on the <a href="#/admin">Data page</a> for accurate counts.
         </div>
       )}
       <p className="hint">

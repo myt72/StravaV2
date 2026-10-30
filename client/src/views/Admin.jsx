@@ -9,7 +9,7 @@ function Row({ label, children }) {
 }
 
 export default function Admin() {
-  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill, engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks } = useAppData();
+  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill, engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill, photoBackfill, photoActive, startPhotoBackfill, stopPhotoBackfill, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks } = useAppData();
   const [confirmFull, setConfirmFull] = useState(false);
   const [auth, setAuth] = useState({ state: "checking", message: "" });
 
@@ -58,6 +58,10 @@ export default function Admin() {
   const engagementDone = engagementBackfill?.withEngagement || 0;
   const engagementPct = engagementTotal > 0 ? Math.min(100, (engagementDone / engagementTotal) * 100) : 0;
   const engagementState = !engagementBackfill ? "Idle" : engagementBackfill.mode && engagementBackfill.mode !== "idle" ? engagementBackfill.mode : engagementBackfill.completed ? "Complete" : "Idle";
+  const photoTotal = photoBackfill?.total || 0;
+  const photoDone = photoBackfill?.checked || 0;
+  const photoPct = photoTotal > 0 ? Math.min(100, (photoDone / photoTotal) * 100) : 0;
+  const photoState = !photoBackfill ? "Idle" : photoBackfill.mode && photoBackfill.mode !== "idle" ? photoBackfill.mode : photoBackfill.completed ? "Complete" : "Idle";
   const geoState = !geoBackfill ? "Idle" : geoBackfill.completed ? "Complete" : (geoBackfill.mode || "Idle");
 
   const rankTotal = segmentRank?.totalCandidates || 0;
@@ -183,11 +187,38 @@ export default function Admin() {
           {engagementBackfill?.needsRerun && engagementBackfill?.withEngagement > 0 && (
             <p className="hint" role="alert"><strong>Photo counts were corrected: run Start engagement backfill again</strong> to replace the old (zero) photo counts.</p>
           )}
+          <p className="hint">Photo counts from this backfill come from the activity list, which undercounts; the Photo count backfill corrects them.</p>
           <p className="hint">{engagementBackfill?.message || "Idle"}</p>
           <div className="toolbar" style={{ marginTop: 12 }}>
             <button type="button" className="btn primary" disabled={working || engagementActive || engagementBackfill?.completed} onClick={() => startEngagementBackfill(false)}>{engagementBackfill?.pagesDone ? "Resume engagement backfill" : "Start engagement backfill"}</button>
             <button type="button" className="btn" disabled={working || engagementActive || !engagementDone} onClick={() => startEngagementBackfill(true)}>Refresh recent</button>
             <button type="button" className="btn" disabled={working || !engagementActive} onClick={stopEngagementBackfill}>Stop</button>
+          </div>
+        </Card>
+
+        <Card title="Photo count backfill" right={photoActive && <span className="nav-badge pulse">Running</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Strava's activity list undercounts photos (it often reports 0), so this fetches each activity individually and stores only the photo count
+            (no images). It uses one API request per activity, about 2,000 per day, so roughly 3 days for ~4,100 activities. It pauses at the rate-limit
+            reserve and resumes automatically while the server stays running; if the server restarts, press Resume. Verified activities are never re-checked.
+            New activities are picked up by Check new activities; Re-check recent refreshes the latest {comma(photoBackfill?.scope === "recheck" ? photoBackfill?.maxActivities || 50 : 50)} even if verified.
+          </p>
+          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={photoTotal} aria-valuenow={photoDone} aria-label="Photo count backfill progress"><div style={{ width: `${photoPct}%` }} /></div>
+          <div style={{ marginTop: 8 }}>
+            <Row label="Status">{photoState}</Row>
+            <Row label="Checked">{comma(photoDone)} of {comma(photoTotal)} checked</Row>
+            <Row label="Remaining requests (est.)">{comma(photoBackfill?.estimatedRequests || 0)}</Row>
+            <Row label="Estimated days left">{photoBackfill?.estimatedRequests ? `~${comma((photoBackfill.estimatedDays || 0) + 1)}` : "—"}</Row>
+            <Row label="Last run">{photoBackfill?.lastRunAt ? formatDateTime(photoBackfill.lastRunAt) : "—"}</Row>
+            <Row label="Next retry">{photoBackfill?.nextRetryAt ? formatDateTime(photoBackfill.nextRetryAt) : "—"}</Row>
+            <Row label="Last error">{photoBackfill?.lastError || "—"}</Row>
+          </div>
+          <p className="hint">{photoBackfill?.message || "Idle"}</p>
+          <div className="toolbar" style={{ marginTop: 12 }}>
+            <button type="button" className="btn primary" disabled={working || photoActive || photoBackfill?.completed} onClick={() => startPhotoBackfill("all")}>{photoDone ? "Resume photo backfill" : "Start photo backfill"}</button>
+            <button type="button" className="btn" disabled={working || photoActive || !photoTotal} onClick={() => startPhotoBackfill("recent")}>Check new activities</button>
+            <button type="button" className="btn" disabled={working || photoActive || !photoDone} onClick={() => startPhotoBackfill("recheck")}>Re-check recent</button>
+            <button type="button" className="btn" disabled={working || !photoActive} onClick={stopPhotoBackfill}>Stop</button>
           </div>
         </Card>
       </div>

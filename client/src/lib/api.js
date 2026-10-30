@@ -131,6 +131,24 @@ export async function stopEngagementBackfill() {
   return data;
 }
 
+export async function fetchPhotoBackfillStatus() {
+  const { data } = await request("/api/photo-backfill/status", undefined, adminFetch);
+  return data.photoBackfill;
+}
+
+/* mode: "all" (every unverified activity), "recent" (unverified among the newest), "recheck" (newest, even if verified) */
+export async function startPhotoBackfill({ mode = "all" } = {}) {
+  const query = mode === "recheck" ? "?recheck=1" : mode === "recent" ? "?recent=1" : "";
+  const { data } = await request(`/api/photo-backfill/start${query}`, { method: "POST" }, adminFetch);
+  if (data.error) throw new ApiError(data.error);
+  return data;
+}
+
+export async function stopPhotoBackfill() {
+  const { data } = await request("/api/photo-backfill/stop", { method: "POST" }, adminFetch);
+  return data;
+}
+
 export async function fetchSegmentRankStatus() {
   const { data } = await request("/api/segment-ranks/status", undefined, adminFetch);
   return data.segmentRanks;

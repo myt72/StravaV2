@@ -8,6 +8,7 @@ const routeMatching = require("./lib/routeMatching");
 const segmentRanks = require("./lib/segmentRanks");
 const elapsedBackfill = require("./lib/elapsedBackfill");
 const engagementBackfill = require("./lib/engagementBackfill");
+const photoBackfill = require("./lib/photoBackfill");
 const { findChangedActivities } = require("./lib/activitySync");
 
 const app = express();
@@ -86,6 +87,23 @@ let engagementBackfillJob = {
   refresh: false,
   maxPages: engagementBackfill.DEFAULT_REFRESH_PAGES,
   refreshPage: 1,
+  reserve: 25
+};
+
+/* Background photo count backfill job state (one GET /activities/{id} per activity; counts only, never images) */
+let photoBackfillJob = {
+  running: false,
+  stopRequested: false,
+  startedAt: null,
+  lastRunAt: null,
+  nextRetryAt: null,
+  mode: "idle",
+  message: "Idle",
+  lastError: null,
+  scope: "all", // "all" (every unverified), "recent" (unverified among newest N), "recheck" (newest N even if verified)
+  maxActivities: photoBackfill.DEFAULT_RECENT_CHECK,
+  doneIds: new Set(),
+  checkedThisRun: 0,
   reserve: 25
 };
 
@@ -210,6 +228,9 @@ function ensureCacheShape(cache) {
     base.engagementBackfill = engagementBackfill.defaultEngagementBackfill();
   }
   engagementBackfill.migrateEngagementMeta(base.engagementBackfill);
+  if (!base.photoBackfill || typeof base.photoBackfill !== "object") {
+    base.photoBackfill = photoBackfill.defaultPhotoBackfill();
+  }
   if (!Array.isArray(base.athleteSnapshots)) base.athleteSnapshots = [];
   if (!base.segmentRanks || typeof base.segmentRanks !== "object" || Array.isArray(base.segmentRanks)) {
     base.segmentRanks = {};
@@ -478,7 +499,8 @@ function mergeActivitiesById(preferredActivities, existingActivities) {
 
   // Fresh values win (this is what refreshes kudos/comment/photo counts); cached counts are kept only if the fresh item lacks them.
   for (const activity of preferredActivities || []) {
-    merged.set(String(activity.id), engagementBackfill.carryEngagement(activity, existingById.get(String(activity.id))));
+    const existing = existingById.get(String(activity.id));
+    merged.set(String(activity.id), photoBackfill.carryPhotoCheck(engagementBackfill.carryEngagement(activity, existing), existing));
   }
 
   for (const activity of existingActivities || []) {
@@ -1445,6 +1467,203 @@ async function runEngagementBackfillJobLoop() {
   }
 }
 
+/* PHOTO COUNT BACKFILL (one GET /activities/{id} per unverified activity, newest first; counts only, never images) */
+
+const PHOTO_SAVE_EVERY = 25;
+const PHOTO_MAX_CONSECUTIVE_FAILURES = 3;
+const PHOTO_DAILY_BUDGET_ESTIMATE = 2000;
+
+function getPhotoBackfillTargets(cache, job) {
+  const pending = cache.activities.filter(a => !job.doneIds.has(String(a.id)));
+  if (job.scope === "recent") return photoBackfill.pickRecent(pending, job.maxActivities);
+  if (job.scope === "recheck") return photoBackfill.pickRecent(pending, job.maxActivities, { includeVerified: true });
+  return photoBackfill.pickNextBatch(pending, PHOTO_SAVE_EVERY);
+}
+
+function getPhotoBackfillStatus() {
+  const cache = ensureCacheShape(loadCache());
+  const meta = cache.photoBackfill;
+  const progress = photoBackfill.photoBackfillProgress(cache.activities);
+  const estimatedRequests = progress.remaining;
+  const dailyBudget = Math.max(1, (rateLimitLimit > 600 ? rateLimitLimit : PHOTO_DAILY_BUDGET_ESTIMATE) - photoBackfillJob.reserve);
+  const budgetLeftToday = Math.max(0, rateLimitRemaining - photoBackfillJob.reserve);
+  let estimatedDays = 0;
+  let estimatedCompletion = null;
+  if (estimatedRequests > 0) {
+    const extraDays = estimatedRequests > budgetLeftToday ? Math.ceil((estimatedRequests - budgetLeftToday) / dailyBudget) : 0;
+    estimatedDays = extraDays;
+    estimatedCompletion = new Date(Date.now() + extraDays * 24 * 3600 * 1000).toISOString();
+  }
+  return {
+    running: photoBackfillJob.running,
+    stopRequested: photoBackfillJob.stopRequested,
+    startedAt: photoBackfillJob.startedAt,
+    lastRunAt: photoBackfillJob.lastRunAt || meta.lastRunAt || null,
+    nextRetryAt: photoBackfillJob.nextRetryAt,
+    mode: photoBackfillJob.mode,
+    message: photoBackfillJob.message,
+    lastError: photoBackfillJob.lastError || meta.lastError || null,
+    scope: photoBackfillJob.scope,
+    maxActivities: photoBackfillJob.maxActivities,
+    checked: progress.checked,
+    total: progress.total,
+    remaining: progress.remaining,
+    completed: progress.total > 0 && progress.remaining === 0,
+    checkedThisRun: photoBackfillJob.checkedThisRun,
+    estimatedRequests,
+    estimatedDays,
+    estimatedCompletion,
+    reserve: photoBackfillJob.reserve
+  };
+}
+
+function syncPhotoBackfillMeta(cache, patch = {}) {
+  const progress = photoBackfill.photoBackfillProgress(cache.activities);
+  Object.assign(cache.photoBackfill, {
+    checked: progress.checked,
+    total: progress.total,
+    completed: progress.total > 0 && progress.remaining === 0,
+    version: photoBackfill.PHOTO_BACKFILL_VERSION
+  }, patch);
+}
+
+function photoBackfillWait(nextRetry, message) {
+  photoBackfillJob.nextRetryAt = nextRetry.toISOString();
+  photoBackfillJob.mode = "waiting";
+  photoBackfillJob.message = `${message} Waiting until ${nextRetry.toLocaleString()}`;
+}
+
+async function runPhotoBackfillJobLoop() {
+  if (photoBackfillJob.running) return;
+
+  const job = photoBackfillJob;
+  job.running = true;
+  job.stopRequested = false;
+  job.mode = "running";
+  job.message = "Photo backfill running";
+  let consecutiveFailures = 0;
+  let finished = false;
+
+  while (!job.stopRequested && !finished) {
+    if (job.nextRetryAt) {
+      const retryAt = new Date(job.nextRetryAt).getTime();
+      if (retryAt > Date.now()) {
+        job.mode = "waiting";
+        job.message = `Waiting until ${new Date(job.nextRetryAt).toLocaleString()} to retry`;
+        await sleep(Math.min(retryAt - Date.now(), 60000));
+        continue;
+      }
+      job.nextRetryAt = null;
+      job.mode = "running";
+    }
+
+    if (!access_token) {
+      job.mode = "error";
+      job.message = "Not authenticated";
+      break;
+    }
+
+    const cache = ensureCacheShape(loadCache());
+    if (!cache.activities.length) {
+      job.mode = "error";
+      job.message = "No cache available. Run a full data pull first.";
+      break;
+    }
+
+    const batch = getPhotoBackfillTargets(cache, job);
+    if (batch.length === 0) {
+      syncPhotoBackfillMeta(cache, { lastRunAt: new Date().toISOString(), lastError: null });
+      saveCache(cache, { skipClusters: true });
+      job.lastRunAt = cache.photoBackfill.lastRunAt;
+      job.lastError = null;
+      job.mode = "complete";
+      job.message = job.scope === "all" ? "Photo backfill complete" : "Photo check complete";
+      finished = true;
+      break;
+    }
+
+    const byId = new Map(cache.activities.map(a => [String(a.id), a]));
+    let dirty = false;
+    const persist = (patch = {}) => {
+      syncPhotoBackfillMeta(cache, { lastRunAt: new Date().toISOString(), ...patch });
+      saveCache(cache, { skipClusters: true });
+      job.lastRunAt = cache.photoBackfill.lastRunAt;
+      dirty = false;
+    };
+
+    for (const target of batch) {
+      if (job.stopRequested) break;
+
+      // Keep a safety reserve of the rate limit for other jobs.
+      if (rateLimitRemaining <= job.reserve || rateLimitShortRemaining <= 2) {
+        photoBackfillWait(getNextRetryTime(), "Rate limit reserve reached.");
+        rateLimitRemaining = Math.max(rateLimitRemaining, job.reserve + 1);
+        rateLimitShortRemaining = Math.max(rateLimitShortRemaining, 3);
+        break;
+      }
+
+      const activity = byId.get(String(target.id));
+      const id = String(target.id);
+      try {
+        requestCount = 0;
+        const res = await stravaFetch(`https://www.strava.com/api/v3/activities/${encodeURIComponent(id)}`);
+
+        if (res.status === 429) {
+          photoBackfillWait(getNextRetryTime(), "Rate limited (429).");
+          break;
+        }
+        if (res.status === 404 || res.status === 410) {
+          // Deleted/inaccessible activity: keep the existing value and never check it again.
+          console.warn(`[Photo Backfill] Activity ${id} returned ${res.status}; keeping existing count.`);
+          photoBackfill.markPhotoChecked(activity);
+          job.doneIds.add(id);
+          job.checkedThisRun += 1;
+          consecutiveFailures = 0;
+          dirty = true;
+        } else if (res.status === 401 || res.status === 403) {
+          throw Object.assign(new Error(`Strava responded ${res.status} (check authentication and activity:read_all scope)`), { fatal: true });
+        } else if (!res.ok) {
+          throw new Error(`Strava responded ${res.status} for activity ${id}`);
+        } else {
+          const detail = await res.json();
+          const count = photoBackfill.photoCountFromDetail(detail);
+          job.doneIds.add(id);
+          if (count === undefined) console.warn(`[Photo Backfill] Activity ${id} had no photo total; left unverified.`);
+          else photoBackfill.applyPhotoCount(activity, count);
+          job.checkedThisRun += 1;
+          consecutiveFailures = 0;
+          dirty = true;
+        }
+        job.lastError = null;
+        job.mode = "running";
+        job.message = `Checked ${job.checkedThisRun} activities this run`;
+        if (job.checkedThisRun % PHOTO_SAVE_EVERY === 0) persist({ lastError: null });
+      } catch (err) {
+        console.error("[Photo Backfill Job] Error:", err);
+        job.doneIds.add(id);
+        consecutiveFailures += 1;
+        if (err.fatal || consecutiveFailures >= PHOTO_MAX_CONSECUTIVE_FAILURES) {
+          job.lastError = err.message;
+          job.mode = "error";
+          job.message = err.message;
+          persist({ lastError: err.message });
+          finished = true;
+          break;
+        }
+      }
+    }
+
+    if (dirty) persist();
+    if (!finished && !job.stopRequested && !job.nextRetryAt) await sleep(250);
+  }
+
+  job.running = false;
+  if (job.stopRequested) {
+    job.mode = "stopped";
+    job.message = "Photo backfill stopped";
+  }
+}
+
 /* SEGMENT RANK BACKFILL (one leaderboard request per candidate segment, plus one /athlete request per run) */
 
 function getSegmentRankCandidates(cache) {
@@ -1646,6 +1865,7 @@ app.get("/api/analytics/auto", async (req, res) => {
       geoBackfillStatus: getGeoBackfillStatus(),
       elapsedBackfillStatus: getElapsedBackfillStatus(),
       engagementBackfillStatus: getEngagementBackfillStatus(),
+      photoBackfillStatus: getPhotoBackfillStatus(),
       segmentRankStatus: getSegmentRankStatus(),
       message: "Loaded from local cache.json"
     });
@@ -1673,6 +1893,9 @@ app.post("/api/pr-backfill/start", requireAdmin, async (req, res) => {
   }
   if (engagementBackfillJob.running) {
     return res.status(409).json({ error: "Engagement backfill is running. Stop it before starting the PR backfill." });
+  }
+  if (photoBackfillJob.running) {
+    return res.status(409).json({ error: "Photo backfill is running. Stop it before starting the PR backfill." });
   }
 
   if (prBackfillJob.running) {
@@ -1748,6 +1971,9 @@ app.post("/api/geo-backfill/start", requireAdmin, async (req, res) => {
   if (engagementBackfillJob.running) {
     return res.status(409).json({ error: "Engagement backfill is running. Stop it before starting the geo backfill." });
   }
+  if (photoBackfillJob.running) {
+    return res.status(409).json({ error: "Photo backfill is running. Stop it before starting the geo backfill." });
+  }
 
   const restart = req.query.restart === "1" || (req.body && req.body.restart === true);
   const status = getGeoBackfillStatus();
@@ -1800,6 +2026,9 @@ app.post("/api/segment-ranks/start", requireAdmin, async (req, res) => {
   }
   if (engagementBackfillJob.running) {
     return res.status(409).json({ error: "Engagement backfill is running. Stop it before starting the segment rank backfill." });
+  }
+  if (photoBackfillJob.running) {
+    return res.status(409).json({ error: "Photo backfill is running. Stop it before starting the segment rank backfill." });
   }
 
   const body = req.body || {};
@@ -1897,6 +2126,9 @@ app.post("/api/elapsed-backfill/start", requireAdmin, async (req, res) => {
   if (engagementBackfillJob.running) {
     return res.status(409).json({ error: "Engagement backfill is running. Stop it before starting the elapsed time backfill." });
   }
+  if (photoBackfillJob.running) {
+    return res.status(409).json({ error: "Photo backfill is running. Stop it before starting the elapsed time backfill." });
+  }
 
   const restart = req.query.restart === "1" || (req.body && req.body.restart === true);
   const status = getElapsedBackfillStatus();
@@ -1957,6 +2189,9 @@ app.post("/api/engagement-backfill/start", requireAdmin, async (req, res) => {
   if (segmentRankJob.running) {
     return res.status(409).json({ error: "Segment rank backfill is running. Stop it before starting the engagement backfill." });
   }
+  if (photoBackfillJob.running) {
+    return res.status(409).json({ error: "Photo backfill is running. Stop it before starting the engagement backfill." });
+  }
 
   const body = req.body || {};
   const refresh = req.query.refresh === "1" || body.refresh === true;
@@ -2003,12 +2238,76 @@ app.get("/api/engagement-backfill/status", requireAdmin, async (req, res) => {
   return res.json({ ok: true, engagementBackfill: getEngagementBackfillStatus() });
 });
 
+app.post("/api/photo-backfill/start", requireAdmin, async (req, res) => {
+  if (!access_token) return res.status(401).json({ error: "Not authenticated" });
+
+  const cache = ensureCacheShape(loadCache());
+  if (!cache.activities.length) {
+    return res.status(400).json({ error: "No cache available. Run a full data pull first." });
+  }
+  if (photoBackfillJob.running) {
+    return res.json({ ok: true, alreadyRunning: true, photoBackfill: getPhotoBackfillStatus(), message: "Photo backfill already running" });
+  }
+  const others = [
+    [prBackfillJob, "PR backfill"],
+    [geoBackfillJob, "Geo backfill"],
+    [elapsedBackfillJob, "Elapsed time backfill"],
+    [engagementBackfillJob, "Engagement backfill"],
+    [segmentRankJob, "Segment rank backfill"]
+  ];
+  for (const [job, label] of others) {
+    if (job.running) return res.status(409).json({ error: `${label} is running. Stop it before starting the photo backfill.` });
+  }
+
+  const body = req.body || {};
+  const recheck = req.query.recheck === "1" || body.recheck === true;
+  const recent = req.query.recent === "1" || body.recent === true;
+  const scope = recheck ? "recheck" : recent ? "recent" : "all";
+  const defaultMax = recheck ? photoBackfill.DEFAULT_RECENT_RECHECK : photoBackfill.DEFAULT_RECENT_CHECK;
+  const maxActivities = Math.floor(Number(req.query.maxActivities || body.maxActivities || defaultMax));
+  const reserve = Number(req.query.reserve || body.reserve || 25);
+
+  if (scope === "all" && !photoBackfill.pickNextBatch(cache.activities, 1).length) {
+    return res.json({ ok: true, photoBackfill: getPhotoBackfillStatus(), message: "Photo backfill already complete" });
+  }
+
+  photoBackfillJob = {
+    ...photoBackfillJob,
+    running: false,
+    stopRequested: false,
+    startedAt: new Date().toISOString(),
+    nextRetryAt: null,
+    lastError: null,
+    mode: "starting",
+    message: scope === "recheck" ? "Photo re-check starting" : scope === "recent" ? "Photo check of new activities starting" : "Photo backfill starting",
+    scope,
+    maxActivities: Number.isFinite(maxActivities) && maxActivities >= 1 ? Math.min(maxActivities, 500) : defaultMax,
+    doneIds: new Set(),
+    checkedThisRun: 0,
+    reserve: Number.isFinite(reserve) && reserve >= 0 ? reserve : 25
+  };
+
+  runPhotoBackfillJobLoop();
+
+  return res.json({ ok: true, photoBackfill: getPhotoBackfillStatus(), message: "Photo backfill started" });
+});
+
+app.post("/api/photo-backfill/stop", requireAdmin, async (req, res) => {
+  photoBackfillJob.stopRequested = true;
+  return res.json({ ok: true, photoBackfill: getPhotoBackfillStatus(), message: "Photo backfill stop requested" });
+});
+
+app.get("/api/photo-backfill/status", requireAdmin, async (req, res) => {
+  return res.json({ ok: true, photoBackfill: getPhotoBackfillStatus() });
+});
+
 app.post("/api/matched-rides/recompute", requireAdmin, async (req, res) => {
   const cache = ensureCacheShape(loadCache());
   if (!cache.activities.length) return res.status(400).json({ error: "No cache available. Run a full data pull first." });
   if (geoBackfillJob.running) return res.status(409).json({ error: "Geo backfill is running. Try again when it finishes." });
   if (elapsedBackfillJob.running) return res.status(409).json({ error: "Elapsed time backfill is running. Try again when it finishes." });
   if (engagementBackfillJob.running) return res.status(409).json({ error: "Engagement backfill is running. Try again when it finishes." });
+  if (photoBackfillJob.running) return res.status(409).json({ error: "Photo backfill is running. Try again when it finishes." });
   cache.routeClusters = routeMatching.emptyRouteClusters();
   saveCache(cache); // rebuilds every cluster from scratch
   const clusters = cache.routeClusters.clusters;
@@ -2048,6 +2347,9 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
 
   if (full) {
     const allActivities = await fetchAllActivitiesOnce();
+    // Keep counts already verified by the photo backfill (the list endpoint's photo value is unreliable).
+    const cachedById = new Map((cache.activities || []).map(a => [String(a.id), a]));
+    for (const a of allActivities) photoBackfill.carryPhotoCheck(a, cachedById.get(String(a.id)));
 
     if (!allActivities || allActivities.length === 0) {
       return res.json({
@@ -2066,6 +2368,7 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
       segmentRankMeta: cache.segmentRankMeta,
       elapsedBackfill: cache.elapsedBackfill,
       engagementBackfill: cache.engagementBackfill,
+      photoBackfill: cache.photoBackfill,
       athleteSnapshots: cache.athleteSnapshots,
       activityCounts,
       gearTotals,
@@ -2177,6 +2480,7 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
       segmentRankMeta: cache.segmentRankMeta,
       elapsedBackfill: cache.elapsedBackfill,
       engagementBackfill: cache.engagementBackfill,
+      photoBackfill: cache.photoBackfill,
       athleteSnapshots: cache.athleteSnapshots,
       activityCounts,
       gearTotals,
