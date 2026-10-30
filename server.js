@@ -209,6 +209,7 @@ function ensureCacheShape(cache) {
   if (!base.engagementBackfill || typeof base.engagementBackfill !== "object") {
     base.engagementBackfill = engagementBackfill.defaultEngagementBackfill();
   }
+  engagementBackfill.migrateEngagementMeta(base.engagementBackfill);
   if (!Array.isArray(base.athleteSnapshots)) base.athleteSnapshots = [];
   if (!base.segmentRanks || typeof base.segmentRanks !== "object" || Array.isArray(base.segmentRanks)) {
     base.segmentRanks = {};
@@ -1101,6 +1102,8 @@ async function runGeoBackfillJobLoop() {
         }
         for (const a of stillPending) Object.assign(a, { summary_polyline: "", start_latlng: [], end_latlng: [] });
         meta.completed = true;
+        meta.version = engagementBackfill.ENGAGEMENT_VERSION;
+        delete meta.migrating;
         meta.secondPass = false;
         cache.routeClusters = routeMatching.emptyRouteClusters();
         saveCache(cache); // full route recompute now that geo data is complete
@@ -1299,6 +1302,7 @@ function getEngagementBackfillStatus() {
     total: cache.activities.length,
     withEngagement: cache.activities.filter(engagementBackfill.hasEngagement).length,
     completed: Boolean(meta.completed),
+    needsRerun: engagementBackfill.engagementNeedsRerun(meta),
     refresh: engagementBackfillJob.refresh,
     maxPages: engagementBackfillJob.maxPages,
     reserve: engagementBackfillJob.reserve
@@ -1417,7 +1421,7 @@ async function runEngagementBackfillJobLoop() {
         return;
       }
 
-      engagementBackfill.mergeEngagement(cache.activities, data);
+      engagementBackfill.mergeEngagement(cache.activities, data, { overwrite: engagementBackfill.engagementNeedsRerun(meta) ? ["photo_count"] : false });
       meta.nextPage = page + 1;
       meta.pagesDone = (meta.pagesDone || 0) + 1;
       saveCache(cache, { skipClusters: true });

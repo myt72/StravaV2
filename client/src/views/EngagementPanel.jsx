@@ -92,7 +92,7 @@ export default function EngagementPanel({ activities, gearName, snapshots }) {
         </div>
       )}
       <p className="hint">
-        Counts are the current totals attributed to the activity date, not the date each kudos was given. Kudos you have given are not available from Strava. Photos are counts only.
+        Counts are the current totals attributed to the activity date, not the date each kudos was given. Kudos you have given are not available from Strava. Photo counts are counts of all photos on the activity (Strava + Instagram), counts only.
       </p>
 
       <div className="grid engagement-kpis" role="group" aria-label="Engagement totals" style={{ marginTop: 12 }}>

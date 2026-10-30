@@ -127,7 +127,7 @@ and `GET /api/elapsed-backfill/status`. A normal refresh also fills `elapsed_tim
 
 **What is stored.** Each cached activity gets `kudos_count`, `comment_count` and `photo_count` (non-negative integers, taken
 from the `/athlete/activities` summary, so no per-activity requests). A missing field means "not backfilled yet" and is
-different from `0`. `photo_count` is used; `total_photo_count` is only a fallback when `photo_count` is missing. These are
+different from `0`. `photo_count` stores the **total** photos on the activity (Strava + Instagram): `total_photo_count` is preferred, and Strava's own `photo_count` (externally hosted/Instagram photos only, usually `0`) is only a fallback when `total_photo_count` is absent. A backfill version marker (`engagementBackfill.version`) makes caches from before this fix re-run once and overwrite stored photo counts; the Data page prompts for it. These are
 **counts only**: no photos or photo URLs are downloaded, stored or shown. The fields are not part of the activity change
 signature, so a changing kudos count never triggers segment re-fetches.
 
