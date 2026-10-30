@@ -1704,3 +1704,129 @@ export function buildBikePrSegments(segmentData, activities, gearId, excludedSeg
   });
   return [...map.values()].sort((a, b) => b.count - a.count || new Date(b.latestDate) - new Date(a.latestDate) || a.name.localeCompare(b.name));
 }
+
+/* ---------- Engagement (kudos received, comments, photo counts) ----------
+   Strava only reports the CURRENT count per activity, so everything is attributed to the activity date.
+   Activities whose count is undefined ("not backfilled yet") are "no data": excluded from averages, never treated as 0. */
+
+export const ENGAGEMENT_METRICS = {
+  kudos: { field: "kudos_count", label: "Kudos" },
+  comments: { field: "comment_count", label: "Comments" },
+  photos: { field: "photo_count", label: "Photos" }
+};
+
+const countOf = (activity, field) => {
+  const v = activity?.[field];
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : undefined;
+};
+
+export const hasEngagementData = activity => countOf(activity, "kudos_count") !== undefined;
+
+const newEngagementBucket = extra => ({
+  ...extra, activities: 0, withData: 0,
+  kudos: 0, comments: 0, photos: 0,
+  kudosN: 0, commentsN: 0, photosN: 0
+});
+
+function addEngagement(bucket, activity) {
+  bucket.activities += 1;
+  if (hasEngagementData(activity)) bucket.withData += 1;
+  Object.entries(ENGAGEMENT_METRICS).forEach(([key, { field }]) => {
+    const v = countOf(activity, field);
+    if (v === undefined) return;
+    bucket[key] += v;
+    bucket[`${key}N`] += 1;
+  });
+}
+
+function finishEngagementBucket(bucket) {
+  const per = key => (bucket[`${key}N`] > 0 ? bucket[key] / bucket[`${key}N`] : null);
+  return {
+    ...bucket,
+    withoutData: bucket.activities - bucket.withData,
+    kudosPerActivity: per("kudos"),
+    commentsPerActivity: per("comments"),
+    photosPerActivity: per("photos")
+  };
+}
+
+export function buildEngagementTotals(activities) {
+  const bucket = newEngagementBucket({});
+  (activities || []).forEach(a => addEngagement(bucket, a));
+  const t = finishEngagementBucket(bucket);
+  return {
+    activities: t.activities, withData: t.withData, withoutData: t.withoutData,
+    kudos: t.kudos, comments: t.comments, photos: t.photos,
+    avgKudos: t.kudosPerActivity, avgComments: t.commentsPerActivity, avgPhotos: t.photosPerActivity
+  };
+}
+
+/** Per-period engagement, newest first. period: "month" | "year" | "week". */
+export function buildEngagementByPeriod(activities, { period = "month" } = {}) {
+  const buckets = new Map();
+  (activities || []).forEach(a => {
+    const d = new Date(a.start_date);
+    if (Number.isNaN(d.getTime())) return;
+    let key; let label;
+    if (period === "year") {
+      key = String(d.getFullYear()); label = key;
+    } else if (period === "week") {
+      const ws = getWeekStartMonday(a.start_date);
+      key = getDateKey(ws); label = formatDate(ws);
+    } else {
+      key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      label = `${formatMonthLabel(d.getMonth())} ${d.getFullYear()}`;
+    }
+    if (!buckets.has(key)) buckets.set(key, newEngagementBucket({ key, label }));
+    addEngagement(buckets.get(key), a);
+  });
+  return [...buckets.values()].sort((a, b) => b.key.localeCompare(a.key)).map(finishEngagementBucket);
+}
+
+/** Top N activities by a metric ("kudos" | "comments" | "photos"); activities with no data or a zero count are left out. */
+export function buildTopEngagementActivities(activities, { metric = "kudos", limit = 10 } = {}) {
+  const { field } = ENGAGEMENT_METRICS[metric] || ENGAGEMENT_METRICS.kudos;
+  return (activities || [])
+    .map(activity => ({ activity, value: countOf(activity, field) }))
+    .filter(r => r.value !== undefined && r.value > 0)
+    .sort((a, b) => b.value - a.value || new Date(b.activity.start_date) - new Date(a.activity.start_date))
+    .slice(0, limit);
+}
+
+/** Engagement grouped by "bike" | "sport" | "distanceBand" | "year". */
+export function buildEngagementBreakdown(activities, { by = "bike", gearName = id => id, units = IMPERIAL } = {}) {
+  const edges = LONG_RIDE_EDGES[units.system];
+  const bandLabels = [`Under ${edges[0]}`, ...longRideBandLabels(units)];
+  const buckets = new Map();
+  (activities || []).forEach(a => {
+    let key; let label; let order = 0;
+    if (by === "sport") {
+      key = a.sport_type || "Other"; label = key;
+    } else if (by === "year") {
+      const y = new Date(a.start_date).getFullYear();
+      if (Number.isNaN(y)) return;
+      key = String(y); label = key;
+    } else if (by === "distanceBand") {
+      const distance = units.distance(a.distance || 0);
+      let idx = 0;
+      edges.forEach((edge, i) => { if (distance >= edge) idx = i + 1; });
+      key = String(idx); label = bandLabels[idx]; order = idx;
+    } else {
+      key = a.gear_id || "none"; label = a.gear_id ? gearName(a.gear_id) : "No bike";
+    }
+    if (!buckets.has(key)) buckets.set(key, newEngagementBucket({ key, label, order }));
+    addEngagement(buckets.get(key), a);
+  });
+  const rows = [...buckets.values()].map(finishEngagementBucket);
+  if (by === "year") return rows.sort((a, b) => b.key.localeCompare(a.key));
+  if (by === "distanceBand") return rows.sort((a, b) => a.order - b.order);
+  return rows.sort((a, b) => (b.kudosPerActivity ?? -1) - (a.kudosPerActivity ?? -1) || b.activities - a.activities || a.label.localeCompare(b.label));
+}
+
+/** Follower / following series (oldest first) from cache.athleteSnapshots; empty when none are recorded. */
+export function buildEngagementSnapshots(snapshots) {
+  return (Array.isArray(snapshots) ? snapshots : [])
+    .filter(s => s && typeof s.date === "string" && Number.isFinite(s.followers) && Number.isFinite(s.following))
+    .map(s => ({ date: s.date, label: s.date, followers: s.followers, following: s.following }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}

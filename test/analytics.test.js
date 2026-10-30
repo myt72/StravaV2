@@ -325,3 +325,79 @@ test("annual totals and year rows aggregate PRs from segment data", () => {
   assert.strictEqual(annual.annual[2024].pr_count, 3);
   assert.strictEqual(analytics.buildAnnualTotals(rides, segmentData).pr_count, 4);
 });
+
+const eng = (start_date, extra = {}) => activity(start_date, { distance: 1609.34, ...extra });
+
+test("buildEngagementTotals counts no-data activities separately and excludes them from averages", () => {
+  const t = analytics.buildEngagementTotals([
+    eng("2024-01-10T08:00:00", { kudos_count: 10, comment_count: 2, photo_count: 1 }),
+    eng("2024-01-11T08:00:00", { kudos_count: 20, comment_count: 0, photo_count: 0 }),
+    eng("2024-01-12T08:00:00")
+  ]);
+  assert.strictEqual(t.activities, 3);
+  assert.strictEqual(t.withData, 2);
+  assert.strictEqual(t.withoutData, 1);
+  assert.strictEqual(t.kudos, 30);
+  assert.strictEqual(t.avgKudos, 15);
+  assert.strictEqual(t.avgComments, 1);
+  assert.strictEqual(analytics.buildEngagementTotals([eng("2024-01-10T08:00:00")]).avgKudos, null);
+});
+
+test("buildEngagementByPeriod orders newest first for month, year and week", () => {
+  const acts = [
+    eng("2023-12-31T08:00:00", { kudos_count: 4 }),
+    eng("2024-01-10T08:00:00", { kudos_count: 10 }),
+    eng("2024-01-12T08:00:00", { kudos_count: 20 }),
+    eng("2024-02-01T08:00:00")
+  ];
+  const months = analytics.buildEngagementByPeriod(acts, { period: "month" });
+  assert.deepStrictEqual(months.map(r => r.key), ["2024-02", "2024-01", "2023-12"]);
+  assert.strictEqual(months[1].kudos, 30);
+  assert.strictEqual(months[1].kudosPerActivity, 15);
+  assert.strictEqual(months[0].kudosPerActivity, null);
+  assert.strictEqual(months[0].withData, 0);
+  const years = analytics.buildEngagementByPeriod(acts, { period: "year" });
+  assert.deepStrictEqual(years.map(r => r.key), ["2024", "2023"]);
+  assert.strictEqual(years[0].activities, 3);
+  const weeks = analytics.buildEngagementByPeriod(acts, { period: "week" });
+  assert.deepStrictEqual(weeks.map(r => r.key), ["2024-01-29", "2024-01-08", "2023-12-25"]);
+});
+
+test("buildTopEngagementActivities returns the top N for a metric and skips no-data", () => {
+  const acts = [
+    eng("2024-01-10T08:00:00", { id: 1, kudos_count: 5, comment_count: 9 }),
+    eng("2024-01-11T08:00:00", { id: 2, kudos_count: 12, comment_count: 0 }),
+    eng("2024-01-12T08:00:00", { id: 3 }),
+    eng("2024-01-13T08:00:00", { id: 4, kudos_count: 0 })
+  ];
+  assert.deepStrictEqual(analytics.buildTopEngagementActivities(acts, { metric: "kudos", limit: 1 }).map(r => r.activity.id), [2]);
+  assert.deepStrictEqual(analytics.buildTopEngagementActivities(acts, { metric: "kudos", limit: 10 }).map(r => r.value), [12, 5]);
+  assert.deepStrictEqual(analytics.buildTopEngagementActivities(acts, { metric: "comments" }).map(r => r.activity.id), [1]);
+  assert.deepStrictEqual(analytics.buildTopEngagementActivities(acts, { metric: "photos" }), []);
+});
+
+test("buildEngagementBreakdown groups by bike, sport, year and distance band", () => {
+  const acts = [
+    eng("2023-05-01T08:00:00", { gear_id: "b1", kudos_count: 10, distance: 10 * 1609.34 }),
+    eng("2024-05-01T08:00:00", { gear_id: "b1", kudos_count: 20, distance: 30 * 1609.34 }),
+    eng("2024-06-01T08:00:00", { gear_id: "b2", kudos_count: 4, sport_type: "Run", distance: 22 * 1609.34 }),
+    eng("2024-06-02T08:00:00", { kudos_count: 1 })
+  ];
+  const bikes = analytics.buildEngagementBreakdown(acts, { by: "bike", gearName: id => `Bike ${id}` });
+  assert.deepStrictEqual(bikes.map(r => r.label), ["Bike b1", "Bike b2", "No bike"]);
+  assert.strictEqual(bikes[0].kudosPerActivity, 15);
+  assert.deepStrictEqual(analytics.buildEngagementBreakdown(acts, { by: "sport" }).map(r => r.label), ["Ride", "Run"]);
+  assert.deepStrictEqual(analytics.buildEngagementBreakdown(acts, { by: "year" }).map(r => r.key), ["2024", "2023"]);
+  const bands = analytics.buildEngagementBreakdown(acts, { by: "distanceBand" });
+  assert.deepStrictEqual(bands.map(r => r.label), ["Under 20", "20-25", "30-35"]);
+});
+
+test("buildEngagementSnapshots returns a sorted series and ignores invalid entries", () => {
+  assert.deepStrictEqual(analytics.buildEngagementSnapshots(undefined), []);
+  const s = analytics.buildEngagementSnapshots([
+    { date: "2026-03-02", followers: 6, following: 8 },
+    { date: "2026-03-01", followers: 5, following: 8 },
+    { date: "2026-03-03", followers: "x", following: 1 }
+  ]);
+  assert.deepStrictEqual(s.map(r => r.date), ["2026-03-01", "2026-03-02"]);
+});

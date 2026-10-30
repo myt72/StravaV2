@@ -7,6 +7,7 @@ const { client_id, client_secret, admin_password, redirect_uri, port, bike_types
 const routeMatching = require("./lib/routeMatching");
 const segmentRanks = require("./lib/segmentRanks");
 const elapsedBackfill = require("./lib/elapsedBackfill");
+const engagementBackfill = require("./lib/engagementBackfill");
 const { findChangedActivities } = require("./lib/activitySync");
 
 const app = express();
@@ -69,6 +70,22 @@ let elapsedBackfillJob = {
   mode: "idle",
   message: "Idle",
   lastError: null,
+  reserve: 25
+};
+
+/* Background engagement (kudos/comments/photo counts) backfill job state (re-pages /athlete/activities to add counts) */
+let engagementBackfillJob = {
+  running: false,
+  stopRequested: false,
+  startedAt: null,
+  lastRunAt: null,
+  nextRetryAt: null,
+  mode: "idle",
+  message: "Idle",
+  lastError: null,
+  refresh: false,
+  maxPages: engagementBackfill.DEFAULT_REFRESH_PAGES,
+  refreshPage: 1,
   reserve: 25
 };
 
@@ -189,6 +206,10 @@ function ensureCacheShape(cache) {
   if (!base.elapsedBackfill || typeof base.elapsedBackfill !== "object") {
     base.elapsedBackfill = elapsedBackfill.defaultElapsedBackfill();
   }
+  if (!base.engagementBackfill || typeof base.engagementBackfill !== "object") {
+    base.engagementBackfill = engagementBackfill.defaultEngagementBackfill();
+  }
+  if (!Array.isArray(base.athleteSnapshots)) base.athleteSnapshots = [];
   if (!base.segmentRanks || typeof base.segmentRanks !== "object" || Array.isArray(base.segmentRanks)) {
     base.segmentRanks = {};
   }
@@ -383,7 +404,8 @@ function mapActivity(a) {
     total_elevation_gain: a.total_elevation_gain,
     start_date: a.start_date,
     gear_id: a.gear_id,
-    ...mapGeoFields(a)
+    ...mapGeoFields(a),
+    ...engagementBackfill.mapEngagementFields(a)
   };
 }
 
@@ -451,9 +473,11 @@ async function fetchRecentActivitiesPage() {
 
 function mergeActivitiesById(preferredActivities, existingActivities) {
   const merged = new Map();
+  const existingById = new Map((existingActivities || []).map(a => [String(a.id), a]));
 
+  // Fresh values win (this is what refreshes kudos/comment/photo counts); cached counts are kept only if the fresh item lacks them.
   for (const activity of preferredActivities || []) {
-    merged.set(String(activity.id), activity);
+    merged.set(String(activity.id), engagementBackfill.carryEngagement(activity, existingById.get(String(activity.id))));
   }
 
   for (const activity of existingActivities || []) {
@@ -1255,6 +1279,168 @@ async function runElapsedBackfillJobLoop() {
   }
 }
 
+/* ENGAGEMENT BACKFILL (kudos / comments / photo counts; about ceil(activities / 200) API calls, or maxPages for a refresh; no per-activity requests) */
+
+function getEngagementBackfillStatus() {
+  const cache = ensureCacheShape(loadCache());
+  const meta = cache.engagementBackfill;
+  return {
+    running: engagementBackfillJob.running,
+    stopRequested: engagementBackfillJob.stopRequested,
+    startedAt: engagementBackfillJob.startedAt,
+    lastRunAt: engagementBackfillJob.lastRunAt || meta.lastRunAt || null,
+    nextRetryAt: engagementBackfillJob.nextRetryAt,
+    mode: engagementBackfillJob.mode,
+    message: engagementBackfillJob.message,
+    lastError: engagementBackfillJob.lastError || meta.lastError || null,
+    nextPage: meta.nextPage || 1,
+    pagesDone: meta.pagesDone || 0,
+    estimatedPages: Math.ceil(cache.activities.length / 200),
+    total: cache.activities.length,
+    withEngagement: cache.activities.filter(engagementBackfill.hasEngagement).length,
+    completed: Boolean(meta.completed),
+    refresh: engagementBackfillJob.refresh,
+    maxPages: engagementBackfillJob.maxPages,
+    reserve: engagementBackfillJob.reserve
+  };
+}
+
+async function runEngagementBackfillJobLoop() {
+  if (engagementBackfillJob.running) return;
+
+  engagementBackfillJob.running = true;
+  engagementBackfillJob.stopRequested = false;
+  engagementBackfillJob.mode = "running";
+  engagementBackfillJob.message = "Engagement backfill running";
+
+  while (!engagementBackfillJob.stopRequested) {
+    if (engagementBackfillJob.nextRetryAt) {
+      const retryAt = new Date(engagementBackfillJob.nextRetryAt).getTime();
+      if (retryAt > Date.now()) {
+        engagementBackfillJob.mode = "waiting";
+        engagementBackfillJob.message = `Waiting until ${new Date(engagementBackfillJob.nextRetryAt).toLocaleString()} to retry`;
+        await sleep(Math.min(retryAt - Date.now(), 60000));
+        continue;
+      }
+      engagementBackfillJob.nextRetryAt = null;
+      engagementBackfillJob.mode = "running";
+    }
+
+    if (!access_token) {
+      engagementBackfillJob.mode = "error";
+      engagementBackfillJob.message = "Not authenticated";
+      break;
+    }
+
+    // Keep a safety reserve of the rate limit for other jobs.
+    if (rateLimitRemaining <= engagementBackfillJob.reserve || rateLimitShortRemaining <= 2) {
+      const nextRetry = getNextRetryTime();
+      engagementBackfillJob.nextRetryAt = nextRetry.toISOString();
+      engagementBackfillJob.mode = "waiting";
+      engagementBackfillJob.message = `Rate limit reserve reached. Waiting until ${nextRetry.toLocaleString()}`;
+      rateLimitRemaining = Math.max(rateLimitRemaining, engagementBackfillJob.reserve + 1);
+      rateLimitShortRemaining = Math.max(rateLimitShortRemaining, 3);
+      continue;
+    }
+
+    const cache = ensureCacheShape(loadCache());
+    if (!cache.activities.length) {
+      engagementBackfillJob.mode = "error";
+      engagementBackfillJob.message = "No cache available. Run a full data pull first.";
+      break;
+    }
+
+    const meta = cache.engagementBackfill;
+    const refreshMode = Boolean(engagementBackfillJob.refresh);
+    try {
+      // Refresh only re-pages the first maxPages pages and leaves the resumable backfill progress untouched.
+      const page = refreshMode ? engagementBackfillJob.refreshPage || 1 : meta.nextPage || 1;
+      requestCount = 0;
+      const res = await stravaFetch(`https://www.strava.com/api/v3/athlete/activities?per_page=200&page=${page}`);
+
+      if (res.status === 429) {
+        const nextRetry = getNextRetryTime();
+        engagementBackfillJob.nextRetryAt = nextRetry.toISOString();
+        engagementBackfillJob.mode = "waiting";
+        engagementBackfillJob.message = `Rate limited (429). Waiting until ${nextRetry.toLocaleString()}`;
+        continue;
+      }
+      if (!res.ok) {
+        const message = `Strava responded ${res.status}`;
+        meta.lastError = message;
+        saveCache(cache, { skipClusters: true });
+        engagementBackfillJob.lastError = message;
+        engagementBackfillJob.mode = "error";
+        engagementBackfillJob.message = message;
+        break;
+      }
+
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error("Unexpected response from Strava");
+
+      meta.lastRunAt = new Date().toISOString();
+      meta.lastError = null;
+      engagementBackfillJob.lastRunAt = meta.lastRunAt;
+      engagementBackfillJob.lastError = null;
+
+      if (refreshMode) {
+        engagementBackfill.mergeEngagement(cache.activities, data, { overwrite: true });
+        saveCache(cache, { skipClusters: true });
+        engagementBackfillJob.refreshPage = page + 1;
+        if (data.length === 0 || page >= engagementBackfillJob.maxPages) {
+          engagementBackfillJob.mode = "complete";
+          engagementBackfillJob.message = `Engagement refresh complete (${page} page${page === 1 ? "" : "s"})`;
+          engagementBackfillJob.running = false;
+          return;
+        }
+        engagementBackfillJob.mode = "running";
+        engagementBackfillJob.message = `Refreshed page ${page} (${data.length} activities)`;
+        await sleep(1000);
+        continue;
+      }
+
+      if (data.length === 0) {
+        // End of the list. A second pass picks up anything shifted between pages; leftovers have no engagement counts on Strava.
+        const stillPending = cache.activities.some(a => !engagementBackfill.hasEngagement(a));
+        if (stillPending && !meta.secondPass) {
+          meta.secondPass = true;
+          meta.nextPage = 1;
+          saveCache(cache, { skipClusters: true });
+          continue;
+        }
+        meta.completed = true;
+        meta.secondPass = false;
+        saveCache(cache, { skipClusters: true });
+        engagementBackfillJob.mode = "complete";
+        engagementBackfillJob.message = "Engagement backfill complete";
+        engagementBackfillJob.running = false;
+        return;
+      }
+
+      engagementBackfill.mergeEngagement(cache.activities, data);
+      meta.nextPage = page + 1;
+      meta.pagesDone = (meta.pagesDone || 0) + 1;
+      saveCache(cache, { skipClusters: true });
+      engagementBackfillJob.mode = "running";
+      engagementBackfillJob.message = `Processed page ${page} (${data.length} activities)`;
+      await sleep(1000);
+    } catch (err) {
+      console.error("[Engagement Backfill Job] Error:", err);
+      const nextRetry = getNextQuarterHourUtc();
+      engagementBackfillJob.nextRetryAt = nextRetry.toISOString();
+      engagementBackfillJob.lastError = err.message;
+      engagementBackfillJob.mode = "error";
+      engagementBackfillJob.message = `Error encountered. Retrying at ${nextRetry.toLocaleString()}`;
+    }
+  }
+
+  engagementBackfillJob.running = false;
+  if (engagementBackfillJob.stopRequested) {
+    engagementBackfillJob.mode = "stopped";
+    engagementBackfillJob.message = "Engagement backfill stopped";
+  }
+}
+
 /* SEGMENT RANK BACKFILL (one leaderboard request per candidate segment, plus one /athlete request per run) */
 
 function getSegmentRankCandidates(cache) {
@@ -1301,6 +1487,20 @@ async function fetchAthleteName() {
     return a && a.firstname ? { firstname: a.firstname, lastname: a.lastname || "" } : null;
   } catch (err) {
     return null;
+  }
+}
+
+/* One /athlete call per sync. Records a dated follower/following snapshot only when Strava returns numeric counts. */
+async function recordAthleteSnapshot(cache) {
+  try {
+    const res = await stravaFetch("https://www.strava.com/api/v3/athlete");
+    if (!res.ok) return;
+    const snapshot = engagementBackfill.athleteSnapshotFrom(await res.json());
+    if (!snapshot) return;
+    cache.athleteSnapshots = engagementBackfill.appendAthleteSnapshot(cache.athleteSnapshots, snapshot);
+    saveCache(cache, { skipClusters: true });
+  } catch (err) {
+    console.error("[Athlete Snapshot] Skipped:", err.message);
   }
 }
 
@@ -1441,6 +1641,7 @@ app.get("/api/analytics/auto", async (req, res) => {
       prBackfill: getPrBackfillStatus(),
       geoBackfillStatus: getGeoBackfillStatus(),
       elapsedBackfillStatus: getElapsedBackfillStatus(),
+      engagementBackfillStatus: getEngagementBackfillStatus(),
       segmentRankStatus: getSegmentRankStatus(),
       message: "Loaded from local cache.json"
     });
@@ -1465,6 +1666,9 @@ app.post("/api/pr-backfill/start", requireAdmin, async (req, res) => {
   }
   if (elapsedBackfillJob.running) {
     return res.status(409).json({ error: "Elapsed time backfill is running. Stop it before starting the PR backfill." });
+  }
+  if (engagementBackfillJob.running) {
+    return res.status(409).json({ error: "Engagement backfill is running. Stop it before starting the PR backfill." });
   }
 
   if (prBackfillJob.running) {
@@ -1537,6 +1741,9 @@ app.post("/api/geo-backfill/start", requireAdmin, async (req, res) => {
   if (elapsedBackfillJob.running) {
     return res.status(409).json({ error: "Elapsed time backfill is running. Stop it before starting the geo backfill." });
   }
+  if (engagementBackfillJob.running) {
+    return res.status(409).json({ error: "Engagement backfill is running. Stop it before starting the geo backfill." });
+  }
 
   const restart = req.query.restart === "1" || (req.body && req.body.restart === true);
   const status = getGeoBackfillStatus();
@@ -1586,6 +1793,9 @@ app.post("/api/segment-ranks/start", requireAdmin, async (req, res) => {
   }
   if (elapsedBackfillJob.running) {
     return res.status(409).json({ error: "Elapsed time backfill is running. Stop it before starting the segment rank backfill." });
+  }
+  if (engagementBackfillJob.running) {
+    return res.status(409).json({ error: "Engagement backfill is running. Stop it before starting the segment rank backfill." });
   }
 
   const body = req.body || {};
@@ -1680,6 +1890,9 @@ app.post("/api/elapsed-backfill/start", requireAdmin, async (req, res) => {
   if (segmentRankJob.running) {
     return res.status(409).json({ error: "Segment rank backfill is running. Stop it before starting the elapsed time backfill." });
   }
+  if (engagementBackfillJob.running) {
+    return res.status(409).json({ error: "Engagement backfill is running. Stop it before starting the elapsed time backfill." });
+  }
 
   const restart = req.query.restart === "1" || (req.body && req.body.restart === true);
   const status = getElapsedBackfillStatus();
@@ -1718,11 +1931,80 @@ app.get("/api/elapsed-backfill/status", requireAdmin, async (req, res) => {
   return res.json({ ok: true, elapsedBackfill: getElapsedBackfillStatus() });
 });
 
+app.post("/api/engagement-backfill/start", requireAdmin, async (req, res) => {
+  if (!access_token) return res.status(401).json({ error: "Not authenticated" });
+
+  const cache = ensureCacheShape(loadCache());
+  if (!cache.activities.length) {
+    return res.status(400).json({ error: "No cache available. Run a full data pull first." });
+  }
+  if (engagementBackfillJob.running) {
+    return res.json({ ok: true, alreadyRunning: true, engagementBackfill: getEngagementBackfillStatus(), message: "Engagement backfill already running" });
+  }
+  if (prBackfillJob.running) {
+    return res.status(409).json({ error: "PR backfill is running. Stop it before starting the engagement backfill." });
+  }
+  if (geoBackfillJob.running) {
+    return res.status(409).json({ error: "Geo backfill is running. Stop it before starting the engagement backfill." });
+  }
+  if (elapsedBackfillJob.running) {
+    return res.status(409).json({ error: "Elapsed time backfill is running. Stop it before starting the engagement backfill." });
+  }
+  if (segmentRankJob.running) {
+    return res.status(409).json({ error: "Segment rank backfill is running. Stop it before starting the engagement backfill." });
+  }
+
+  const body = req.body || {};
+  const refresh = req.query.refresh === "1" || body.refresh === true;
+  const restart = req.query.restart === "1" || body.restart === true;
+  const status = getEngagementBackfillStatus();
+  if (!refresh) {
+    if (status.completed && !restart) {
+      return res.json({ ok: true, engagementBackfill: status, message: "Engagement backfill already complete" });
+    }
+    if (restart || status.completed) {
+      cache.engagementBackfill = { ...engagementBackfill.defaultEngagementBackfill(), lastRunAt: cache.engagementBackfill.lastRunAt };
+      saveCache(cache, { skipClusters: true });
+    }
+  }
+
+  const reserve = Number(req.query.reserve || body.reserve || 25);
+  const maxPages = Math.floor(Number(req.query.maxPages || body.maxPages || engagementBackfill.DEFAULT_REFRESH_PAGES));
+  engagementBackfillJob = {
+    ...engagementBackfillJob,
+    running: false,
+    stopRequested: false,
+    startedAt: new Date().toISOString(),
+    nextRetryAt: null,
+    lastError: null,
+    mode: "starting",
+    message: refresh ? "Engagement refresh starting" : "Engagement backfill starting",
+    refresh,
+    maxPages: Number.isFinite(maxPages) && maxPages >= 1 ? Math.min(maxPages, 50) : engagementBackfill.DEFAULT_REFRESH_PAGES,
+    refreshPage: 1,
+    reserve: Number.isFinite(reserve) && reserve >= 0 ? reserve : 25
+  };
+
+  runEngagementBackfillJobLoop();
+
+  return res.json({ ok: true, engagementBackfill: getEngagementBackfillStatus(), message: refresh ? "Engagement refresh started" : "Engagement backfill started" });
+});
+
+app.post("/api/engagement-backfill/stop", requireAdmin, async (req, res) => {
+  engagementBackfillJob.stopRequested = true;
+  return res.json({ ok: true, engagementBackfill: getEngagementBackfillStatus(), message: "Engagement backfill stop requested" });
+});
+
+app.get("/api/engagement-backfill/status", requireAdmin, async (req, res) => {
+  return res.json({ ok: true, engagementBackfill: getEngagementBackfillStatus() });
+});
+
 app.post("/api/matched-rides/recompute", requireAdmin, async (req, res) => {
   const cache = ensureCacheShape(loadCache());
   if (!cache.activities.length) return res.status(400).json({ error: "No cache available. Run a full data pull first." });
   if (geoBackfillJob.running) return res.status(409).json({ error: "Geo backfill is running. Try again when it finishes." });
   if (elapsedBackfillJob.running) return res.status(409).json({ error: "Elapsed time backfill is running. Try again when it finishes." });
+  if (engagementBackfillJob.running) return res.status(409).json({ error: "Engagement backfill is running. Try again when it finishes." });
   cache.routeClusters = routeMatching.emptyRouteClusters();
   saveCache(cache); // rebuilds every cluster from scratch
   const clusters = cache.routeClusters.clusters;
@@ -1756,6 +2038,10 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
 
   console.log(`\n[API Call] Starting ${mode} pull. fetchSegments=${fetchSegments}`);
 
+  if (full || refresh || resume || !cache.activities.length) {
+    await recordAthleteSnapshot(cache);
+  }
+
   if (full) {
     const allActivities = await fetchAllActivitiesOnce();
 
@@ -1775,6 +2061,8 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
       segmentRanks: cache.segmentRanks,
       segmentRankMeta: cache.segmentRankMeta,
       elapsedBackfill: cache.elapsedBackfill,
+      engagementBackfill: cache.engagementBackfill,
+      athleteSnapshots: cache.athleteSnapshots,
       activityCounts,
       gearTotals,
       gearDetails,
@@ -1884,6 +2172,8 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
       segmentRanks: cache.segmentRanks,
       segmentRankMeta: cache.segmentRankMeta,
       elapsedBackfill: cache.elapsedBackfill,
+      engagementBackfill: cache.engagementBackfill,
+      athleteSnapshots: cache.athleteSnapshots,
       activityCounts,
       gearTotals,
       gearDetails,

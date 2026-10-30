@@ -6,6 +6,7 @@ import { comma, formatDurationGrouped } from "../lib/format.js";
 import { useUnits } from "../context/Units.jsx";
 import { navigate } from "../lib/router.js";
 import { readStored, usePersistentState } from "../lib/storage.js";
+import EngagementPanel from "./EngagementPanel.jsx";
 import { Card, ChartTip, Chip, DataTable, Empty, PageHead, Segmented, YoyTip } from "../components/ui.jsx";
 
 const OPTIONS = [
@@ -33,7 +34,7 @@ const axisTick = { fontSize: 12 };
 const tickFmt = metric => v => (metric === "count" ? comma(v) : comma(Math.round(v)));
 
 export default function Trends() {
-  const { filtered, gearName } = useAppData();
+  const { raw, filtered, gearName } = useAppData();
   const units = useUnits();
   const [metric, setMetric] = usePersistentState("trendsMetric", "distance");
   const [yoyMode, setYoyMode] = usePersistentState("trendsYoyMode", readStored("trendsCumulative", false) ? "cum" : "month");
@@ -211,6 +212,8 @@ export default function Trends() {
             <DataTable columns={columns} rows={annualRows} pinnedRows={[totalsRow]} expand={expand}
               rowKey={r => r.year} caption="Annual statistics" />
           </Card>
+
+          <EngagementPanel activities={activities} gearName={gearName} snapshots={raw?.athleteSnapshots} />
         </>
       )}
     </div>

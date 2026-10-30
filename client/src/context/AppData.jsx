@@ -40,6 +40,7 @@ export function AppDataProvider({ children }) {
   const [prBackfill, setPrBackfill] = useState(null);
   const [geoBackfill, setGeoBackfill] = useState(null);
   const [elapsedBackfill, setElapsedBackfill] = useState(null);
+  const [engagementBackfill, setEngagementBackfill] = useState(null);
   const [segmentRank, setSegmentRank] = useState(null);
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -50,10 +51,12 @@ export function AppDataProvider({ children }) {
   const pollTimer = useRef(null);
   const geoPollTimer = useRef(null);
   const elapsedPollTimer = useRef(null);
+  const engagementPollTimer = useRef(null);
   const rankPollTimer = useRef(null);
   const wasRankActive = useRef(false);
   const wasGeoActive = useRef(false);
   const wasElapsedActive = useRef(false);
+  const wasEngagementActive = useRef(false);
   const wasActive = useRef(false);
   const mounted = useRef(true);
 
@@ -62,6 +65,7 @@ export function AppDataProvider({ children }) {
     if (data.prBackfill) setPrBackfill(data.prBackfill);
     if (data.geoBackfillStatus) setGeoBackfill(data.geoBackfillStatus);
     if (data.elapsedBackfillStatus) setElapsedBackfill(data.elapsedBackfillStatus);
+    if (data.engagementBackfillStatus) setEngagementBackfill(data.engagementBackfillStatus);
     if (SEGMENT_RANKINGS_ENABLED && data.segmentRankStatus) setSegmentRank(data.segmentRankStatus);
     setServerMessage(data.message || "");
     if (Array.isArray(data.activities)) {
@@ -127,6 +131,7 @@ export function AppDataProvider({ children }) {
       clearTimeout(pollTimer.current);
       clearTimeout(geoPollTimer.current);
       clearTimeout(elapsedPollTimer.current);
+      clearTimeout(engagementPollTimer.current);
       clearTimeout(rankPollTimer.current);
     };
   }, [load]);
@@ -151,6 +156,18 @@ export function AppDataProvider({ children }) {
       if (!mounted.current) return;
       setElapsedBackfill(s);
       if (isBackfillActive(s)) elapsedPollTimer.current = setTimeout(pollElapsedBackfill, POLL_MS);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const pollEngagementBackfill = useCallback(async () => {
+    clearTimeout(engagementPollTimer.current);
+    try {
+      const s = await api.fetchEngagementBackfillStatus();
+      if (!mounted.current) return;
+      setEngagementBackfill(s);
+      if (isBackfillActive(s)) engagementPollTimer.current = setTimeout(pollEngagementBackfill, POLL_MS);
     } catch (err) {
       console.error(err);
     }
@@ -206,6 +223,13 @@ export function AppDataProvider({ children }) {
     if (!elapsedActive && wasElapsedActive.current) load({ quiet: true });
     wasElapsedActive.current = elapsedActive;
   }, [elapsedActive, pollElapsedBackfill, load]);
+
+  const engagementActive = isBackfillActive(engagementBackfill);
+  useEffect(() => {
+    if (engagementActive && !wasEngagementActive.current) pollEngagementBackfill();
+    if (!engagementActive && wasEngagementActive.current) load({ quiet: true });
+    wasEngagementActive.current = engagementActive;
+  }, [engagementActive, pollEngagementBackfill, load]);
 
   const rankActive = SEGMENT_RANKINGS_ENABLED && isBackfillActive(segmentRank);
   useEffect(() => {
@@ -305,6 +329,28 @@ export function AppDataProvider({ children }) {
   const stopElapsedBackfill = useCallback(
     () => runElapsedAction(api.stopElapsedBackfill, "Stopping elapsed time backfill…", "Elapsed time backfill stop requested.", "Failed to stop elapsed time backfill."),
     [runElapsedAction]
+  );
+  const runEngagementAction = useCallback(async (start, pending, done, fail) => {
+    setBusy("engagement");
+    setNotice({ type: "info", text: pending });
+    try {
+      const data = await start();
+      if (data.engagementBackfill) setEngagementBackfill(data.engagementBackfill);
+      setNotice({ type: "success", text: data.message || done });
+      pollEngagementBackfill();
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || fail });
+    } finally {
+      setBusy(null);
+    }
+  }, [pollEngagementBackfill]);
+  const startEngagementBackfill = useCallback(
+    refresh => runEngagementAction(() => api.startEngagementBackfill({ refresh }), refresh ? "Starting engagement refresh…" : "Starting engagement backfill…", "Engagement backfill started.", "Failed to start engagement backfill."),
+    [runEngagementAction]
+  );
+  const stopEngagementBackfill = useCallback(
+    () => runEngagementAction(api.stopEngagementBackfill, "Stopping engagement backfill…", "Engagement backfill stop requested.", "Failed to stop engagement backfill."),
+    [runEngagementAction]
   );
   const runRankAction = useCallback(async (start, pending, done, fail) => {
     setBusy("ranks");
@@ -428,6 +474,7 @@ export function AppDataProvider({ children }) {
     prBackfill, backfillActive: active, busy, notice, setNotice, pull, startBackfill, stopBackfill, unlockAdmin,
     geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes,
     elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill,
+    engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill,
     segmentRank, rankActive, startSegmentRanks, stopSegmentRanks,
     bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)
