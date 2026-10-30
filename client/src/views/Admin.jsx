@@ -180,6 +180,9 @@ export default function Admin() {
             <Row label="Next retry">{engagementBackfill?.nextRetryAt ? formatDateTime(engagementBackfill.nextRetryAt) : "—"}</Row>
             <Row label="Last error">{engagementBackfill?.lastError || "—"}</Row>
           </div>
+          {engagementBackfill?.needsRerun && engagementBackfill?.withEngagement > 0 && (
+            <p className="hint" role="alert"><strong>Photo counts were corrected: run Start engagement backfill again</strong> to replace the old (zero) photo counts.</p>
+          )}
           <p className="hint">{engagementBackfill?.message || "Idle"}</p>
           <div className="toolbar" style={{ marginTop: 12 }}>
             <button type="button" className="btn primary" disabled={working || engagementActive || engagementBackfill?.completed} onClick={() => startEngagementBackfill(false)}>{engagementBackfill?.pagesDone ? "Resume engagement backfill" : "Start engagement backfill"}</button>

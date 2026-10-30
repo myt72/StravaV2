@@ -11,14 +11,36 @@ test("mapEngagementFields coerces to non-negative integers and omits missing", (
   assert.deepStrictEqual(eb.mapEngagementFields({ kudos_count: 0 }), { kudos_count: 0 });
 });
 
-test("photo_count is preferred; total_photo_count is only a fallback", () => {
-  assert.strictEqual(eb.mapEngagementFields({ photo_count: 0, total_photo_count: 4 }).photo_count, 0);
-  assert.strictEqual(eb.mapEngagementFields({ photo_count: 2, total_photo_count: 4 }).photo_count, 2);
-  assert.strictEqual(eb.mapEngagementFields({ total_photo_count: 4 }).photo_count, 4);
+test("total_photo_count wins when present; photo_count is the fallback", () => {
+  assert.strictEqual(eb.mapEngagementFields({ photo_count: 0, total_photo_count: 4 }).photo_count, 4);
+  assert.strictEqual(eb.mapEngagementFields({ photo_count: 2, total_photo_count: 4 }).photo_count, 4);
+  assert.strictEqual(eb.mapEngagementFields({ photo_count: 3 }).photo_count, 3);
+  assert.strictEqual(eb.mapEngagementFields({ photo_count: 3, total_photo_count: "abc" }).photo_count, 3);
+});
+
+test("cached photo_count 0 is corrected by overwrite of photo_count only", () => {
+  const cached = [{ id: 1, kudos_count: 4, comment_count: 1, photo_count: 0 }];
+  const page = [{ id: 1, kudos_count: 9, comment_count: 1, photo_count: 0, total_photo_count: 4 }];
+  assert.strictEqual(eb.mergeEngagement(cached, page), 0);
+  assert.strictEqual(cached[0].photo_count, 0);
+  assert.strictEqual(eb.mergeEngagement(cached, page, { overwrite: ["photo_count"] }), 1);
+  assert.deepStrictEqual(cached[0], { id: 1, kudos_count: 4, comment_count: 1, photo_count: 4 });
+});
+
+test("version marker: old caches are marked not completed and need a re-run", () => {
+  const old = { nextPage: 9, completed: true, pagesDone: 8, secondPass: true };
+  assert.strictEqual(eb.engagementNeedsRerun(old), true);
+  eb.migrateEngagementMeta(old);
+  assert.strictEqual(old.completed, false);
+  assert.strictEqual(old.nextPage, 1);
+  old.nextPage = 3;
+  eb.migrateEngagementMeta(old);
+  assert.strictEqual(old.nextPage, 3);
+  assert.strictEqual(eb.engagementNeedsRerun(eb.defaultEngagementBackfill()), false);
 });
 
 test("default shape", () => {
-  assert.deepStrictEqual(eb.defaultEngagementBackfill(), { nextPage: 1, completed: false, lastRunAt: null, pagesDone: 0, secondPass: false, lastError: null });
+  assert.deepStrictEqual(eb.defaultEngagementBackfill(), { nextPage: 1, completed: false, lastRunAt: null, pagesDone: 0, secondPass: false, lastError: null, version: eb.ENGAGEMENT_VERSION });
 });
 
 test("hasEngagement distinguishes 0 from missing", () => {
