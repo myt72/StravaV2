@@ -41,6 +41,7 @@ export function AppDataProvider({ children }) {
   const [geoBackfill, setGeoBackfill] = useState(null);
   const [elapsedBackfill, setElapsedBackfill] = useState(null);
   const [engagementBackfill, setEngagementBackfill] = useState(null);
+  const [photoBackfill, setPhotoBackfill] = useState(null);
   const [segmentRank, setSegmentRank] = useState(null);
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
@@ -52,7 +53,9 @@ export function AppDataProvider({ children }) {
   const geoPollTimer = useRef(null);
   const elapsedPollTimer = useRef(null);
   const engagementPollTimer = useRef(null);
+  const photoPollTimer = useRef(null);
   const rankPollTimer = useRef(null);
+  const wasPhotoActive = useRef(false);
   const wasRankActive = useRef(false);
   const wasGeoActive = useRef(false);
   const wasElapsedActive = useRef(false);
@@ -66,6 +69,7 @@ export function AppDataProvider({ children }) {
     if (data.geoBackfillStatus) setGeoBackfill(data.geoBackfillStatus);
     if (data.elapsedBackfillStatus) setElapsedBackfill(data.elapsedBackfillStatus);
     if (data.engagementBackfillStatus) setEngagementBackfill(data.engagementBackfillStatus);
+    if (data.photoBackfillStatus) setPhotoBackfill(data.photoBackfillStatus);
     if (SEGMENT_RANKINGS_ENABLED && data.segmentRankStatus) setSegmentRank(data.segmentRankStatus);
     setServerMessage(data.message || "");
     if (Array.isArray(data.activities)) {
@@ -132,6 +136,7 @@ export function AppDataProvider({ children }) {
       clearTimeout(geoPollTimer.current);
       clearTimeout(elapsedPollTimer.current);
       clearTimeout(engagementPollTimer.current);
+      clearTimeout(photoPollTimer.current);
       clearTimeout(rankPollTimer.current);
     };
   }, [load]);
@@ -168,6 +173,18 @@ export function AppDataProvider({ children }) {
       if (!mounted.current) return;
       setEngagementBackfill(s);
       if (isBackfillActive(s)) engagementPollTimer.current = setTimeout(pollEngagementBackfill, POLL_MS);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
+  const pollPhotoBackfill = useCallback(async () => {
+    clearTimeout(photoPollTimer.current);
+    try {
+      const s = await api.fetchPhotoBackfillStatus();
+      if (!mounted.current) return;
+      setPhotoBackfill(s);
+      if (isBackfillActive(s)) photoPollTimer.current = setTimeout(pollPhotoBackfill, POLL_MS);
     } catch (err) {
       console.error(err);
     }
@@ -230,6 +247,13 @@ export function AppDataProvider({ children }) {
     if (!engagementActive && wasEngagementActive.current) load({ quiet: true });
     wasEngagementActive.current = engagementActive;
   }, [engagementActive, pollEngagementBackfill, load]);
+
+  const photoActive = isBackfillActive(photoBackfill);
+  useEffect(() => {
+    if (photoActive && !wasPhotoActive.current) pollPhotoBackfill();
+    if (!photoActive && wasPhotoActive.current) load({ quiet: true });
+    wasPhotoActive.current = photoActive;
+  }, [photoActive, pollPhotoBackfill, load]);
 
   const rankActive = SEGMENT_RANKINGS_ENABLED && isBackfillActive(segmentRank);
   useEffect(() => {
@@ -351,6 +375,28 @@ export function AppDataProvider({ children }) {
   const stopEngagementBackfill = useCallback(
     () => runEngagementAction(api.stopEngagementBackfill, "Stopping engagement backfill…", "Engagement backfill stop requested.", "Failed to stop engagement backfill."),
     [runEngagementAction]
+  );
+  const runPhotoAction = useCallback(async (start, pending, done, fail) => {
+    setBusy("photos");
+    setNotice({ type: "info", text: pending });
+    try {
+      const data = await start();
+      if (data.photoBackfill) setPhotoBackfill(data.photoBackfill);
+      setNotice({ type: "success", text: data.message || done });
+      pollPhotoBackfill();
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || fail });
+    } finally {
+      setBusy(null);
+    }
+  }, [pollPhotoBackfill]);
+  const startPhotoBackfill = useCallback(
+    mode => runPhotoAction(() => api.startPhotoBackfill({ mode }), mode === "recheck" ? "Starting photo re-check…" : mode === "recent" ? "Checking new activities…" : "Starting photo backfill…", "Photo backfill started.", "Failed to start photo backfill."),
+    [runPhotoAction]
+  );
+  const stopPhotoBackfill = useCallback(
+    () => runPhotoAction(api.stopPhotoBackfill, "Stopping photo backfill…", "Photo backfill stop requested.", "Failed to stop photo backfill."),
+    [runPhotoAction]
   );
   const runRankAction = useCallback(async (start, pending, done, fail) => {
     setBusy("ranks");
@@ -475,6 +521,7 @@ export function AppDataProvider({ children }) {
     geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes,
     elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill,
     engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill,
+    photoBackfill, photoActive, startPhotoBackfill, stopPhotoBackfill,
     segmentRank, rankActive, startSegmentRanks, stopSegmentRanks,
     bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)

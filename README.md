@@ -129,7 +129,7 @@ and `GET /api/elapsed-backfill/status`. A normal refresh also fills `elapsed_tim
 from the `/athlete/activities` summary, so no per-activity requests). A missing field means "not backfilled yet" and is
 different from `0`. `photo_count` stores the **total** photos on the activity (Strava + Instagram): `total_photo_count` is preferred, and Strava's own `photo_count` (externally hosted/Instagram photos only, usually `0`) is only a fallback when `total_photo_count` is absent. A backfill version marker (`engagementBackfill.version`) makes caches from before this fix re-run once and overwrite stored photo counts; the Data page prompts for it. These are
 **counts only**: no photos or photo URLs are downloaded, stored or shown. The fields are not part of the activity change
-signature, so a changing kudos count never triggers segment re-fetches.
+signature, so a changing kudos count never triggers segment re-fetches. The list endpoint often reports `total_photo_count: 0` even when photos exist, so `photo_count` is **corrected by the [Photo count backfill](#photo-count-backfill)** (which uses the per-activity endpoint); once an activity is verified there, list refreshes and engagement backfills no longer overwrite its photo count.
 
 **Backfill.** On **Data & Admin** use the *Engagement backfill* card → *Start engagement backfill* (admin password
 required). It re-pages `/athlete/activities?per_page=200` (about `ceil(activities / 200)` calls) and merges the counts by id
@@ -158,6 +158,41 @@ selector, a Month | Year | Week chart (Total or Per activity) with a table, a br
 band), the top 10 activities for the selected metric, and a followers/following chart when at least 2 snapshots exist. It
 honours the global filters and the Trends activity-type chips, and shows a notice when counts are missing or only partly
 backfilled.
+
+## Photo count backfill
+
+**Why.** Strava's `/athlete/activities` list returns `total_photo_count: 0` for many activities that do have photos (for example
+activity 9414046866: list says 0, `GET /activities/{id}` says 7). Re-running the engagement backfill cannot fix this, so a separate
+job reads the detail endpoint.
+
+**What it does.** For each activity it calls `GET /activities/{id}` through the normal Strava client (token refresh and rate-limit
+tracking apply) and stores only the photo total in the cached `photo_count` (`total_photo_count`, else `photos.count`, else
+`photo_count`), plus `photo_checked: true` on the activity. **Counts only**: no images or URLs are requested or stored, and the full
+detail response is discarded. `photo_checked` is not part of the activity change signature. All activity types (including swims) are checked.
+
+**Cost.** One request per activity, newest first, skipping activities already verified. At roughly 2,000 requests a day, ~4,100
+activities take about 3 days.
+
+**Resumable.** Verified activities are never re-checked, so a restart, a 429 or a stop loses nothing. Progress (`checked`, `total`,
+`completed`, `lastRunAt`, `lastError`, `version`) is saved in `cache.json` under `photoBackfill` (every ~25 activities and on
+stop/pause/complete) and carried over on full pulls (verified counts are kept too). The job never auto-starts; after a server
+restart press *Resume photo backfill* on the Data page.
+
+**Rate limits and errors.** Same reserve logic as the other backfills: it pauses when the short-window or daily remaining reaches
+the reserve and resumes automatically at the next quarter hour / daily window (while the server keeps running). A 429 waits for the
+next retry time. A 404/410 (e.g. deleted activity) marks that activity checked with its existing value and continues; repeated other
+failures, or an auth failure, stop the job with `lastError`. It cannot run at the same time as the PR, geo, segment-rank, elapsed or
+engagement backfills, and route recompute is refused while it runs.
+
+**New activities and recent rides.** New activities from a refresh arrive unverified (with the list's value), so the next photo backfill
+run picks them up. *Check new activities* (`?recent=1`, optional `&maxActivities=N`, default 25) checks only unverified activities among the
+newest N. Photos are often added after a ride, so *Re-check recent* (`?recheck=1`, optional `&maxActivities=N`, default 50) re-fetches the
+newest N even if verified.
+
+**Endpoints** (admin password): `POST /api/photo-backfill/start` (optional `recent`/`recheck`/`maxActivities` query params),
+`POST /api/photo-backfill/stop` and `GET /api/photo-backfill/status`. The status (`checked`, `total`, `remaining`, `mode`, `message`,
+`nextRetryAt`, `lastError`, estimated requests and days) is also included in `/api/analytics/auto` as `photoBackfillStatus`. The Trends
+Engagement panel shows a notice until all photo counts are verified.
 
 ## Segment rankings (Records > Segment summary)
 
