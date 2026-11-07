@@ -43,7 +43,8 @@ The Garage's **Bikes through time** panel sits above the bike cards and charts
 each bike from its first to last recorded activity, with bright marks for
 months in which it was used. Uncheck a row to hide that bike, and use **Choose
 bikes** to show it again, or Select all / Deselect all for the current status
-filter. Select a bike name for its activity dates, count and distance, or filter
+filter. Bikes named "Rental Bike" are hidden by default but can be selected
+like any other bike. Select a bike name for its activity dates, count and distance, or filter
 the timeline by current and retired bikes. The timeline opens at the most recent
 year; scroll left to see earlier years. It follows the global filters, so these dates
 describe the filtered activities rather than purchase or retirement dates;
