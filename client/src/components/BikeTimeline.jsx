@@ -14,6 +14,7 @@ export default function BikeTimeline({ activities, bikes }) {
   const units = useUnits();
   const [status, setStatus] = useState("all");
   const [selectedId, setSelectedId] = useState(null);
+  const [excludedIds, setExcludedIds] = useState([]);
   const history = useMemo(() => {
     const byId = new Map(bikes.map(bike => [bike.gid, bike]));
     return buildBikeTimeline(activities).flatMap((entry, index) => {
@@ -23,6 +24,12 @@ export default function BikeTimeline({ activities, bikes }) {
   }, [activities, bikes]);
   const visible = history.filter(bike => status === "all" || (status === "retired" ? bike.isRetired : !bike.isRetired));
   const selected = visible.find(bike => bike.gid === selectedId) || visible[0];
+  const setVisibleSelection = include => {
+    const visibleIds = new Set(visible.map(bike => bike.gid));
+    setExcludedIds(current => include
+      ? current.filter(gid => !visibleIds.has(gid))
+      : [...new Set([...current, ...visibleIds])]);
+  };
   const firstYear = history.length ? Math.floor(Math.min(...history.map(bike => bike.months[0].month)) / 12) : 0;
   const lastYear = history.length ? Math.floor(Math.max(...history.map(bike => bike.months[bike.months.length - 1].month)) / 12) : 0;
   const yearCount = lastYear - firstYear + 1;
@@ -39,7 +46,13 @@ export default function BikeTimeline({ activities, bikes }) {
           <h2 id="bike-timeline-title">Bikes through time</h2>
           <p className="muted small">A timeline of your recorded activities, from first to last ride on each bike.</p>
         </div>
-        <Segmented label="Show bikes by status" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
+        <div className="bike-timeline-controls">
+          <Segmented label="Show bikes by status" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
+          <div className="bike-timeline-selection" role="group" aria-label="Select bikes for timeline">
+            <button type="button" className="btn sm" onClick={() => setVisibleSelection(true)}>Select all</button>
+            <button type="button" className="btn sm" onClick={() => setVisibleSelection(false)}>Deselect all</button>
+          </div>
+        </div>
       </div>
       <p className="bike-timeline-legend"><span aria-hidden="true" /> Bright marks show months with activity; the faded line connects first and last activity. Dates do not indicate ownership.</p>
       {!visible.length ? <Empty>No bike history for this selection and the current filters.</Empty> : (
@@ -47,7 +60,7 @@ export default function BikeTimeline({ activities, bikes }) {
           <div className="bike-timeline-scroll" tabIndex={0} role="region" aria-label="Bike history timeline, scroll horizontally for more years">
             <div className="bike-timeline-chart" style={{ "--timeline-width": `${yearCount * 96}px`, "--timeline-years": yearCount }}>
               <div className="bike-timeline-axis">
-                <span className="bike-timeline-axis-label">BIKE / STATUS</span>
+                <span className="bike-timeline-axis-label">BIKE</span>
                 <div className="bike-timeline-years">
                   {Array.from({ length: yearCount }, (_, i) => <span key={i}>{firstYear + i}</span>)}
                 </div>
@@ -56,16 +69,20 @@ export default function BikeTimeline({ activities, bikes }) {
                 const start = bike.months[0].month;
                 const end = bike.months[bike.months.length - 1].month;
                 return (
-                  <button type="button" className="bike-timeline-row" key={bike.gid}
-                    aria-pressed={selected.gid === bike.gid}
-                    aria-label={`${bike.name}, ${bike.isRetired ? "retired" : "current"}, ${formatDate(bike.first)} to ${formatDate(bike.last)}. Show details.`}
-                    onClick={() => setSelectedId(bike.gid)} style={{ "--bike-color": bike.color }}>
-                    <span className="bike-timeline-name"><strong>{bike.name}</strong><small>{bike.isRetired ? "Retired" : "Current"}</small></span>
+                  <div className={`bike-timeline-row${excludedIds.includes(bike.gid) ? " is-excluded" : ""}`} key={bike.gid} style={{ "--bike-color": bike.color }}>
+                    <span className="bike-timeline-name">
+                      <input type="checkbox" checked={!excludedIds.includes(bike.gid)}
+                        aria-label={`Include ${bike.name} in timeline`}
+                        onChange={() => setExcludedIds(current => current.includes(bike.gid) ? current.filter(gid => gid !== bike.gid) : [...current, bike.gid])} />
+                      <button type="button" className="bike-timeline-bike-button" aria-pressed={selected.gid === bike.gid}
+                        aria-label={`${bike.name}, ${bike.isRetired ? "retired" : "current"}, ${formatDate(bike.first)} to ${formatDate(bike.last)}. Show details.`}
+                        onClick={() => setSelectedId(bike.gid)}><strong>{bike.name}</strong></button>
+                    </span>
                     <span className="bike-timeline-track" aria-hidden="true">
                       <span className="bike-timeline-range" style={{ left: position(start), width: `${(end - start + 1) / totalMonths * 100}%` }} />
                       {bike.months.map(({ month }) => <span key={month} className="bike-timeline-month" style={{ left: position(month), width: monthWidth }} />)}
                     </span>
-                  </button>
+                  </div>
                 );
               })}
             </div>

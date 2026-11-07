@@ -387,7 +387,6 @@ function GarageList({ bikes, activities }) {
           : <button type="button" className="btn" disabled>Compare bikes (0)</button>}>
         Pick a bike for its yearly history and photos, or tick “Compare” on several bikes.
       </PageHead>
-      <BikeTimeline activities={activities} bikes={bikes.rows} />
       <GarageAnalytics activities={activities} />
       <BikeSummary bikes={bikes} />
       <div className="toolbar">
@@ -398,6 +397,7 @@ function GarageList({ bikes, activities }) {
           </select>
         </label>
       </div>
+      <BikeTimeline activities={activities} bikes={bikes.rows} />
       {!rows.length ? <Empty>No bikes match the current filters.</Empty> : (
         <>
           {current.length > 0 && (
