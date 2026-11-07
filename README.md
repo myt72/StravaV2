@@ -41,10 +41,11 @@ resolved when the data is served, so existing caches work without a re-pull.
 `config.local.js` is read once at startup: restart the server after editing it.
 The Garage's **Bikes through time** panel sits above the bike cards and charts
 each bike from its first to last recorded activity, with bright marks for
-months in which it was used. Select or deselect bikes with the row checkboxes
-(or use Select all / Deselect all for the current status filter). Select a bike
-name for its activity dates, count and distance, or filter the timeline by
-current and retired bikes. It follows the global filters, so these dates
+months in which it was used. Uncheck a row to hide that bike, and use **Choose
+bikes** to show it again, or Select all / Deselect all for the current status
+filter. Select a bike name for its activity dates, count and distance, or filter
+the timeline by current and retired bikes. The timeline opens at the most recent
+year; scroll left to see earlier years. It follows the global filters, so these dates
 describe the filtered activities rather than purchase or retirement dates;
 bikes without matching dated activities cannot be shown.
 The Garage also has a compact "Bike type comparison" scorecard (rides, miles, elevation, average ride length, ft/mi and average mph per type, with an inline bar for a selectable metric: miles, elevation, rides or hours), followed by ride consistency and a weekly mileage ramp (both scroll inside their cards, newest first, and match the height of the Everest and milestone cards), annual climbing toward Everest (the tooltip shows the year's Everest multiple, e.g. `17.3x Everests`) and lifetime mileage milestones (a compact grid with the next milestone highlighted by a progress bar, passed milestones with the date reached and upcoming ones marked "(projected)"). The sortable "All bikes" summary is split into Active bikes and a collapsible Retired bikes section (rides, distance, elevation, time as `hhh:mm:ss`, speed and PRs per bike; the pinned totals row covers all bikes). The Count figure links to Activities filtered to that bike; the PR figure opens a drawer listing the segments where that bike has a PR (`pr_rank` 1 in `segmentData`, joined to the bike's activities by `gear_id`), each linked to Strava with its PR effort count, best time and latest PR activity. The drawer follows the global filters and the excluded-segments setting. These summaries follow the global date, activity

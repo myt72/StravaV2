@@ -295,6 +295,8 @@ button.period-tile:focus-visible { outline: 3px solid var(--focus); outline-offs
 .bike-timeline { overflow: hidden; }
 .bike-timeline-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
 .bike-timeline-controls, .bike-timeline-selection { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.bike-timeline-picker { margin-top: 12px; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.bike-timeline-picker-list { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; max-height: 180px; overflow-y: auto; }
 .bike-timeline-header h2 { font-size: 1.2rem; margin: 2px 0 3px; }
 .bike-timeline-eyebrow, .bike-timeline-detail-label { color: var(--text-muted); font-size: 0.67rem; font-weight: 700; letter-spacing: 0.1em; }
 .bike-timeline-legend, .bike-timeline-footnote { color: var(--text-muted); font-size: 0.77rem; }
@@ -315,8 +317,6 @@ button.period-tile:focus-visible { outline: 3px solid var(--focus); outline-offs
 .bike-timeline-bike-button { min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; }
 .bike-timeline-bike-button:hover strong, .bike-timeline-bike-button[aria-pressed="true"] strong { color: var(--accent-strong); }
 .bike-timeline-bike-button strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.82rem; }
-.bike-timeline-row.is-excluded .bike-timeline-range, .bike-timeline-row.is-excluded .bike-timeline-month { opacity: 0.12; }
-.bike-timeline-row.is-excluded .bike-timeline-name strong { color: var(--text-muted); }
 .bike-timeline-track { position: relative; min-height: 34px; background-image: linear-gradient(to right, var(--border) 1px, transparent 1px); background-size: calc(100% / var(--timeline-years)) 100%; }
 .bike-timeline-range, .bike-timeline-month { position: absolute; top: 50%; transform: translateY(-50%); background: var(--bike-color); }
 .bike-timeline-range { height: 10px; opacity: 0.22; border-radius: 5px; }
