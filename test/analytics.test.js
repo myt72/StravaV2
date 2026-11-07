@@ -15,6 +15,28 @@ const activity = (start_date, extra = {}) => ({
   ...extra
 });
 
+test("bike timeline groups valid activities by bike and local month in chronological order", () => {
+  const rows = analytics.buildBikeTimeline([
+    activity("2024-03-20T12:00:00", { gear_id: "b2", distance: 2000 }),
+    activity("2023-12-05T12:00:00", { gear_id: "b1", distance: 1000 }),
+    activity("2024-03-02T12:00:00", { gear_id: "b2", distance: 500 }),
+    activity("2024-05-01T12:00:00", { gear_id: "b2", distance: 100 }),
+    activity("bad-date", { gear_id: "b1", distance: 900 }),
+    activity(null, { gear_id: "b1" }),
+    activity("2024-01-01T12:00:00")
+  ]);
+  assert.deepStrictEqual(rows.map(row => row.gid), ["b1", "b2"]);
+  assert.strictEqual(rows[1].first, "2024-03-02T12:00:00");
+  assert.strictEqual(rows[1].last, "2024-05-01T12:00:00");
+  assert.strictEqual(rows[1].count, 3);
+  assert.strictEqual(rows[1].distance, 2600);
+  assert.deepStrictEqual(rows[1].months, [
+    { month: 2024 * 12 + 2, count: 2 },
+    { month: 2024 * 12 + 4, count: 1 }
+  ]);
+  assert.deepStrictEqual(analytics.buildBikeTimeline([]), []);
+});
+
 test("bike type comparison aggregates Ride activities", () => {
   const rides = [
     activity("2024-01-10T08:00:00", { bike_type: "road", bike_name: "Road bike", distance: 1609.34, moving_time: 3600 }),

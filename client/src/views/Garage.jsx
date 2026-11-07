@@ -13,6 +13,7 @@ import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
 import { ActivityLink, Card, ChartTip, DataTable, Drawer, Empty, Icon, PageHead, Segmented } from "../components/ui.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
+import BikeTimeline from "../components/BikeTimeline.jsx";
 
 const SORTS = [
   { value: "distance-desc", label: "Distance (high to low)" },
@@ -386,6 +387,7 @@ function GarageList({ bikes, activities }) {
           : <button type="button" className="btn" disabled>Compare bikes (0)</button>}>
         Pick a bike for its yearly history and photos, or tick “Compare” on several bikes.
       </PageHead>
+      <BikeTimeline activities={activities} bikes={bikes.rows} />
       <GarageAnalytics activities={activities} />
       <BikeSummary bikes={bikes} />
       <div className="toolbar">

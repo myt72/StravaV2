@@ -292,6 +292,44 @@ button.period-tile:focus-visible { outline: 3px solid var(--focus); outline-offs
 .toolbar .spacer { flex: 1; }
 
 /* ---------- garage ---------- */
+.bike-timeline { overflow: hidden; }
+.bike-timeline-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+.bike-timeline-header h2 { font-size: 1.2rem; margin: 2px 0 3px; }
+.bike-timeline-eyebrow, .bike-timeline-detail-label { color: var(--text-muted); font-size: 0.67rem; font-weight: 700; letter-spacing: 0.1em; }
+.bike-timeline-legend, .bike-timeline-footnote { color: var(--text-muted); font-size: 0.77rem; }
+.bike-timeline-legend { display: flex; align-items: center; gap: 7px; margin: 18px 0 10px; }
+.bike-timeline-legend span { flex: none; width: 18px; height: 7px; border-radius: 4px; background: var(--accent); }
+.bike-timeline-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.bike-timeline-chart { min-width: calc(160px + var(--timeline-width)); }
+.bike-timeline-axis, .bike-timeline-row { display: grid; grid-template-columns: 160px minmax(0, 1fr); }
+.bike-timeline-axis { background: var(--surface-2); border-bottom: 1px solid var(--border); }
+.bike-timeline-axis-label { position: sticky; left: 0; z-index: 2; background: var(--surface-2); color: var(--text-muted); padding: 10px 12px; font-size: 0.67rem; font-weight: 700; letter-spacing: 0.08em; }
+.bike-timeline-years { display: grid; grid-template-columns: repeat(var(--timeline-years), minmax(0, 1fr)); }
+.bike-timeline-years span { padding: 10px 7px; color: var(--text-muted); border-left: 1px solid var(--border); font-size: 0.75rem; font-weight: 700; }
+.bike-timeline-row { width: 100%; padding: 0; border: 0; border-bottom: 1px solid var(--border); text-align: left; background: var(--surface); }
+.bike-timeline-row:last-child { border-bottom: 0; }
+.bike-timeline-row:hover, .bike-timeline-row[aria-pressed="true"] { background: var(--surface-hover); }
+.bike-timeline-row:focus-visible { outline-offset: -3px; }
+.bike-timeline-name { position: sticky; left: 0; z-index: 1; background: var(--surface); padding: 9px 12px; min-width: 0; border-left: 3px solid var(--bike-color); }
+.bike-timeline-row:hover .bike-timeline-name, .bike-timeline-row[aria-pressed="true"] .bike-timeline-name { background: var(--surface-hover); }
+.bike-timeline-name strong, .bike-timeline-name small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bike-timeline-name strong { font-size: 0.82rem; }
+.bike-timeline-name small { color: var(--text-muted); font-size: 0.72rem; }
+.bike-timeline-track { position: relative; min-height: 48px; background-image: linear-gradient(to right, var(--border) 1px, transparent 1px); background-size: calc(100% / var(--timeline-years)) 100%; }
+.bike-timeline-range, .bike-timeline-month { position: absolute; top: 50%; transform: translateY(-50%); background: var(--bike-color); }
+.bike-timeline-range { height: 10px; opacity: 0.22; border-radius: 5px; }
+.bike-timeline-month { height: 16px; border: 1px solid var(--surface); border-radius: 3px; }
+.bike-timeline-detail { display: flex; align-items: center; flex-wrap: wrap; gap: 14px 28px; padding: 16px 2px 6px; }
+.bike-timeline-detail > div:not(.bike-timeline-detail-name) { display: flex; flex-direction: column; font-size: 0.84rem; }
+.bike-timeline-detail-name { display: flex; align-items: center; gap: 9px; margin-right: auto; }
+.bike-timeline-dot { width: 11px; height: 11px; flex: none; border-radius: 50%; background: var(--bike-color); }
+.bike-timeline-footnote { margin-top: 10px; }
+@media (max-width: 600px) {
+  .bike-timeline-header .seg { width: 100%; }
+  .bike-timeline-header .seg button { flex: 1; padding-inline: 5px; }
+  .bike-timeline-chart { min-width: calc(130px + var(--timeline-width)); }
+  .bike-timeline-axis, .bike-timeline-row { grid-template-columns: 130px minmax(0, 1fr); }
+}
 .garage-section { display: flex; flex-direction: column; gap: 10px; }
 .garage-heading { margin: 8px 0 0; font-size: 1.1rem; }
 .garage-heading .cell-link { font: inherit; }

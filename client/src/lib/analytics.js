@@ -68,6 +68,31 @@ export function buildGearTotalsFromActivities(activities, segmentData) {
   return gearTotals;
 }
 
+/** Recorded activity history, grouped by bike and local calendar month. */
+export function buildBikeTimeline(activities) {
+  const bikes = new Map();
+  for (const activity of activities || []) {
+    if (!activity?.gear_id || !activity.start_date) continue;
+    const date = new Date(activity.start_date);
+    if (!Number.isFinite(date.getTime())) continue;
+    const month = date.getFullYear() * 12 + date.getMonth();
+    let bike = bikes.get(activity.gear_id);
+    if (!bike) {
+      bike = { gid: activity.gear_id, first: activity.start_date, last: activity.start_date, count: 0, distance: 0, months: new Map() };
+      bikes.set(activity.gear_id, bike);
+    }
+    if (date < new Date(bike.first)) bike.first = activity.start_date;
+    if (date > new Date(bike.last)) bike.last = activity.start_date;
+    bike.count += 1;
+    bike.distance += Number.isFinite(activity.distance) ? activity.distance : 0;
+    bike.months.set(month, (bike.months.get(month) || 0) + 1);
+  }
+  return [...bikes.values()].map(bike => ({
+    ...bike,
+    months: [...bike.months.entries()].sort((a, b) => a[0] - b[0]).map(([month, count]) => ({ month, count }))
+  })).sort((a, b) => new Date(a.first) - new Date(b.first) || String(a.gid).localeCompare(String(b.gid)));
+}
+
 export function buildBikeYearStatsFromActivities(activities, segmentData) {
   const bikeYearStats = {};
 
