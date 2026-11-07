@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { buildBikeTimeline } from "../lib/analytics.js";
+import { isTimelineBikeSelected } from "../lib/bikeTimelineSelection.js";
 import { comma, formatDate } from "../lib/format.js";
 import { useUnits } from "../context/Units.jsx";
 import { Card, Empty, Segmented } from "./ui.jsx";
@@ -14,7 +15,7 @@ export default function BikeTimeline({ activities, bikes }) {
   const units = useUnits();
   const [status, setStatus] = useState("all");
   const [selectedId, setSelectedId] = useState(null);
-  const [excludedIds, setExcludedIds] = useState([]);
+  const [selections, setSelections] = useState({});
   const [pickerOpen, setPickerOpen] = useState(false);
   const scrollRef = useRef(null);
   const pickerButtonRef = useRef(null);
@@ -26,14 +27,11 @@ export default function BikeTimeline({ activities, bikes }) {
     });
   }, [activities, bikes]);
   const matching = history.filter(bike => status === "all" || (status === "retired" ? bike.isRetired : !bike.isRetired));
-  const visible = matching.filter(bike => !excludedIds.includes(bike.gid));
+  const visible = matching.filter(bike => isTimelineBikeSelected(bike, selections));
   const selected = visible.find(bike => bike.gid === selectedId) || visible[0];
-  const toggleBike = gid => setExcludedIds(current => current.includes(gid) ? current.filter(id => id !== gid) : [...current, gid]);
+  const toggleBike = bike => setSelections(current => ({ ...current, [bike.gid]: !isTimelineBikeSelected(bike, current) }));
   const setVisibleSelection = include => {
-    const visibleIds = new Set(matching.map(bike => bike.gid));
-    setExcludedIds(current => include
-      ? current.filter(gid => !visibleIds.has(gid))
-      : [...new Set([...current, ...visibleIds])]);
+    setSelections(current => ({ ...current, ...Object.fromEntries(matching.map(bike => [bike.gid, include])) }));
   };
   const firstYear = history.length ? Math.floor(Math.min(...history.map(bike => bike.months[0].month)) / 12) : 0;
   const lastYear = history.length ? Math.floor(Math.max(...history.map(bike => bike.months[bike.months.length - 1].month)) / 12) : 0;
@@ -69,7 +67,7 @@ export default function BikeTimeline({ activities, bikes }) {
           <p className="small muted">Choose which bikes to show for the selected status.</p>
           {matching.length ? <div className="bike-timeline-picker-list">
             {matching.map(bike => <label key={bike.gid} className="check">
-              <input type="checkbox" checked={!excludedIds.includes(bike.gid)} onChange={() => toggleBike(bike.gid)} />
+              <input type="checkbox" checked={isTimelineBikeSelected(bike, selections)} onChange={() => toggleBike(bike)} />
               {bike.name}
             </label>)}
           </div> : <p className="small muted">No bikes match the current filters.</p>}
@@ -94,7 +92,7 @@ export default function BikeTimeline({ activities, bikes }) {
                     <span className="bike-timeline-name">
                       <input type="checkbox" checked
                         aria-label={`Include ${bike.name} in timeline`}
-                        onChange={() => { toggleBike(bike.gid); pickerButtonRef.current?.focus(); }} />
+                        onChange={() => { toggleBike(bike); pickerButtonRef.current?.focus(); }} />
                       <button type="button" className="bike-timeline-bike-button" aria-pressed={selected.gid === bike.gid}
                         aria-label={`${bike.name}, ${bike.isRetired ? "retired" : "current"}, ${formatDate(bike.first)} to ${formatDate(bike.last)}. Show details.`}
                         onClick={() => setSelectedId(bike.gid)}><strong>{bike.name}</strong></button>
