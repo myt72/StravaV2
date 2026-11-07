@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { buildBikeTimeline } from "../lib/analytics.js";
 import { comma, formatDate } from "../lib/format.js";
 import { useUnits } from "../context/Units.jsx";
@@ -15,6 +15,9 @@ export default function BikeTimeline({ activities, bikes }) {
   const [status, setStatus] = useState("all");
   const [selectedId, setSelectedId] = useState(null);
   const [excludedIds, setExcludedIds] = useState([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const scrollRef = useRef(null);
+  const pickerButtonRef = useRef(null);
   const history = useMemo(() => {
     const byId = new Map(bikes.map(bike => [bike.gid, bike]));
     return buildBikeTimeline(activities).flatMap((entry, index) => {
@@ -22,10 +25,12 @@ export default function BikeTimeline({ activities, bikes }) {
       return bike ? [{ ...entry, name: bike.name, isRetired: bike.isRetired, color: `var(--chart-${index % 6 + 1})` }] : [];
     });
   }, [activities, bikes]);
-  const visible = history.filter(bike => status === "all" || (status === "retired" ? bike.isRetired : !bike.isRetired));
+  const matching = history.filter(bike => status === "all" || (status === "retired" ? bike.isRetired : !bike.isRetired));
+  const visible = matching.filter(bike => !excludedIds.includes(bike.gid));
   const selected = visible.find(bike => bike.gid === selectedId) || visible[0];
+  const toggleBike = gid => setExcludedIds(current => current.includes(gid) ? current.filter(id => id !== gid) : [...current, gid]);
   const setVisibleSelection = include => {
-    const visibleIds = new Set(visible.map(bike => bike.gid));
+    const visibleIds = new Set(matching.map(bike => bike.gid));
     setExcludedIds(current => include
       ? current.filter(gid => !visibleIds.has(gid))
       : [...new Set([...current, ...visibleIds])]);
@@ -38,6 +43,10 @@ export default function BikeTimeline({ activities, bikes }) {
   const position = month => `${(month - firstMonth) / totalMonths * 100}%`;
   const monthWidth = `${100 / totalMonths}%`;
 
+  useLayoutEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+  }, [firstYear, lastYear, visible.length > 0]);
+
   return (
     <Card className="bike-timeline" aria-labelledby="bike-timeline-title">
       <div className="bike-timeline-header">
@@ -49,15 +58,27 @@ export default function BikeTimeline({ activities, bikes }) {
         <div className="bike-timeline-controls">
           <Segmented label="Show bikes by status" value={status} options={STATUS_OPTIONS} onChange={setStatus} />
           <div className="bike-timeline-selection" role="group" aria-label="Select bikes for timeline">
+            <button type="button" className="btn sm" ref={pickerButtonRef} aria-expanded={pickerOpen} aria-controls="bike-timeline-picker" onClick={() => setPickerOpen(open => !open)}>Choose bikes ({visible.length}/{matching.length})</button>
             <button type="button" className="btn sm" onClick={() => setVisibleSelection(true)}>Select all</button>
             <button type="button" className="btn sm" onClick={() => setVisibleSelection(false)}>Deselect all</button>
           </div>
         </div>
       </div>
+      {pickerOpen && (
+        <div id="bike-timeline-picker" className="bike-timeline-picker" role="group" aria-label="Choose bikes to show">
+          <p className="small muted">Choose which bikes to show for the selected status.</p>
+          {matching.length ? <div className="bike-timeline-picker-list">
+            {matching.map(bike => <label key={bike.gid} className="check">
+              <input type="checkbox" checked={!excludedIds.includes(bike.gid)} onChange={() => toggleBike(bike.gid)} />
+              {bike.name}
+            </label>)}
+          </div> : <p className="small muted">No bikes match the current filters.</p>}
+        </div>
+      )}
       <p className="bike-timeline-legend"><span aria-hidden="true" /> Bright marks show months with activity; the faded line connects first and last activity. Dates do not indicate ownership.</p>
-      {!visible.length ? <Empty>No bike history for this selection and the current filters.</Empty> : (
+      {!matching.length ? <Empty>No bike history for this selection and the current filters.</Empty> : !visible.length ? <Empty>No bikes selected. Use Choose bikes or Select all to show them.</Empty> : (
         <>
-          <div className="bike-timeline-scroll" tabIndex={0} role="region" aria-label="Bike history timeline, scroll horizontally for more years">
+          <div ref={scrollRef} className="bike-timeline-scroll" tabIndex={0} role="region" aria-label="Bike history timeline, scroll horizontally for more years">
             <div className="bike-timeline-chart" style={{ "--timeline-width": `${yearCount * 96}px`, "--timeline-years": yearCount }}>
               <div className="bike-timeline-axis">
                 <span className="bike-timeline-axis-label">BIKE</span>
@@ -69,11 +90,11 @@ export default function BikeTimeline({ activities, bikes }) {
                 const start = bike.months[0].month;
                 const end = bike.months[bike.months.length - 1].month;
                 return (
-                  <div className={`bike-timeline-row${excludedIds.includes(bike.gid) ? " is-excluded" : ""}`} key={bike.gid} style={{ "--bike-color": bike.color }}>
+                  <div className="bike-timeline-row" key={bike.gid} style={{ "--bike-color": bike.color }}>
                     <span className="bike-timeline-name">
-                      <input type="checkbox" checked={!excludedIds.includes(bike.gid)}
+                      <input type="checkbox" checked
                         aria-label={`Include ${bike.name} in timeline`}
-                        onChange={() => setExcludedIds(current => current.includes(bike.gid) ? current.filter(gid => gid !== bike.gid) : [...current, bike.gid])} />
+                        onChange={() => { toggleBike(bike.gid); pickerButtonRef.current?.focus(); }} />
                       <button type="button" className="bike-timeline-bike-button" aria-pressed={selected.gid === bike.gid}
                         aria-label={`${bike.name}, ${bike.isRetired ? "retired" : "current"}, ${formatDate(bike.first)} to ${formatDate(bike.last)}. Show details.`}
                         onClick={() => setSelectedId(bike.gid)}><strong>{bike.name}</strong></button>
@@ -100,7 +121,7 @@ export default function BikeTimeline({ activities, bikes }) {
           </div>
         </>
       )}
-      <p className="bike-timeline-footnote">Based on activities matching the global filters. Select a bike to explore its history.</p>
+      <p className="bike-timeline-footnote">Based on activities matching the global filters. Select a bike to explore its history; scroll left for earlier years.</p>
     </Card>
   );
 }
