@@ -7,6 +7,7 @@ import { useUnits } from "../context/Units.jsx";
 import { navigate } from "../lib/router.js";
 import { readStored, usePersistentState } from "../lib/storage.js";
 import EngagementPanel from "./EngagementPanel.jsx";
+import { RideProgressPanels } from "../components/RidePanels.jsx";
 import { Card, ChartTip, Chip, DataTable, Empty, PageHead, Segmented, YoyTip } from "../components/ui.jsx";
 
 const OPTIONS = [
@@ -213,6 +214,7 @@ export default function Trends() {
               rowKey={r => r.year} caption="Annual statistics" />
           </Card>
 
+          <RideProgressPanels activities={activities} />
           <EngagementPanel activities={activities} gearName={gearName} snapshots={raw?.athleteSnapshots} />
         </>
       )}

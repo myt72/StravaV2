@@ -134,8 +134,8 @@ select:hover, input:hover { border-color: var(--text-muted); }
 .week-list.scroll-region { padding-left: 0; padding-right: 14px; }
 .card.fill { display: flex; flex-direction: column; }
 .card.fill > .scroll-region.grow { flex: 1 1 0; min-height: 130px; max-height: none; }
-.grid.garage-stats { grid-auto-rows: 1fr; }
-.grid.garage-stats > .card { min-height: 0; }
+.grid.ride-pattern-stats > .card { min-height: 0; }
+.grid.ride-pattern-stats > .card.fill > .scroll-region.grow { flex: 1 1 220px; max-height: 240px; }
 .card.fill > .milestone-grid.scroll-region.grow { min-height: 172px; }
 .card.fill > .chart-box.short { flex: 1 1 240px; height: auto; min-height: 240px; }
 .milestone-next { padding: 8px 0 4px; }
@@ -425,7 +425,6 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
   .filterbar { padding: 8px 12px; position: static; }
   .content { padding: 14px 12px 24px; }
   .grid.two { grid-template-columns: minmax(0, 1fr); }
-  .grid.garage-stats { grid-auto-rows: auto; }
   .card.fill > .scroll-region.grow, .card.fill > .milestone-grid.scroll-region.grow { min-height: 220px; }
   .card.fill > .chart-box.short { flex: 0 0 auto; height: 240px; }
   .kpi-value { font-size: 1.35rem; }
