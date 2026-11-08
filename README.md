@@ -49,10 +49,19 @@ the timeline by current and retired bikes. The timeline opens at the most recent
 year; scroll left to see earlier years. It follows the global filters, so these dates
 describe the filtered activities rather than purchase or retirement dates;
 bikes without matching dated activities cannot be shown.
-The Garage also has a compact "Bike type comparison" scorecard (rides, miles, elevation, average ride length, ft/mi and average mph per type, with an inline bar for a selectable metric: miles, elevation, rides or hours), followed by ride consistency and a weekly mileage ramp (both scroll inside their cards, newest first, and match the height of the Everest and milestone cards), annual climbing toward Everest (the tooltip shows the year's Everest multiple, e.g. `17.3x Everests`) and lifetime mileage milestones (a compact grid with the next milestone highlighted by a progress bar, passed milestones with the date reached and upcoming ones marked "(projected)"). The sortable "All bikes" summary is split into Active bikes and a collapsible Retired bikes section (rides, distance, elevation, time as `hhh:mm:ss`, speed and PRs per bike; the pinned totals row covers all bikes). The Count figure links to Activities filtered to that bike; the PR figure opens a drawer listing the segments where that bike has a PR (`pr_rank` 1 in `segmentData`, joined to the bike's activities by `gear_id`), each linked to Strava with its PR effort count, best time and latest PR activity. The drawer follows the global filters and the excluded-segments setting. These summaries follow the global date, activity
+The Garage also has a compact "Bike type comparison" scorecard (rides, miles, elevation, average ride length, ft/mi and average mph per type, with an inline bar for a selectable metric: miles, elevation, rides or hours). The sortable "All bikes" summary is split into Active bikes and a collapsible Retired bikes section (rides, distance, elevation, time as `hhh:mm:ss`, speed and PRs per bike; the pinned totals row covers all bikes). The Count figure links to Activities filtered to that bike; the PR figure opens a drawer listing the segments where that bike has a PR (`pr_rank` 1 in `segmentData`, joined to the bike's activities by `gear_id`), each linked to Strava with its PR effort count, best time and latest PR activity. The drawer follows the global filters and the excluded-segments setting. These summaries follow the global date, activity
 type, and bike filters. The Patterns page includes a month-by-year activity
 matrix, best and lowest months (left), with seasonality above rolling 12-month totals (newest first, right; stacked on narrow screens). Pattern charts and the matrix use the browser's
 local time zone; matrix cells link to that month's activities.
+
+**Patterns** also includes Ride consistency and Weekly mileage ramp; their
+yearly and weekly lists scroll inside the cards, newest first. **Trends** has
+Everest challenge (annual climbing with an Everest multiple in the tooltip)
+and Mileage milestones (achieved and projected distance milestones). These
+four panels use only Ride activities and follow the global filters; the Trends
+panels also follow its activity-type chips. Totals and milestone dates reflect
+the filtered rides, not necessarily all-time history. They are hidden when the
+applicable filters contain no rides.
 
 ## Admin password (Data tab)
 

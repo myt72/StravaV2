@@ -13,6 +13,7 @@ import { navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
 import { useUnits } from "../context/Units.jsx";
 import { Card, ChartTip, DataTable, Empty, PageHead, Segmented } from "../components/ui.jsx";
+import { RidePatternPanels } from "../components/RidePanels.jsx";
 
 const metricOptions = units => [
   { value: "distance", label: units.metric ? "Kilometers" : "Miles" },
@@ -537,6 +538,7 @@ export default function Patterns() {
             <MonthYearMatrix activities={filtered.activities} metric={metric} />
           </Card>
           <WeeklyAverages activities={filtered.activities} />
+          <RidePatternPanels activities={filtered.activities} />
           <LongRidesByYear activities={filtered.activities} />
           <div className="grid two">
             <Card title="Day of week"><PatternChart data={weekday} metric={metric} color="var(--chart-1)" paramKey="dow" className="dow" label="Bar chart by day of week" /></Card>
