@@ -11,7 +11,8 @@ test("activity video manifest resolves local MP4 filenames", async () => {
       return { ok: true, json: async () => [{ title: "  Ride  ", file: "my ride #1.MP4" }] };
     };
     assert.deepEqual(await fetchActivityVideos(), [
-      { title: "Ride", url: "/dashboard/videos/my%20ride%20%231.MP4" }
+      { title: "Ride", url: "/dashboard/videos/my%20ride%20%231.MP4",
+        imageUrl: "/dashboard/videos/my%20ride%20%231.png" }
     ]);
 
     global.fetch = async () => ({ status: 404 });
