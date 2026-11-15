@@ -1,5 +1,7 @@
 public/images/bikes/*
 !public/images/bikes/.gitkeep
+public/videos/
+public/activity-videos.json
 settings.json
 config.local.js
 .env

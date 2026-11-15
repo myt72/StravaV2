@@ -8,6 +8,7 @@ import {
 import { useUnits } from "../context/Units.jsx";
 import { M_PER_MI } from "../lib/units.js";
 import { Card, Chip, DataTable, Drawer, PageHead } from "../components/ui.jsx";
+import ActivityVideos from "../components/ActivityVideos.jsx";
 
 function FeaturedActivities({ activities, gearName, open }) {
   const units = useUnits();
@@ -134,6 +135,8 @@ export default function Activities({ route }) {
   return (
     <div className="content">
       <PageHead title="Activities">{comma(rows.length)} of {comma(filtered.activities.length)} activities in the current view.</PageHead>
+
+      <ActivityVideos />
 
       <FeaturedActivities activities={raw.activities} gearName={gearName} open={open} />
 
