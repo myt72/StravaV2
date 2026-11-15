@@ -34,12 +34,16 @@ it to list up to 10 videos, in the order you want them shown:
 ]
 ```
 
-Use the filename only, including `.mp4`, not a Windows path or URL. Reload the
-Activities page after editing the manifest. Select a title to play the video
-in a modal; close it or press Escape to stop playback. The section is hidden
-when the manifest is absent or empty. Both the manifest and `public/videos/`
-are gitignored. Videos are served by the local web server like other public
-assets, so anyone who can reach that server and knows a video URL can access it.
+Use the filename only, including `.mp4`, not a Windows path or URL. Place a PNG
+with the same filename stem beside each video, for example `home rides.png`
+for `home rides.mp4`. There is no need to add the image to the manifest.
+Reload the Activities page after editing the manifest. Browse the covers with
+Previous and Next; select a cover to flip it and play the video, and choose
+Back to cover to stop playback. A video can still be played if its cover is
+missing. The section is hidden when the manifest is absent or empty. Both the
+manifest and `public/videos/` are gitignored. Videos and images are served by
+the local web server like other public assets, so anyone who can reach that
+server and knows their URLs can access them.
 
 ## Bike types and analytics
 

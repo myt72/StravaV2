@@ -17,6 +17,11 @@ export async function fetchActivityVideos() {
         typeof item.file !== "string" || !/^[^/\\\x00-\x1f]+\.mp4$/i.test(item.file)) {
       throw new Error(`Video ${index + 1} needs a title and an MP4 filename in public/videos.`);
     }
-    return { title: item.title.trim(), url: `/dashboard/videos/${encodeURIComponent(item.file)}` };
+    const imageFile = item.file.replace(/\.mp4$/i, ".png");
+    return {
+      title: item.title.trim(),
+      url: `/dashboard/videos/${encodeURIComponent(item.file)}`,
+      imageUrl: `/dashboard/videos/${encodeURIComponent(imageFile)}`
+    };
   });
 }
