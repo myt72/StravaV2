@@ -368,6 +368,10 @@ dialog::backdrop { background: var(--overlay); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 dialog.gallery { max-width: min(96vw, 960px); width: 960px; }
 dialog.gallery.dragging { outline: 3px dashed var(--accent); }
+.activity-video-list { margin: 0; padding-left: 20px; }
+.activity-video-list li { padding: 4px 0; }
+dialog.activity-video-dialog { max-width: min(92vw, 560px); max-height: 95vh; }
+.activity-video-dialog video { display: block; width: auto; max-width: 100%; max-height: 72vh; margin: 0 auto; background: #000; }
 .gallery-stage { position: relative; background: #000; border-radius: var(--radius-sm); min-height: 240px; display: grid; place-items: center; overflow: hidden; }
 .gallery-stage img { max-width: 100%; max-height: 62vh; display: block; transition: opacity 0.2s; }
 .gallery-stage img.loading { opacity: 0.25; }

@@ -21,6 +21,26 @@ Open `http://localhost:5001/dashboard`. On first use, log in with Strava via
 `http://localhost:5001/auth` once; the token is kept in the server's memory, so
 log in again after restarting the server.
 
+## Activity videos
+
+Put MP4 files in `public/videos/` (create the folder if needed). Copy
+`public/activity-videos.example.json` to `public/activity-videos.json` and edit
+it to list up to 10 videos, in the order you want them shown:
+
+```json
+[
+  { "title": "Home rides", "file": "home rides.mp4" },
+  { "title": "Home walks", "file": "walks.mp4" }
+]
+```
+
+Use the filename only, including `.mp4`, not a Windows path or URL. Reload the
+Activities page after editing the manifest. Select a title to play the video
+in a modal; close it or press Escape to stop playback. The section is hidden
+when the manifest is absent or empty. Both the manifest and `public/videos/`
+are gitignored. Videos are served by the local web server like other public
+assets, so anyone who can reach that server and knows a video URL can access it.
+
 ## Bike types and analytics
 
 Optionally classify bikes by adding their Strava gear IDs to `bike_types` in
