@@ -21,6 +21,13 @@ Open `http://localhost:5001/dashboard`. On first use, log in with Strava via
 `http://localhost:5001/auth` once; the token is kept in the server's memory, so
 log in again after restarting the server.
 
+## Quick Links
+
+Put the sidebar thumbnails in `client/public/quick-links/` (create the folder
+if needed), using these exact filenames: `ridewithgps.svg`, `garminconnect.png`,
+`veloviewer.png`, and `Komoot.png`. Rebuild the client after adding them.
+Until an image is available, its link displays initials instead.
+
 ## Activity videos
 
 Put MP4 files in `public/videos/` (create the folder if needed). Copy

@@ -18,6 +18,36 @@ export const NAV = [
   { id: "mdr", label: "Macrodata Refinement", themeId: "severance" }
 ];
 
+const QUICK_LINKS = [
+  { name: "Ride With GPS", href: "https://ridewithgps.com", image: "ridewithgps.svg", initials: "RW" },
+  { name: "Garmin Connect", href: "https://connectgarmin.com", image: "garminconnect.png", initials: "GC" },
+  { name: "VeloViewer", href: "https://veloviewer.com/athlete/72850/", image: "veloviewer.png", initials: "VV" },
+  { name: "Komoot", href: "https://www.komoot.com/", image: "Komoot.png", initials: "K" }
+];
+
+function QuickLink({ link }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  return (
+    <a className="quick-link" href={link.href} target="_blank" rel="noopener noreferrer"
+      title={link.name} aria-label={`${link.name} (opens in a new tab)`}>
+      {imgFailed
+        ? <span aria-hidden="true">{link.initials}</span>
+        : <img src={`${import.meta.env.BASE_URL}quick-links/${link.image}`} alt="" onError={() => setImgFailed(true)} />}
+    </a>
+  );
+}
+
+export function QuickLinks() {
+  return (
+    <nav className="quick-links" aria-label="Quick Links">
+      <div className="quick-links-heading">Quick Links</div>
+      <div className="quick-links-list">
+        {QUICK_LINKS.map(link => <QuickLink key={link.name} link={link} />)}
+      </div>
+    </nav>
+  );
+}
+
 /** Nav entries available for a theme (entries with a themeId are shown only for that theme). */
 export function navFor(themeId) {
   return NAV.filter(n => !n.themeId || n.themeId === themeId);
@@ -89,6 +119,7 @@ export function Sidebar({ current, themeState, collapsed, onToggleNav }) {
           </a>
         ))}
       </nav>
+      <QuickLinks />
       <div className="sidebar-foot">
         <label className="theme-picker">
           <span>Theme</span>
