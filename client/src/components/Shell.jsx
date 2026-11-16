@@ -20,7 +20,7 @@ export const NAV = [
 
 const QUICK_LINKS = [
   { name: "Ride With GPS", href: "https://ridewithgps.com", image: "ridewithgps.svg", initials: "RW" },
-  { name: "Garmin Connect", href: "https://connectgarmin.com", image: "garminconnect.png", initials: "GC" },
+  { name: "Garmin Connect", href: "https://connect.garmin.com", image: "garminconnect.png", initials: "GC" },
   { name: "VeloViewer", href: "https://veloviewer.com/athlete/72850/", image: "veloviewer.png", initials: "VV" },
   { name: "Komoot", href: "https://www.komoot.com/", image: "Komoot.png", initials: "K" }
 ];
