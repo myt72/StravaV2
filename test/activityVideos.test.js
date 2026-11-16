@@ -1,6 +1,24 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
+test("portable fullscreen detection excludes desktop and touch laptops", async () => {
+  const { isPortableTouchDevice } = await import("../client/src/lib/activityVideos.js");
+  assert.equal(isPortableTouchDevice({ userAgent: "Mozilla/5.0 (Linux; Android 14)", platform: "Linux", maxTouchPoints: 5 }), true);
+  assert.equal(isPortableTouchDevice({ userAgent: "Mozilla/5.0 (iPhone)", platform: "iPhone", maxTouchPoints: 5 }), true);
+  assert.equal(isPortableTouchDevice({ userAgent: "Mozilla/5.0 (Macintosh)", platform: "MacIntel", maxTouchPoints: 5 }), true);
+  assert.equal(isPortableTouchDevice({ userAgent: "Mozilla/5.0 (Windows NT 10.0)", platform: "Win32", maxTouchPoints: 10 }), false);
+  assert.equal(isPortableTouchDevice({ userAgent: "Mozilla/5.0 (X11; CrOS x86_64) Android", platform: "Linux", maxTouchPoints: 10 }), false);
+  assert.equal(isPortableTouchDevice({ userAgent: "Mozilla/5.0 (Macintosh)", platform: "MacIntel", maxTouchPoints: 0 }), false);
+});
+
+test("horizontal cover swipes select the next or previous item", async () => {
+  const { swipeDirection } = await import("../client/src/lib/activityVideos.js");
+  assert.equal(swipeDirection({ x: 100, y: 100 }, { x: 35, y: 115 }), 1);
+  assert.equal(swipeDirection({ x: 100, y: 100 }, { x: 165, y: 115 }), -1);
+  assert.equal(swipeDirection({ x: 100, y: 100 }, { x: 60, y: 100 }), 0);
+  assert.equal(swipeDirection({ x: 100, y: 100 }, { x: 25, y: 180 }), 0);
+});
+
 test("activity video manifest resolves local MP4 filenames", async () => {
   const { fetchActivityVideos } = await import("../client/src/lib/activityVideos.js");
   const original = global.fetch;

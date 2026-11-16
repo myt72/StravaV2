@@ -1,3 +1,16 @@
+export function isPortableTouchDevice({ userAgent, platform, maxTouchPoints }) {
+  return maxTouchPoints > 0 && !/CrOS/i.test(userAgent) && (
+    /Android|iPhone|iPad|iPod/i.test(userAgent) ||
+    (platform === "MacIntel" && maxTouchPoints > 1)
+  );
+}
+
+export function swipeDirection(start, end) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  return Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.3 ? (dx < 0 ? 1 : -1) : 0;
+}
+
 export async function fetchActivityVideos() {
   const res = await fetch("/dashboard/activity-videos.json", { cache: "no-store" });
   if (res.status === 404) return [];
