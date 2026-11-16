@@ -1,18 +1,50 @@
 import { useEffect, useRef, useState } from "react";
-import { fetchActivityVideos } from "../lib/activityVideos.js";
+import { flushSync } from "react-dom";
+import { fetchActivityVideos, isPortableTouchDevice, swipeDirection } from "../lib/activityVideos.js";
 import { Card } from "./ui.jsx";
 
-function VideoCard({ video }) {
+function VideoCard({ video, onSwipe }) {
   const [flipped, setFlipped] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [videoFailed, setVideoFailed] = useState(false);
+  const [fullscreenFailed, setFullscreenFailed] = useState(false);
   const coverRef = useRef(null);
   const videoRef = useRef(null);
   const wasFlipped = useRef(false);
+  const touchStart = useRef(null);
+  const suppressClick = useRef(false);
 
   function showCover() {
     setFlipped(false);
     setVideoFailed(false);
+    setFullscreenFailed(false);
+  }
+
+  function showVideo() {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
+    if (!isPortableTouchDevice(navigator)) {
+      setFlipped(true);
+      return;
+    }
+    // Fullscreen must be requested synchronously from the user's tap.
+    flushSync(() => setFlipped(true));
+    const player = videoRef.current;
+    try {
+      if (/iPhone|iPod/i.test(navigator.userAgent) && player.webkitEnterFullscreen) {
+        player.webkitEnterFullscreen();
+      } else if (player.requestFullscreen && document.fullscreenEnabled !== false) {
+        player.requestFullscreen().catch(() => setFullscreenFailed(true));
+      } else if (player.webkitEnterFullscreen) {
+        player.webkitEnterFullscreen();
+      } else {
+        setFullscreenFailed(true);
+      }
+    } catch {
+      setFullscreenFailed(true);
+    }
   }
 
   useEffect(() => {
@@ -26,7 +58,23 @@ function VideoCard({ video }) {
       <div className={`activity-video-card${flipped ? " flipped" : ""}`}>
         <div className="activity-video-face activity-video-front" aria-hidden={flipped}>
           <button ref={coverRef} type="button" className="activity-video-cover" tabIndex={flipped ? -1 : 0}
-            aria-label={`Play ${video.title}`} onClick={() => setFlipped(true)}>
+            aria-label={`Play ${video.title}`} onClick={showVideo}
+            onPointerDown={e => {
+              suppressClick.current = false;
+              if (e.pointerType === "touch" && e.isPrimary) {
+                touchStart.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+              }
+            }}
+            onPointerUp={e => {
+              if (!touchStart.current || e.pointerType !== "touch" || e.pointerId !== touchStart.current.id) return;
+              const direction = swipeDirection(touchStart.current, { x: e.clientX, y: e.clientY });
+              touchStart.current = null;
+              if (direction) {
+                suppressClick.current = true;
+                onSwipe?.(direction);
+              }
+            }}
+            onPointerCancel={() => { touchStart.current = null; }}>
             {!imageFailed
               ? <img src={video.imageUrl} alt="" onError={() => setImageFailed(true)} />
               : <span className="activity-video-missing">Cover image not found</span>}
@@ -41,6 +89,7 @@ function VideoCard({ video }) {
                 Your browser does not support video playback.
               </video>
               {videoFailed && <p role="alert">Could not play this video. Check that the MP4 exists in public/videos and is supported by your browser.</p>}
+              {fullscreenFailed && <p role="status">Fullscreen unavailable. Use the player controls to enlarge the video.</p>}
               <button type="button" className="btn sm" onClick={showCover}>
                 Back to cover
               </button>
@@ -78,7 +127,8 @@ export default function ActivityVideos() {
             <h3>{video.title}</h3>
             <span className="muted small" aria-live="polite">{index + 1} of {items.length}</span>
           </div>
-          <VideoCard key={index} video={video} />
+          <VideoCard key={index} video={video}
+            onSwipe={items.length > 1 ? direction => setIndex(current => (current + direction + items.length) % items.length) : null} />
           {items.length > 1 && (
             <div className="activity-video-navigation">
               <button type="button" className="btn sm" aria-label="Previous video"
