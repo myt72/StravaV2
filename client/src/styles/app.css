@@ -55,6 +55,15 @@ button:disabled { cursor: not-allowed; opacity: 0.55; }
 .nav-badge { margin-left: auto; font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; background: var(--accent); color: var(--accent-contrast); font-weight: 700; }
 .nav-badge.pulse { animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: 0.55; } }
+.quick-links { margin: 12px 0; }
+.quick-links-heading { padding: 0 10px 6px; color: var(--text-muted); font-size: 0.75rem; font-weight: 600; }
+.quick-links-list { display: flex; gap: 4px; }
+.quick-link {
+  width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: var(--radius-sm);
+  color: var(--text-muted); text-decoration: none; font-size: 0.7rem; font-weight: 700;
+}
+.quick-link:hover { background: var(--surface-hover); color: var(--text); }
+.quick-link img { display: block; width: 28px; height: 28px; object-fit: contain; }
 .sidebar-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
 .theme-picker { display: flex; flex-direction: column; gap: 4px; padding: 0 10px; font-size: 0.75rem; color: var(--text-muted); }
 .theme-picker select { width: 100%; min-width: 0; }
@@ -425,6 +434,8 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
   .nav-collapsed .nav-label, .nav-collapsed .profile-text, .nav-collapsed .btn-label, .nav-collapsed .theme-picker { display: none; }
   .nav-collapsed .profile { justify-content: center; padding-left: 0; padding-right: 0; }
   .nav-collapsed .nav-badge { position: absolute; top: 2px; right: 2px; margin: 0; padding: 0 4px; font-size: 0.6rem; }
+  .nav-collapsed .quick-links-heading { display: none; }
+  .nav-collapsed .quick-links-list { flex-direction: column; align-items: center; }
 }
 
 /* ---------- responsive ---------- */
@@ -441,6 +452,9 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
   .nav { flex-direction: row; flex: 1; justify-content: space-around; gap: 0; }
   .nav-link { flex-direction: column; gap: 2px; font-size: 0.68rem; padding: 6px 8px; min-width: 56px; text-align: center; position: relative; }
   .nav-badge { position: absolute; top: 0; right: 4px; margin: 0; }
+  .quick-links { margin: 0; display: flex; align-items: center; }
+  .quick-links-heading { display: none; }
+  .quick-links-list { gap: 0; }
   .filterbar { padding: 8px 12px; position: static; }
   .content { padding: 14px 12px 24px; }
   .grid.two { grid-template-columns: minmax(0, 1fr); }
