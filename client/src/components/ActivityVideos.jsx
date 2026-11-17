@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { fetchActivityVideos, isPortableTouchDevice, listenForCoverSwipes } from "../lib/activityVideos.js";
+import { fetchActivityVideos, isPortableTouchDevice, listenForCoverSwipes, requestVideoFullscreen } from "../lib/activityVideos.js";
 import { Card } from "./ui.jsx";
 
 function VideoCard({ video, onSwipe }) {
@@ -13,31 +13,21 @@ function VideoCard({ video, onSwipe }) {
   const wasFlipped = useRef(false);
 
   function showCover() {
+    const player = videoRef.current;
+    player.pause();
+    if (player.readyState > 0) player.currentTime = 0;
     setFlipped(false);
     setVideoFailed(false);
     setFullscreenFailed(false);
   }
 
   function showVideo() {
-    if (!isPortableTouchDevice(navigator)) {
-      setFlipped(true);
-      return;
-    }
     // Fullscreen must be requested synchronously from the user's tap.
     flushSync(() => setFlipped(true));
     const player = videoRef.current;
-    try {
-      if (/iPhone|iPod/i.test(navigator.userAgent) && player.webkitEnterFullscreen) {
-        player.webkitEnterFullscreen();
-      } else if (player.requestFullscreen && document.fullscreenEnabled !== false) {
-        player.requestFullscreen().catch(() => setFullscreenFailed(true));
-      } else if (player.webkitEnterFullscreen) {
-        player.webkitEnterFullscreen();
-      } else {
-        setFullscreenFailed(true);
-      }
-    } catch {
-      setFullscreenFailed(true);
+    player.play().catch(() => setVideoFailed(true));
+    if (isPortableTouchDevice(navigator)) {
+      requestVideoFullscreen(player, document, navigator.userAgent).catch(() => setFullscreenFailed(true));
     }
   }
 
@@ -63,13 +53,13 @@ function VideoCard({ video, onSwipe }) {
             <span className="activity-video-play" aria-hidden="true">▶</span>
           </button>
         </div>
-        <div className="activity-video-face activity-video-back">
+        <div className="activity-video-face activity-video-back" aria-hidden={!flipped}>
+          <video ref={videoRef} src={video.url} controls={flipped} preload="metadata" playsInline tabIndex={-1}
+            onError={() => setVideoFailed(true)}>
+            Your browser does not support video playback.
+          </video>
           {flipped && (
             <>
-              <video ref={videoRef} src={video.url} controls autoPlay playsInline tabIndex={-1}
-                onError={() => setVideoFailed(true)}>
-                Your browser does not support video playback.
-              </video>
               {videoFailed && <p role="alert">Could not play this video. Check that the MP4 exists in public/videos and is supported by your browser.</p>}
               {fullscreenFailed && <p role="status">Fullscreen unavailable. Use the player controls to enlarge the video.</p>}
               <button type="button" className="btn sm" onClick={showCover}>

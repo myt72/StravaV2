@@ -5,6 +5,25 @@ export function isPortableTouchDevice({ userAgent, platform, maxTouchPoints }) {
   );
 }
 
+export async function requestVideoFullscreen(player, doc, userAgent) {
+  const methods = [];
+  const nativeFullscreen = player.webkitEnterFullscreen || player.webkitEnterFullScreen;
+  if (/iPhone|iPod/i.test(userAgent) && nativeFullscreen) methods.push(nativeFullscreen);
+  if (player.requestFullscreen && doc.fullscreenEnabled !== false) methods.push(player.requestFullscreen);
+  if (player.webkitRequestFullscreen && doc.webkitFullscreenEnabled !== false) methods.push(player.webkitRequestFullscreen);
+  if (!/iPhone|iPod/i.test(userAgent) && nativeFullscreen) methods.push(nativeFullscreen);
+
+  for (const method of methods) {
+    try {
+      await method.call(player);
+      return;
+    } catch {
+      // Another fullscreen API may be available on this device.
+    }
+  }
+  throw new Error("Fullscreen unavailable");
+}
+
 export function swipeDirection(start, end) {
   const dx = end.x - start.x;
   const dy = end.y - start.y;

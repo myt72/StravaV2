@@ -11,6 +11,34 @@ test("portable fullscreen detection excludes desktop and touch laptops", async (
   assert.equal(isPortableTouchDevice({ userAgent: "Mozilla/5.0 (Macintosh)", platform: "MacIntel", maxTouchPoints: 0 }), false);
 });
 
+test("video fullscreen supports iPhone and iPad Safari APIs and reports failure", async () => {
+  const { requestVideoFullscreen } = await import("../client/src/lib/activityVideos.js");
+  const calls = [];
+  const player = {
+    webkitEnterFullscreen() { calls.push("native"); },
+    requestFullscreen() { calls.push("standard"); return Promise.resolve(); },
+    webkitRequestFullscreen() { calls.push("prefixed"); }
+  };
+  const pending = requestVideoFullscreen(player, {}, "iPhone");
+  assert.deepEqual(calls, ["native"]);
+  await pending;
+
+  calls.length = 0;
+  await requestVideoFullscreen(player, {}, "Macintosh");
+  assert.deepEqual(calls, ["standard"]);
+
+  calls.length = 0;
+  await requestVideoFullscreen(player, { fullscreenEnabled: false }, "Macintosh");
+  assert.deepEqual(calls, ["prefixed"]);
+
+  calls.length = 0;
+  player.requestFullscreen = () => Promise.reject(new Error("not supported"));
+  player.webkitRequestFullscreen = () => { throw new Error("not supported"); };
+  await requestVideoFullscreen(player, {}, "Macintosh");
+  assert.deepEqual(calls, ["native"]);
+  await assert.rejects(requestVideoFullscreen({}, {}, "Macintosh"), /Fullscreen unavailable/);
+});
+
 test("horizontal cover swipes select the next or previous item", async () => {
   const { swipeDirection } = await import("../client/src/lib/activityVideos.js");
   assert.equal(swipeDirection({ x: 100, y: 100 }, { x: 35, y: 115 }), 1);
