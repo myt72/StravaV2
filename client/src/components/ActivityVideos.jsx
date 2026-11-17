@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { fetchActivityVideos, isPortableTouchDevice, swipeDirection } from "../lib/activityVideos.js";
+import { fetchActivityVideos, isPortableTouchDevice, listenForCoverSwipes } from "../lib/activityVideos.js";
 import { Card } from "./ui.jsx";
 
 function VideoCard({ video, onSwipe }) {
@@ -11,8 +11,6 @@ function VideoCard({ video, onSwipe }) {
   const coverRef = useRef(null);
   const videoRef = useRef(null);
   const wasFlipped = useRef(false);
-  const touchStart = useRef(null);
-  const suppressClick = useRef(false);
 
   function showCover() {
     setFlipped(false);
@@ -21,10 +19,6 @@ function VideoCard({ video, onSwipe }) {
   }
 
   function showVideo() {
-    if (suppressClick.current) {
-      suppressClick.current = false;
-      return;
-    }
     if (!isPortableTouchDevice(navigator)) {
       setFlipped(true);
       return;
@@ -53,28 +47,16 @@ function VideoCard({ video, onSwipe }) {
     wasFlipped.current = flipped;
   }, [flipped]);
 
+  useEffect(() => {
+    if (onSwipe) return listenForCoverSwipes(coverRef.current, onSwipe);
+  }, [onSwipe]);
+
   return (
     <div className="activity-video-scene">
       <div className={`activity-video-card${flipped ? " flipped" : ""}`}>
         <div className="activity-video-face activity-video-front" aria-hidden={flipped}>
           <button ref={coverRef} type="button" className="activity-video-cover" tabIndex={flipped ? -1 : 0}
-            aria-label={`Play ${video.title}`} onClick={showVideo}
-            onPointerDown={e => {
-              suppressClick.current = false;
-              if (e.pointerType === "touch" && e.isPrimary) {
-                touchStart.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
-              }
-            }}
-            onPointerUp={e => {
-              if (!touchStart.current || e.pointerType !== "touch" || e.pointerId !== touchStart.current.id) return;
-              const direction = swipeDirection(touchStart.current, { x: e.clientX, y: e.clientY });
-              touchStart.current = null;
-              if (direction) {
-                suppressClick.current = true;
-                onSwipe?.(direction);
-              }
-            }}
-            onPointerCancel={() => { touchStart.current = null; }}>
+            aria-label={`Play ${video.title}`} onClick={showVideo}>
             {!imageFailed
               ? <img src={video.imageUrl} alt="" onError={() => setImageFailed(true)} />
               : <span className="activity-video-missing">Cover image not found</span>}

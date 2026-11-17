@@ -19,6 +19,48 @@ test("horizontal cover swipes select the next or previous item", async () => {
   assert.equal(swipeDirection({ x: 100, y: 100 }, { x: 25, y: 180 }), 0);
 });
 
+test("cover touch gestures navigate without blocking taps or vertical scrolling", async () => {
+  const { listenForCoverSwipes } = await import("../client/src/lib/activityVideos.js");
+  const cover = new EventTarget();
+  const directions = [];
+  const cleanup = listenForCoverSwipes(cover, direction => directions.push(direction));
+  const point = (x, y, identifier = 1) => ({ clientX: x, clientY: y, identifier });
+  function touch(type, touches, changedTouches = touches) {
+    const event = new Event(type, { cancelable: true });
+    Object.assign(event, { touches, changedTouches });
+    cover.dispatchEvent(event);
+    return event.defaultPrevented;
+  }
+
+  touch("touchstart", [point(100, 100)]);
+  assert.equal(touch("touchmove", [point(90, 102)]), true);
+  assert.equal(touch("touchend", [], [point(35, 115)]), true);
+  assert.deepEqual(directions, [1]);
+
+  touch("touchstart", [point(100, 100)]);
+  assert.equal(touch("touchmove", [point(110, 102)]), true);
+  touch("touchend", [], [point(165, 115)]);
+  assert.deepEqual(directions, [1, -1]);
+
+  touch("touchstart", [point(100, 100)]);
+  assert.equal(touch("touchmove", [point(102, 120)]), false);
+  assert.equal(touch("touchend", [], [point(35, 115)]), false);
+  touch("touchstart", [point(100, 100)]);
+  assert.equal(touch("touchend", [], [point(102, 101)]), false);
+  assert.deepEqual(directions, [1, -1]);
+
+  touch("touchstart", [point(100, 100)]);
+  touch("touchstart", [point(100, 100), point(110, 100, 2)]);
+  touch("touchend", [], [point(35, 100)]);
+  touch("touchstart", [point(100, 100)]);
+  touch("touchcancel", [], [point(100, 100)]);
+  touch("touchend", [], [point(35, 100)]);
+  cleanup();
+  touch("touchstart", [point(100, 100)]);
+  touch("touchend", [], [point(35, 100)]);
+  assert.deepEqual(directions, [1, -1]);
+});
+
 test("activity video manifest resolves local MP4 filenames", async () => {
   const { fetchActivityVideos } = await import("../client/src/lib/activityVideos.js");
   const original = global.fetch;

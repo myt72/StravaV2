@@ -11,6 +11,61 @@ export function swipeDirection(start, end) {
   return Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy) * 1.3 ? (dx < 0 ? 1 : -1) : 0;
 }
 
+export function listenForCoverSwipes(element, onSwipe) {
+  let gesture = null;
+
+  function start(event) {
+    if (event.touches.length !== 1) {
+      gesture = null;
+      return;
+    }
+    const touch = event.touches[0];
+    gesture = { id: touch.identifier, x: touch.clientX, y: touch.clientY, axis: null };
+  }
+
+  function move(event) {
+    if (!gesture || event.touches.length !== 1 || event.touches[0].identifier !== gesture.id) {
+      gesture = null;
+      return;
+    }
+    const touch = event.touches[0];
+    const dx = Math.abs(touch.clientX - gesture.x);
+    const dy = Math.abs(touch.clientY - gesture.y);
+    if (!gesture.axis && Math.max(dx, dy) >= 8) {
+      gesture.axis = dx > dy ? "horizontal" : "vertical";
+    }
+    if (gesture.axis === "horizontal" && event.cancelable) event.preventDefault();
+  }
+
+  function end(event) {
+    if (!gesture) return;
+    const touch = Array.from(event.changedTouches).find(item => item.identifier === gesture.id);
+    if (touch && gesture.axis !== "vertical") {
+      const direction = swipeDirection(gesture, { x: touch.clientX, y: touch.clientY });
+      if (direction) {
+        if (event.cancelable) event.preventDefault();
+        onSwipe(direction);
+      }
+    }
+    gesture = null;
+  }
+
+  function cancel() {
+    gesture = null;
+  }
+
+  element.addEventListener("touchstart", start, { passive: true });
+  element.addEventListener("touchmove", move, { passive: false });
+  element.addEventListener("touchend", end, { passive: false });
+  element.addEventListener("touchcancel", cancel);
+  return () => {
+    element.removeEventListener("touchstart", start);
+    element.removeEventListener("touchmove", move);
+    element.removeEventListener("touchend", end);
+    element.removeEventListener("touchcancel", cancel);
+  };
+}
+
 export async function fetchActivityVideos() {
   const res = await fetch("/dashboard/activity-videos.json", { cache: "no-store" });
   if (res.status === 404) return [];
