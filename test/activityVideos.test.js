@@ -39,6 +39,44 @@ test("video fullscreen supports iPhone and iPad Safari APIs and reports failure"
   await assert.rejects(requestVideoFullscreen({}, {}, "Macintosh"), /Fullscreen unavailable/);
 });
 
+test("closing the video's fullscreen restores the cover across browser APIs", async () => {
+  const { listenForVideoFullscreenExit } = await import("../client/src/lib/activityVideos.js");
+  const player = new EventTarget();
+  const doc = new EventTarget();
+  let exits = 0;
+  const cleanup = listenForVideoFullscreenExit(player, doc, () => { exits++; });
+
+  doc.fullscreenElement = new EventTarget();
+  doc.dispatchEvent(new Event("fullscreenchange"));
+  doc.fullscreenElement = null;
+  doc.dispatchEvent(new Event("fullscreenchange"));
+  assert.equal(exits, 0);
+
+  doc.fullscreenElement = player;
+  doc.dispatchEvent(new Event("fullscreenchange"));
+  doc.fullscreenElement = null;
+  doc.dispatchEvent(new Event("fullscreenchange"));
+  assert.equal(exits, 1);
+
+  doc.webkitFullscreenElement = player;
+  doc.dispatchEvent(new Event("webkitfullscreenchange"));
+  doc.webkitFullscreenElement = null;
+  doc.dispatchEvent(new Event("webkitfullscreenchange"));
+  assert.equal(exits, 2);
+
+  player.dispatchEvent(new Event("webkitbeginfullscreen"));
+  player.dispatchEvent(new Event("webkitendfullscreen"));
+  doc.dispatchEvent(new Event("fullscreenchange"));
+  assert.equal(exits, 3);
+
+  player.dispatchEvent(new Event("webkitbeginfullscreen"));
+  player.dispatchEvent(new Event("webkitendfullscreen"));
+  assert.equal(exits, 4);
+  cleanup();
+  player.dispatchEvent(new Event("webkitendfullscreen"));
+  assert.equal(exits, 4);
+});
+
 test("horizontal cover swipes select the next or previous item", async () => {
   const { swipeDirection } = await import("../client/src/lib/activityVideos.js");
   assert.equal(swipeDirection({ x: 100, y: 100 }, { x: 35, y: 115 }), 1);
