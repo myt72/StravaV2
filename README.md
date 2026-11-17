@@ -48,7 +48,8 @@ Reload the Activities page after editing the manifest. Browse the covers with
 Previous and Next or swipe horizontally on a cover; select a cover to flip it
 and play the video, and choose Back to cover to stop playback. On touchscreen
 phones and tablets the app requests fullscreen playback when a cover is tapped;
-if the browser doesn't allow it, use the video controls. Swipe on covers, not
+closing fullscreen returns to the cover. If the browser doesn't allow fullscreen,
+use the video controls. Swipe on covers, not
 on the video player, so its controls remain usable. A video can still be played if its cover is
 missing. The section is hidden when the manifest is absent or empty. Both the
 manifest and `public/videos/` are gitignored. Videos and images are served by

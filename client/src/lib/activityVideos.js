@@ -24,6 +24,34 @@ export async function requestVideoFullscreen(player, doc, userAgent) {
   throw new Error("Fullscreen unavailable");
 }
 
+export function listenForVideoFullscreenExit(player, doc, onExit) {
+  let active = false;
+
+  function fullscreenChange() {
+    const fullscreenElement = doc.fullscreenElement || doc.webkitFullscreenElement;
+    if (fullscreenElement === player) {
+      active = true;
+    } else if (active) {
+      active = false;
+      onExit();
+    }
+  }
+
+  function nativeEnd() {
+    active = false;
+    onExit();
+  }
+
+  doc.addEventListener("fullscreenchange", fullscreenChange);
+  doc.addEventListener("webkitfullscreenchange", fullscreenChange);
+  player.addEventListener("webkitendfullscreen", nativeEnd);
+  return () => {
+    doc.removeEventListener("fullscreenchange", fullscreenChange);
+    doc.removeEventListener("webkitfullscreenchange", fullscreenChange);
+    player.removeEventListener("webkitendfullscreen", nativeEnd);
+  };
+}
+
 export function swipeDirection(start, end) {
   const dx = end.x - start.x;
   const dy = end.y - start.y;

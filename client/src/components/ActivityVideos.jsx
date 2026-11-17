@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { fetchActivityVideos, isPortableTouchDevice, listenForCoverSwipes, requestVideoFullscreen } from "../lib/activityVideos.js";
+import { fetchActivityVideos, isPortableTouchDevice, listenForCoverSwipes, listenForVideoFullscreenExit, requestVideoFullscreen } from "../lib/activityVideos.js";
 import { Card } from "./ui.jsx";
 
 function VideoCard({ video, onSwipe }) {
@@ -40,6 +40,8 @@ function VideoCard({ video, onSwipe }) {
   useEffect(() => {
     if (onSwipe) return listenForCoverSwipes(coverRef.current, onSwipe);
   }, [onSwipe]);
+
+  useEffect(() => listenForVideoFullscreenExit(videoRef.current, document, showCover), []);
 
   return (
     <div className="activity-video-scene">
