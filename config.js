@@ -1,5 +1,5 @@
 // Settings are read from (in priority order):
-//   1. Environment variables: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, ADMIN_PASSWORD, PORT
+//   1. Environment variables: STRAVA_CLIENT_ID, STRAVA_CLIENT_SECRET, ADMIN_PASSWORD, PORT, STRAVA_REDIRECT_URI
 //   2. config.local.js (gitignored - copy config.local.example.js to create it)
 // config.local.js is read once at startup: restart the server after editing it.
 // Never put the client secret in this file.
@@ -17,6 +17,17 @@ const port = Number(process.env.PORT || local.port || 5001);
 const client_id = process.env.STRAVA_CLIENT_ID || local.client_id;
 const client_secret = process.env.STRAVA_CLIENT_SECRET || local.client_secret;
 const admin_password = process.env.ADMIN_PASSWORD || local.ADMIN_PASSWORD || "";
+const redirect_uri = process.env.STRAVA_REDIRECT_URI || local.redirect_uri || `http://localhost:${port}/exchange_token`;
+let redirectUrl;
+try {
+  redirectUrl = new URL(redirect_uri);
+} catch {
+  throw new Error("Strava redirect URI must be an absolute HTTP(S) URL ending in /exchange_token.");
+}
+if (!["http:", "https:"].includes(redirectUrl.protocol) || redirectUrl.pathname !== "/exchange_token" ||
+    redirectUrl.username || redirectUrl.password || redirectUrl.search || redirectUrl.hash) {
+  throw new Error("Strava redirect URI must be an absolute HTTP(S) URL ending in /exchange_token.");
+}
 const resolver = createBikeTypeResolver(local.bike_types);
 const bike_types = resolver.types;
 const getBikeType = resolver.getBikeType;
@@ -40,5 +51,5 @@ module.exports = {
   applyBikeTypes,
   findUnmatchedBikeTypes,
   port,
-  redirect_uri: `http://localhost:${port}/exchange_token`
+  redirect_uri
 };

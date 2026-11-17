@@ -3,6 +3,8 @@ module.exports = {
   client_secret: "YOUR_STRAVA_CLIENT_SECRET",
   ADMIN_PASSWORD: "CHANGE_ME_TO_A_LONG_RANDOM_PASSPHRASE",
   port: 5001,
+  // To authorize from another device, use the server's network address.
+  // redirect_uri: "http://192.168.0.115:5001/exchange_token",
   // Map Strava gear IDs to road, hardtail, full-suspension, or another type.
   bike_types: {
     // "b1234567": "road",

@@ -21,6 +21,21 @@ Open `http://localhost:5001/dashboard`. On first use, log in with Strava via
 `http://localhost:5001/auth` once; the token is kept in the server's memory, so
 log in again after restarting the server.
 
+To log in from another device on the same trusted network, add a callback to
+`config.local.js` using the server computer's IP address and configured port:
+
+```js
+redirect_uri: "http://192.168.0.115:5001/exchange_token",
+```
+
+Set the Strava application's Authorization Callback Domain to `192.168.0.115`
+(without a scheme, port, or path), restart the server, and open
+`http://192.168.0.115:5001/dashboard` on the other device. Replace the example
+address if your server has a different IP. Alternatively, set the
+`STRAVA_REDIRECT_URI` environment variable; it takes precedence over the local
+configuration. The default remains localhost. The server is accessible on the
+network, so use a trusted network.
+
 ## Quick Links
 
 Put the sidebar thumbnails in `client/public/quick-links/` (create the folder
