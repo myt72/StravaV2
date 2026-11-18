@@ -10,6 +10,7 @@ const elapsedBackfill = require("./lib/elapsedBackfill");
 const engagementBackfill = require("./lib/engagementBackfill");
 const photoBackfill = require("./lib/photoBackfill");
 const { findChangedActivities } = require("./lib/activitySync");
+const { stravaActivityId } = require("./lib/stravaIds");
 
 const app = express();
 app.use(cors());
@@ -415,10 +416,12 @@ async function stravaFetch(url) {
 /* ACTIVITY FETCH */
 
 function mapActivity(a) {
+  const id = stravaActivityId(a);
   return {
-    id: a.id,
+    id,
+    id_str: id,
     name: a.name,
-    url: `https://www.strava.com/activities/${a.id}`,
+    url: `https://www.strava.com/activities/${id}`,
     sport_type: a.sport_type || a.type,
     distance: a.distance,
     moving_time: a.moving_time,
@@ -1137,7 +1140,7 @@ async function runGeoBackfillJobLoop() {
 
       const byId = new Map(cache.activities.map(a => [String(a.id), a]));
       for (const item of data) {
-        const existing = byId.get(String(item.id));
+        const existing = byId.get(stravaActivityId(item));
         if (existing) Object.assign(existing, mapGeoFields(item));
       }
       meta.nextPage = page + 1;

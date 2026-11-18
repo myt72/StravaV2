@@ -12,6 +12,14 @@ test("mergeElapsedTime fills missing elapsed_time matched by id", () => {
   assert.strictEqual(cached[2].elapsed_time, undefined);
 });
 
+test("mergeElapsedTime matches using exact id_str values", () => {
+  const id = "9223372036854775807";
+  const cached = [{ id, elapsed_time: undefined }];
+  const fresh = JSON.parse('{"id":9223372036854775807,"id_str":"9223372036854775807","elapsed_time":100}');
+  assert.strictEqual(mergeElapsedTime(cached, [fresh]), 1);
+  assert.strictEqual(cached[0].elapsed_time, 100);
+});
+
 test("mergeElapsedTime keeps existing values and other fields", () => {
   const cached = [{ id: 1, name: "keep", moving_time: 50, elapsed_time: 70 }, { id: 2, name: "keep2" }];
   mergeElapsedTime(cached, [{ id: 1, name: "new", moving_time: 1, elapsed_time: 999 }, { id: 2, name: "new", moving_time: 9, elapsed_time: 20 }]);

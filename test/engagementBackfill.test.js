@@ -61,6 +61,14 @@ test("mergeEngagement fills by id without touching other fields", () => {
   assert.strictEqual(cached[1].kudos_count, 3);
 });
 
+test("mergeEngagement matches using exact id_str values", () => {
+  const id = "9223372036854775807";
+  const cached = [{ id, kudos_count: undefined }];
+  const fresh = JSON.parse('{"id":9223372036854775807,"id_str":"9223372036854775807","kudos_count":7}');
+  assert.strictEqual(eb.mergeEngagement(cached, [fresh]), 1);
+  assert.strictEqual(cached[0].kudos_count, 7);
+});
+
 test("mergeEngagement leaves fields undefined when absent", () => {
   const cached = [{ id: 1 }];
   assert.strictEqual(eb.mergeEngagement(cached, [{ id: 1, name: "x" }]), 0);

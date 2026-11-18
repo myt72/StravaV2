@@ -145,6 +145,10 @@ The card follows the global filters, including the top-of-page **activity type**
 
 New fields in `cache.json`:
 
+- `activities[].id` and `activities[].id_str` are stored as the exact string from
+  Strava's `id_str` field, so large activity IDs remain safe to use as keys and
+  URLs. After updating, run **Full pull** once to replace existing cached
+  activities with these string IDs; no separate migration or backfill is needed.
 - `activities[].summary_polyline` (Google-encoded, precision 5), `start_latlng`, `end_latlng` — `""` / `[]` when an activity has no GPS data.
 - `routeClusters` — `{ version, config, clusters: [{ routeId, sportGroup, representativeId, name, distance, elevation, activityIds }], index: { activityId: routeId }, computedAt }`. `version` is currently 2; a different version is discarded and rebuilt automatically. A cluster's polyline is taken from its representative activity.
 - `geoBackfill` — progress of the geo backfill (`nextPage`, `completed`, `lastRunAt`, `pagesDone`).
