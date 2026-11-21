@@ -48,11 +48,14 @@ export function buildGearTotalsFromActivities(activities, segmentData) {
   (activities || []).forEach(a => {
     if (!a?.gear_id) return;
     if (!gearTotals[a.gear_id]) {
-      gearTotals[a.gear_id] = { distance: 0, elevation: 0, count: 0, moving_time: 0, pr_count: 0, longest_ride: 0 };
+      gearTotals[a.gear_id] = { distance: 0, elevation: 0, count: 0, moving_time: 0, pr_count: 0, longest_ride: 0, longest_ride_activity_id: null };
     }
     const g = gearTotals[a.gear_id];
     g.distance += a.distance || 0;
-    g.longest_ride = Math.max(g.longest_ride, Number.isFinite(a.distance) ? a.distance : 0);
+    if (Number.isFinite(a.distance) && a.distance > g.longest_ride) {
+      g.longest_ride = a.distance;
+      g.longest_ride_activity_id = a.id ?? null;
+    }
     g.elevation += a.total_elevation_gain || 0;
     g.count += 1;
     g.moving_time += a.moving_time || 0;
