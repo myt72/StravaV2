@@ -115,7 +115,7 @@ function useBikes() {
   return { rows, canToggleRetired: !hasRetiredField, toggleRetired: toggle(manualRetired, setManualRetired), pinned, togglePin: toggle(pinned, setPinned), selected, toggleSelected: toggle(selected, setSelected), setSelected };
 }
 
-function BikeStats({ total, gid, name }) {
+function BikeStats({ total, gid, name, showLongestRide = false }) {
   const units = useUnits();
   const speed = formatSpeed(total.avg_speed_mph, "Ride", units);
   return (
@@ -130,6 +130,7 @@ function BikeStats({ total, gid, name }) {
       <span>{formatDuration(total.moving_time)}</span>
       <span>{plural(total.pr_count || 0, "PR")}</span>
       {speed && <span>{speed}</span>}
+      {showLongestRide && <span>Longest ride: {total.longest_ride > 0 ? units.fmtDistance(total.longest_ride) : "—"}</span>}
     </div>
   );
 }
@@ -263,7 +264,7 @@ function GarageList({ bikes, activities }) {
         <Thumb gid={r.gid} alt="" />
       </button>
       <a className="bike-title" href={`#/garage/${encodeURIComponent(r.gid)}`}>{r.name}</a>
-      <BikeStats total={r.total} gid={r.gid} name={r.name} />
+      <BikeStats total={r.total} gid={r.gid} name={r.name} showLongestRide />
       <div className="card-actions">
         <label className="check"><input type="checkbox" checked={bikes.selected.includes(r.gid)} onChange={() => bikes.toggleSelected(r.gid)} /> Compare</label>
         <button type="button" className="btn sm" aria-pressed={r.isPinned} onClick={() => bikes.togglePin(r.gid)}>{r.isPinned ? "Pinned" : "Pin"}</button>
