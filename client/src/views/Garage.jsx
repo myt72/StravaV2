@@ -8,7 +8,7 @@ import {
   comma, formatDate, formatDayDifference, formatDuration, formatHms, formatShortDate, formatSpeed, getMondayForIsoWeek, getStravaSegmentUrl
 } from "../lib/format.js";
 import { useUnits } from "../context/Units.jsx";
-import { navigate } from "../lib/router.js";
+import { buildHref, navigate } from "../lib/router.js";
 import { usePersistentState } from "../lib/storage.js";
 import { ActivityLink, Card, ChartTip, DataTable, Drawer, Empty, Icon, PageHead, Segmented } from "../components/ui.jsx";
 import PhotoGallery from "../components/PhotoGallery.jsx";
@@ -115,7 +115,7 @@ function useBikes() {
   return { rows, canToggleRetired: !hasRetiredField, toggleRetired: toggle(manualRetired, setManualRetired), pinned, togglePin: toggle(pinned, setPinned), selected, toggleSelected: toggle(selected, setSelected), setSelected };
 }
 
-function BikeStats({ total, gid, name, showLongestRide = false }) {
+export function BikeStats({ total, gid, name, showLongestRide = false }) {
   const units = useUnits();
   const speed = formatSpeed(total.avg_speed_mph, "Ride", units);
   return (
@@ -130,7 +130,11 @@ function BikeStats({ total, gid, name, showLongestRide = false }) {
       <span>{formatDuration(total.moving_time)}</span>
       <span>{plural(total.pr_count || 0, "PR")}</span>
       {speed && <span>{speed}</span>}
-      {showLongestRide && <span>Longest ride: {total.longest_ride > 0 ? units.fmtDistance(total.longest_ride) : "—"}</span>}
+      {showLongestRide && <span>Longest ride: {total.longest_ride > 0
+        ? total.longest_ride_activity_id != null && total.longest_ride_activity_id !== ""
+          ? <a href={buildHref("/activities", { id: total.longest_ride_activity_id })} aria-label={`View longest ride for ${name}`}>{units.fmtDistance(total.longest_ride)}</a>
+          : units.fmtDistance(total.longest_ride)
+        : "—"}</span>}
     </div>
   );
 }
