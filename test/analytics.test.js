@@ -52,6 +52,17 @@ test("bike type comparison aggregates Ride activities", () => {
   assert.deepStrictEqual(types[0].names, ["Road bike"]);
 });
 
+test("bike totals include each bike's longest ride distance", () => {
+  const totals = analytics.buildGearTotalsFromActivities([
+    activity("2024-01-10T08:00:00", { gear_id: "b1", distance: 12000 }),
+    activity("2024-01-11T08:00:00", { gear_id: "b1", distance: 25000 }),
+    activity("2024-01-12T08:00:00", { gear_id: "b1", distance: 0 }),
+    activity("2024-01-13T08:00:00", { gear_id: "b2", distance: 18000 })
+  ]);
+  assert.strictEqual(totals.b1.longest_ride, 25000);
+  assert.strictEqual(totals.b2.longest_ride, 18000);
+});
+
 test("consistency and weekly ramp summarize ride streaks and flagged increases", () => {
   const rides = [
     ...["2024-01-01", "2024-01-02", "2024-01-03"].map(date => activity(`${date}T08:00:00`, { distance: 10000 })),
