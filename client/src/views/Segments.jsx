@@ -131,8 +131,12 @@ function SegmentDetail({ id }) {
             {WEEKDAYS.map((day, index) => <option key={day} value={index}>{day}</option>)}
           </select></label>
           {(bike !== "all" || year !== "all" || weekday !== "all") && <button type="button" className="btn sm" onClick={() => { setBike("all"); setYear("all"); setWeekday("all"); }}>Reset filters</button>}
+          <div className="spacer" />
+          <div className="attempt-count" aria-live="polite">
+            <div className="kpi-label">Attempts</div>
+            <div className="kpi-value num">{comma(visible.length)} <span className="kpi-sub">of {comma(attempts.length)}</span></div>
+          </div>
         </div>
-        <p className="small muted" aria-live="polite">{comma(visible.length)} of {comma(attempts.length)} attempts</p>
         <h3>Best efforts by year</h3>
         <p className="hint">Fastest elapsed time per year among the matching attempts; use the arrow to show up to the top 10. Attempts without a valid date or elapsed time are excluded.</p>
         <DataTable columns={yearlyColumns} rows={yearlyBests} rowKey={row => row.year} initialSort={{ key: "year", dir: "desc" }} expand={groupExpand("year", row => row.year)} caption={`Best efforts by year on ${row.name}`} empty="No matching attempts have a valid date and elapsed time." />
@@ -169,7 +173,6 @@ export default function Segments({ route }) {
   const missing = filtered.activities.filter(a => a.sport_type === "Ride" && !Object.hasOwn(raw.segmentData || {}, a.id)).length;
   const columns = [
     { key: "name", label: "Segment", wrap: true, render: row => <a href={`#/segments/${encodeURIComponent(row.id)}`}>{row.name}</a> },
-    { key: "shape", label: "Shape", sortable: false, render: row => <SegmentShape polyline={raw.segmentDetails?.[row.id]?.polyline} name={row.name} /> },
     { key: "count", label: "Attempts", align: "r", value: row => row.attempts.length, render: row => comma(row.attempts.length) },
     { key: "distance", label: "Distance", align: "r", render: row => row.distance > 0 ? units.fmtDistance(row.distance, 2) : "—" },
     { key: "grade", label: "Avg grade", align: "r", render: row => gradeText(row.grade) },
