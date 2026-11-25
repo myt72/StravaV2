@@ -130,8 +130,10 @@ test("yearly and bike summaries keep the ten fastest attempts, best first", () =
   assert.deepEqual(y2026.top.map(a => a.elapsed), [109, 110, 111, 112, 113, 114, 115, 116, 117, 118]);
   assert.equal(y2026.attempt.elapsed, 109);
   assert.equal(y2025.top.length, 1);
+  assert.equal(y2026.tries, 12);
   const [b1, b2] = bestSegmentAttemptsByBike(attempts);
   assert.equal(b1.top.length, 10);
+  assert.equal(b1.tries, 12);
   assert.equal(b1.attempt.elapsed, 109);
   assert.deepEqual(b2.top.map(a => a.elapsed), [5]);
 });
@@ -148,4 +150,13 @@ test("segment type classifies by signed average grade and filters the list", () 
   assert.deepEqual(ids("flat"), ["3", "4"]);
   assert.equal(ids("all").length, 6);
   assert.equal(buildSegmentAttempts(data, activities)[5].type, null);
+});
+
+test("tries count every dated attempt, including untimed ones, and capture elevation gain", () => {
+  const activities = [{ id: "1", gear_id: "b1", start_date: "2026-03-01T10:00:00" }];
+  const data = { "1": [{ segment_id: 1, elapsed_time: 50, elevation_gain: 30 }, { segment_id: 1, elapsed_time: 0 }] };
+  const [row] = buildSegmentAttempts(data, activities);
+  assert.equal(row.elevationGain, 30);
+  assert.equal(bestSegmentAttemptsByYear(row.attempts)[0].tries, 2);
+  assert.equal(bestSegmentAttemptsByBike(row.attempts)[0].tries, 2);
 });

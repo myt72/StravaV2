@@ -43,6 +43,7 @@ export function AppDataProvider({ children }) {
   const [engagementBackfill, setEngagementBackfill] = useState(null);
   const [photoBackfill, setPhotoBackfill] = useState(null);
   const [segmentRank, setSegmentRank] = useState(null);
+  const [segmentDetail, setSegmentDetail] = useState(null);
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
   const [bikeImages, setBikeImages] = useState({});
@@ -55,8 +56,10 @@ export function AppDataProvider({ children }) {
   const engagementPollTimer = useRef(null);
   const photoPollTimer = useRef(null);
   const rankPollTimer = useRef(null);
+  const detailPollTimer = useRef(null);
   const wasPhotoActive = useRef(false);
   const wasRankActive = useRef(false);
+  const wasDetailActive = useRef(false);
   const wasGeoActive = useRef(false);
   const wasElapsedActive = useRef(false);
   const wasEngagementActive = useRef(false);
@@ -71,6 +74,7 @@ export function AppDataProvider({ children }) {
     if (data.engagementBackfillStatus) setEngagementBackfill(data.engagementBackfillStatus);
     if (data.photoBackfillStatus) setPhotoBackfill(data.photoBackfillStatus);
     if (SEGMENT_RANKINGS_ENABLED && data.segmentRankStatus) setSegmentRank(data.segmentRankStatus);
+    if (data.segmentDetailStatus) setSegmentDetail(data.segmentDetailStatus);
     setServerMessage(data.message || "");
     if (Array.isArray(data.activities)) {
       setRaw(data);
@@ -138,6 +142,7 @@ export function AppDataProvider({ children }) {
       clearTimeout(engagementPollTimer.current);
       clearTimeout(photoPollTimer.current);
       clearTimeout(rankPollTimer.current);
+      clearTimeout(detailPollTimer.current);
     };
   }, [load]);
 
@@ -202,6 +207,17 @@ export function AppDataProvider({ children }) {
     }
   }, []);
 
+  const pollSegmentDetail = useCallback(async () => {
+    clearTimeout(detailPollTimer.current);
+    try {
+      const s = await api.fetchSegmentDetailStatus();
+      if (!mounted.current) return;
+      setSegmentDetail(s);
+      if (isBackfillActive(s)) detailPollTimer.current = setTimeout(pollSegmentDetail, POLL_MS);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
   const pollSegmentRank = useCallback(async () => {
     clearTimeout(rankPollTimer.current);
     try {
@@ -261,6 +277,13 @@ export function AppDataProvider({ children }) {
     if (!rankActive && wasRankActive.current) load({ quiet: true });
     wasRankActive.current = rankActive;
   }, [rankActive, pollSegmentRank, load]);
+
+  const detailActive = isBackfillActive(segmentDetail);
+  useEffect(() => {
+    if (detailActive && !wasDetailActive.current) pollSegmentDetail();
+    if (!detailActive && wasDetailActive.current) load({ quiet: true });
+    wasDetailActive.current = detailActive;
+  }, [detailActive, pollSegmentDetail, load]);
 
   /* ----- admin actions ----- */
   const pull = useCallback(async kind => {
@@ -420,6 +443,28 @@ export function AppDataProvider({ children }) {
     () => runRankAction(api.stopSegmentRanks, "Stopping segment rank backfill…", "Segment rank backfill stop requested.", "Failed to stop segment rank backfill."),
     [runRankAction]
   );
+  const runDetailAction = useCallback(async (start, pending, done, fail) => {
+    setBusy("segmentDetails");
+    setNotice({ type: "info", text: pending });
+    try {
+      const data = await start();
+      if (data.segmentDetails) setSegmentDetail(data.segmentDetails);
+      setNotice({ type: "success", text: data.message || done });
+      pollSegmentDetail();
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || fail });
+    } finally {
+      setBusy(null);
+    }
+  }, [pollSegmentDetail]);
+  const startSegmentDetails = useCallback(
+    refresh => runDetailAction(() => api.startSegmentDetails({ refresh }), refresh ? "Starting segment detail refresh…" : "Starting segment detail backfill…", "Segment detail backfill started.", "Failed to start segment detail backfill."),
+    [runDetailAction]
+  );
+  const stopSegmentDetails = useCallback(
+    () => runDetailAction(api.stopSegmentDetails, "Stopping segment detail backfill…", "Segment detail backfill stop requested.", "Failed to stop segment detail backfill."),
+    [runDetailAction]
+  );
   const recomputeRoutes = useCallback(async () => {
     setBusy("routes");
     setNotice({ type: "info", text: "Recomputing route clusters…" });
@@ -523,6 +568,7 @@ export function AppDataProvider({ children }) {
     engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill,
     photoBackfill, photoActive, startPhotoBackfill, stopPhotoBackfill,
     segmentRank, rankActive, startSegmentRanks, stopSegmentRanks,
+    segmentDetail, detailActive, startSegmentDetails, stopSegmentDetails,
     bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)
   };
