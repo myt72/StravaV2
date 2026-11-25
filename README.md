@@ -128,6 +128,10 @@ over the internet, since the password is sent in a request header.
 
 Segments excluded in the Records view (Segment summary / By distance / By elevation) are stored globally on the server in `settings.json` (gitignored), so they persist across browsers and sessions.
 
+## Segments
+
+The Segments page ranks cached individual attempts from most to fewest, including multiple attempts on the same ride. Select a segment to see its attempts, elapsed times, bikes and activities. Search by segment name or filter by year and weekday; the global period, activity type and bike filters also apply to both the list and details. Dates use the browser's local time zone, and excluded segments are hidden. The list can be incomplete until the PR backfill on the Data page has fetched segment data for rides. Solo versus group rides cannot be filtered reliably from the cached data.
+
 ## Records, Patterns and Overview additions
 
 - **Records & Segments > By distance** has 10+, 15+ and 20+ mile buckets alongside the existing `5.0+ mi` bucket (cumulative, longest-first ties). This tab has no selector, so there is no selection state to persist. The **Records** tab is grouped into headline records, Bikes, Biggest weeks and Activities.
