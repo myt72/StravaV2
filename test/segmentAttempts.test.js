@@ -1,0 +1,53 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+
+let buildSegmentAttempts, applyGlobalFilters;
+test.before(async () => {
+  ({ buildSegmentAttempts, applyGlobalFilters } = await import("../client/src/lib/analytics.js"));
+});
+
+test("segment attempts count every effort, join filtered bikes, and respect exclusions", () => {
+  const activities = [
+    { id: "9007199254740993", sport_type: "Ride", gear_id: "b1", start_date: "2024-01-01T10:00:00" },
+    { id: "2", sport_type: "Ride", gear_id: "b2", start_date: "2023-12-31T10:00:00" }
+  ];
+  const segmentData = {
+    "9007199254740993": [
+      { segment_id: 1, segment_name: "Hill", start_date: "2024-01-01T10:10:00", elapsed_time: 80 },
+      { segment_id: 1, segment_name: "Hill", start_date: "2024-01-01T10:20:00", elapsed_time: 65 },
+      { segment_id: 2, segment_name: "Excluded", elapsed_time: 20 }
+    ],
+    "2": [{ segment_id: 1, segment_name: "Hill", elapsed_time: 50 }],
+    "orphan": [{ segment_id: 3, segment_name: "Orphan" }]
+  };
+  const rows = buildSegmentAttempts(segmentData, activities, new Set(["2"]));
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].attempts.length, 3);
+  assert.equal(rows[0].bestTime, 50);
+  assert.equal(rows[0].lastDate, "2024-01-01T10:20:00");
+  assert.equal(new Set(rows[0].attempts.map(a => a.key)).size, 3);
+
+  const filtered = applyGlobalFilters({ activities, segmentData }, { dateRange: "all", activityType: "all", bike: "b1" });
+  const bikeRows = buildSegmentAttempts(segmentData, filtered.activities, new Set(["2"]));
+  assert.equal(bikeRows[0].attempts.length, 2);
+  assert.equal(bikeRows[0].bestTime, 65);
+});
+
+test("year and weekday apply to effort date, including missing and invalid dates", () => {
+  const activities = [
+    { id: "1", start_date: "2023-12-31T10:00:00" },
+    { id: "2", start_date: "2024-01-02T10:00:00" },
+    { id: "3", start_date: null }
+  ];
+  const data = {
+    "1": [{ segment_id: 1, start_date: "2024-01-01T10:00:00", elapsed_time: 0 }],
+    "2": [{ segment_id: 1, elapsed_time: 20 }],
+    "3": [{ segment_id: 1, start_date: "invalid", elapsed_time: 30 }]
+  };
+  assert.equal(buildSegmentAttempts(data, activities)[0].attempts.length, 3);
+  const monday = buildSegmentAttempts(data, activities, null, { year: "2024", weekday: "0" });
+  assert.equal(monday[0].attempts.length, 1);
+  assert.equal(monday[0].attempts[0].activity.id, "1");
+  assert.equal(monday[0].bestTime, null);
+  assert.equal(buildSegmentAttempts(data, activities, null, { year: "2023" }).length, 0);
+});

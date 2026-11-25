@@ -1172,6 +1172,35 @@ export function buildRouteLeaderboard(routeClusters, activities, { year = null, 
   return rows.sort(compareLeaderRows).slice(0, limit);
 }
 
+/** Individual cached efforts, joined to the filtered activities that contain them. */
+export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds, { year = "all", weekday = "all" } = {}) {
+  const rows = new Map();
+  for (const activity of activities || []) {
+    const efforts = segmentData?.[activity.id];
+    if (!Array.isArray(efforts)) continue;
+    efforts.forEach((effort, index) => {
+      if (!effort?.segment_id) return;
+      const id = String(effort.segment_id);
+      if (excludedSegmentIds?.has(id)) return;
+      const date = effort.start_date || activity.start_date;
+      const parsed = date ? new Date(date) : null;
+      const validDate = parsed && Number.isFinite(parsed.getTime());
+      if (year !== "all" && (!validDate || parsed.getFullYear() !== Number(year))) return;
+      if (weekday !== "all" && (!validDate || weekdayIndex(parsed) !== Number(weekday))) return;
+      let row = rows.get(id);
+      if (!row) {
+        row = { id, name: effort.segment_name || `Segment ${id}`, distance: effort.distance, attempts: [], bestTime: null, lastDate: null };
+        rows.set(id, row);
+      }
+      const time = Number(effort.elapsed_time);
+      row.attempts.push({ key: `${activity.id}:${index}`, activity, date: validDate ? date : null, elapsed: time > 0 && Number.isFinite(time) ? time : null, prRank: effort.pr_rank });
+      if (time > 0 && Number.isFinite(time) && (row.bestTime == null || time < row.bestTime)) row.bestTime = time;
+      if (validDate && (!row.lastDate || parsed > new Date(row.lastDate))) row.lastDate = date;
+    });
+  }
+  return [...rows.values()].sort((a, b) => b.attempts.length - a.attempts.length || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+}
+
 /** Top segments by number of distinct rides, from segmentData; respects excluded segments and filtered activities. */
 export function buildSegmentLeaderboard(segmentData, activities, excludedSegmentIds, { year = null, month = null, limit = 20 } = {}) {
   const byId = new Map((activities || []).map(a => [String(a.id), a]));

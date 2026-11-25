@@ -8,12 +8,13 @@ import Overview from "./views/Overview.jsx";
 import Trends from "./views/Trends.jsx";
 import Patterns from "./views/Patterns.jsx";
 import Records from "./views/Records.jsx";
+import Segments from "./views/Segments.jsx";
 import Garage from "./views/Garage.jsx";
 import Activities from "./views/Activities.jsx";
 import Admin from "./views/Admin.jsx";
 import Mdr from "./views/Mdr.jsx";
 
-const VIEWS = { overview: Overview, trends: Trends, patterns: Patterns, records: Records, garage: Garage, activities: Activities, admin: Admin, mdr: Mdr };
+const VIEWS = { overview: Overview, trends: Trends, patterns: Patterns, records: Records, segments: Segments, garage: Garage, activities: Activities, admin: Admin, mdr: Mdr };
 
 function Gate({ viewId, children }) {
   const { status, error, serverMessage, reload } = useAppData();

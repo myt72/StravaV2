@@ -12,6 +12,7 @@ export const NAV = [
   { id: "trends", label: "Trends" },
   { id: "patterns", label: "Patterns" },
   { id: "records", label: "Records" },
+  { id: "segments", label: "Segments" },
   { id: "garage", label: "Garage" },
   { id: "activities", label: "Activities" },
   { id: "admin", label: "Data" },
