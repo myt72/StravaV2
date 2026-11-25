@@ -491,4 +491,7 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
 @media (max-width: 480px) { .grid.engagement-kpis { grid-template-columns: minmax(0, 1fr); } }
 .best-time { color: var(--accent-strong); }
 .best-badge { font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--accent); font-weight: 700; }
-.attempt-count { text-align: right; }
+.attempt-count { margin: 0 auto; }
+.shape-placeholder { display: grid; place-items: center; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
+.about-data { margin: 0 0 12px; }
+.about-data summary { cursor: pointer; color: var(--accent-strong); font-size: 0.85rem; }

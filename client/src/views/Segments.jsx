@@ -9,9 +9,9 @@ import { ActivityLink, Card, DataTable, PageHead } from "../components/ui.jsx";
 const TYPE_LABELS = { climb: "Climb", descent: "Descent", flat: "Flat / rolling" };
 const gradeText = grade => typeof grade === "number" ? `${grade > 0 ? "+" : ""}${grade.toFixed(1)}%` : "—";
 
-function SegmentShape({ polyline, name, size = 48 }) {
+function SegmentShape({ polyline, name, size = 48, placeholder = "—" }) {
   const d = polylineToSvgPath(polyline, size, size > 48 ? 8 : 3, size > 48 ? 300 : 60);
-  if (!d) return <span className="muted small" aria-hidden="true">—</span>;
+  if (!d) return <div className="shape-placeholder muted small" style={{ width: size, height: size }}>{placeholder}</div>;
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Shape of ${name}`}>
       <path d={d} fill="none" stroke="var(--chart-1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -26,7 +26,10 @@ function SegmentDetail({ id }) {
   const [year, setYear] = useState("all");
   const [weekday, setWeekday] = useState("all");
   const [openGroups, setOpenGroups] = useState(() => new Set());
-  useEffect(() => { document.getElementById("main-content")?.focus(); }, []);
+  useEffect(() => {
+    document.getElementById("main-content")?.focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  }, []);
   const row = useMemo(() => buildSegmentAttempts(raw.segmentData, raw.activities, null, { segmentId: id })[0], [raw.segmentData, raw.activities, id]);
   const attempts = row?.attempts || [];
   const years = [...new Set(attempts.filter(attempt => attempt.date).map(attempt => new Date(attempt.date).getFullYear()))].sort((a, b) => b - a);
@@ -110,12 +113,15 @@ function SegmentDetail({ id }) {
       </PageHead>
       {missing > 0 && <div className="notice" role="status">{comma(missing)} rides have no cached segment data. Attempts may be incomplete; use the PR backfill on the <a href="#/admin">Data page</a>.</div>}
       {row ? <Card title="Attempts">
-        <p className="hint">Showing cached attempts across all activities, independently of the global filters. Dates use your browser’s local time zone. PR ranks are Strava’s recorded ranks, not ranks within the filtered results. Solo/group classification is not available.</p>
+        <details className="about-data">
+          <summary>About this data</summary>
+          <p className="hint">Showing cached attempts across all activities, independently of the global filters. Dates use your browser’s local time zone. PR ranks are Strava’s recorded ranks, not ranks within the filtered results. Solo/group classification is not available.</p>
+          {!detail && <p className="hint">{stored?.missing ? "Strava no longer returns this segment, so its shape and elevation range are unavailable." : <>Max grade, min/max elevation and the segment shape need the segment detail backfill on the <a href="#/admin">Data page</a>.</>}</p>}
+        </details>
         <div className="grid kpis">
           {metrics.map(([label, value, sub]) => <div key={label}><div className="kpi-label">{label}</div><div className="kpi-value num">{value}</div>{sub && <div className="kpi-sub">{sub}</div>}</div>)}
-          {detail?.polyline && <div><div className="kpi-label">Shape</div><SegmentShape polyline={detail.polyline} name={row.name} size={120} /></div>}
+          <div><div className="kpi-label">Shape</div><SegmentShape polyline={detail?.polyline} name={row.name} size={64} placeholder={stored?.missing ? "Unavailable" : "Not fetched"} /></div>
         </div>
-        {!detail && <p className="small muted">{stored?.missing ? "Strava no longer returns this segment, so its shape and elevation range are unavailable." : <>Max grade, min/max elevation and the segment shape need the segment detail backfill on the <a href="#/admin">Data page</a>.</>}</p>}
         <div className="toolbar segment-filters">
           <label>Bike <select value={bike} onChange={e => setBike(e.target.value)}>
             <option value="all">All bikes</option>
@@ -131,11 +137,7 @@ function SegmentDetail({ id }) {
             {WEEKDAYS.map((day, index) => <option key={day} value={index}>{day}</option>)}
           </select></label>
           {(bike !== "all" || year !== "all" || weekday !== "all") && <button type="button" className="btn sm" onClick={() => { setBike("all"); setYear("all"); setWeekday("all"); }}>Reset filters</button>}
-          <div className="spacer" />
-          <div className="attempt-count" aria-live="polite">
-            <div className="kpi-label">Attempts</div>
-            <div className="kpi-value num">{comma(visible.length)} <span className="kpi-sub">of {comma(attempts.length)}</span></div>
-          </div>
+          <div className="attempt-count small muted num" aria-live="polite">{comma(visible.length)} of {comma(attempts.length)} attempts</div>
         </div>
         <h3>Best efforts by year</h3>
         <p className="hint">Fastest elapsed time per year among the matching attempts; use the arrow to show up to the top 10. Attempts without a valid date or elapsed time are excluded.</p>
