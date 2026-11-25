@@ -154,9 +154,10 @@ test("segment type classifies by signed average grade and filters the list", () 
 
 test("tries count every dated attempt, including untimed ones, and capture elevation gain", () => {
   const activities = [{ id: "1", gear_id: "b1", start_date: "2026-03-01T10:00:00" }];
-  const data = { "1": [{ segment_id: 1, elapsed_time: 50, elevation_gain: 30 }, { segment_id: 1, elapsed_time: 0 }] };
+  const data = { "1": [{ segment_id: 1, elapsed_time: 50, moving_time: 45, elevation_gain: 30 }, { segment_id: 1, elapsed_time: 0 }] };
   const [row] = buildSegmentAttempts(data, activities);
   assert.equal(row.elevationGain, 30);
+  assert.deepEqual(row.attempts.map(a => a.moving), [45, null]);
   assert.equal(bestSegmentAttemptsByYear(row.attempts)[0].tries, 2);
   assert.equal(bestSegmentAttemptsByBike(row.attempts)[0].tries, 2);
 });

@@ -1208,7 +1208,7 @@ export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds
       if (row.grade == null && typeof effort.average_grade === "number") row.grade = effort.average_grade;
       if (row.elevationGain == null && typeof effort.elevation_gain === "number") row.elevationGain = effort.elevation_gain;
       const time = Number(effort.elapsed_time);
-      row.attempts.push({ key: `${activity.id}:${index}`, activity, date: validDate ? date : null, elapsed: time > 0 && Number.isFinite(time) ? time : null, prRank: effort.pr_rank });
+      row.attempts.push({ key: `${activity.id}:${index}`, activity, date: validDate ? date : null, elapsed: time > 0 && Number.isFinite(time) ? time : null, moving: Number(effort.moving_time) > 0 ? Number(effort.moving_time) : null, prRank: effort.pr_rank });
       if (time > 0 && Number.isFinite(time) && (row.bestTime == null || time < row.bestTime)) row.bestTime = time;
       if (validDate && (!row.lastDate || parsed > new Date(row.lastDate))) row.lastDate = date;
     });
