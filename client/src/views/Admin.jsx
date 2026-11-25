@@ -9,7 +9,7 @@ function Row({ label, children }) {
 }
 
 export default function Admin() {
-  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill, engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill, photoBackfill, photoActive, startPhotoBackfill, stopPhotoBackfill, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks } = useAppData();
+  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill, engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill, photoBackfill, photoActive, startPhotoBackfill, stopPhotoBackfill, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks, segmentDetail, detailActive, startSegmentDetails, stopSegmentDetails } = useAppData();
   const [confirmFull, setConfirmFull] = useState(false);
   const [auth, setAuth] = useState({ state: "checking", message: "" });
 
@@ -68,6 +68,11 @@ export default function Admin() {
   const rankDone = segmentRank?.checked || 0;
   const rankPct = rankTotal > 0 ? Math.min(100, (rankDone / rankTotal) * 100) : 0;
   const rankState = !segmentRank ? "Idle" : segmentRank.mode && segmentRank.mode !== "idle" ? segmentRank.mode : segmentRank.completed ? "Complete" : "Idle";
+
+  const detailTotal = segmentDetail?.totalCandidates || 0;
+  const detailDone = segmentDetail?.checked || 0;
+  const detailPct = detailTotal > 0 ? Math.min(100, (detailDone / detailTotal) * 100) : 0;
+  const detailState = !segmentDetail ? "Idle" : segmentDetail.mode && segmentDetail.mode !== "idle" ? segmentDetail.mode : segmentDetail.completed ? "Complete" : "Idle";
 
   return (
     <div className="content">
@@ -219,6 +224,31 @@ export default function Admin() {
             <button type="button" className="btn" disabled={working || photoActive || !photoTotal} onClick={() => startPhotoBackfill("recent")}>Check new activities</button>
             <button type="button" className="btn" disabled={working || photoActive || !photoDone} onClick={() => startPhotoBackfill("recheck")}>Re-check recent</button>
             <button type="button" className="btn" disabled={working || !photoActive} onClick={stopPhotoBackfill}>Stop</button>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid two">
+        <Card title="Segment details (shape & elevation backfill)" right={detailActive && <span className="nav-badge pulse">Running</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Fetches each segment once to get its shape, minimum and maximum elevation and maximum grade for the Segments page.
+            Uses one API request per segment ({comma(detailTotal)} here). Refresh re-fetches every segment.
+          </p>
+          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={detailTotal} aria-valuenow={detailDone} aria-label="Segment detail backfill progress"><div style={{ width: `${detailPct}%` }} /></div>
+          <div style={{ marginTop: 8 }}>
+            <Row label="Status">{detailState}</Row>
+            <Row label="Segments fetched">{comma(detailDone)} / {comma(detailTotal)}</Row>
+            <Row label="Last run">{segmentDetail?.lastRunAt ? formatDateTime(segmentDetail.lastRunAt) : "—"}</Row>
+            <Row label="Next retry">{segmentDetail?.nextRetryAt ? formatDateTime(segmentDetail.nextRetryAt) : "—"}</Row>
+          </div>
+          <p className="hint">{segmentDetail?.message || "Idle"}</p>
+          {segmentDetail?.lastError && <div className="notice error" role="alert">{segmentDetail.lastError}</div>}
+          <div className="toolbar" style={{ marginTop: 12 }}>
+            <button type="button" className="btn primary" disabled={working || detailActive || segmentDetail?.completed} onClick={() => startSegmentDetails(false)}>
+              {segmentDetail?.checked ? "Resume segment details" : "Start segment details"}
+            </button>
+            <button type="button" className="btn" disabled={working || detailActive || !segmentDetail?.checked} onClick={() => startSegmentDetails(true)}>Refresh all</button>
+            <button type="button" className="btn" disabled={working || !detailActive} onClick={stopSegmentDetails}>Stop</button>
           </div>
         </Card>
       </div>

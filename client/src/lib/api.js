@@ -165,6 +165,22 @@ export async function stopSegmentRanks() {
   return data;
 }
 
+export async function fetchSegmentDetailStatus() {
+  const { data } = await request("/api/segment-details/status", undefined, adminFetch);
+  return data.segmentDetails;
+}
+
+export async function startSegmentDetails({ refresh = false } = {}) {
+  const { data } = await request(`/api/segment-details/start${refresh ? "?refresh=1" : ""}`, { method: "POST" }, adminFetch);
+  if (data.error) throw new ApiError(data.error);
+  return data;
+}
+
+export async function stopSegmentDetails() {
+  const { data } = await request("/api/segment-details/stop", { method: "POST" }, adminFetch);
+  return data;
+}
+
 export async function recomputeMatchedRides() {
   const { data } = await request("/api/matched-rides/recompute", { method: "POST" }, adminFetch);
   if (data.error) throw new ApiError(data.error);

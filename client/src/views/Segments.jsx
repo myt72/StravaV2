@@ -3,10 +3,21 @@ import { useAppData } from "../context/AppData.jsx";
 import { useUnits } from "../context/Units.jsx";
 import { SEGMENT_TYPE_GRADE, bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, WEEKDAYS } from "../lib/analytics.js";
 import { comma, formatDate, formatDurationHms, getStravaSegmentUrl } from "../lib/format.js";
+import { polylineToSvgPath } from "../lib/polyline.js";
 import { ActivityLink, Card, DataTable, PageHead } from "../components/ui.jsx";
 
 const TYPE_LABELS = { climb: "Climb", descent: "Descent", flat: "Flat / rolling" };
 const gradeText = grade => typeof grade === "number" ? `${grade > 0 ? "+" : ""}${grade.toFixed(1)}%` : "—";
+
+function SegmentShape({ polyline, name, size = 48 }) {
+  const d = polylineToSvgPath(polyline, size, size > 48 ? 8 : 3, size > 48 ? 300 : 60);
+  if (!d) return <span className="muted small" aria-hidden="true">—</span>;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Shape of ${name}`}>
+      <path d={d} fill="none" stroke="var(--chart-1)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 function SegmentDetail({ id }) {
   const { raw, gearName } = useAppData();
@@ -68,14 +79,19 @@ function SegmentDetail({ id }) {
     disabledReason: row => row.top.length < 2 ? "No additional efforts" : undefined,
     children: row => row.top.slice(1).map((attempt, index) => ({ key: `${row.top.length}:${index}`, year: row.year, bikeId: row.bikeId, attempt, rank: index + 2 }))
   });
-  const distance = row?.distance > 0 ? row.distance : null;
-  const gain = row?.elevationGain;
+  const stored = raw.segmentDetails?.[id];
+  const detail = stored && !stored.missing ? stored : null;
+  const distance = row?.distance > 0 ? row.distance : (detail?.distance > 0 ? detail.distance : null);
+  const gain = row?.elevationGain ?? (detail?.elevation_high != null && detail?.elevation_low != null ? detail.elevation_high - detail.elevation_low : null);
   const change = distance != null && typeof row.grade === "number" ? distance * row.grade / 100 : null;
   const metrics = row ? [
     ["Distance", distance != null ? units.fmtDistance(distance, 2) : "—"],
     ["Elevation gain", gain != null ? units.fmtElevation(gain) : "—", "high − low point"],
     ["Elevation change", change != null ? `${change > 0 ? "+" : "−"}${units.fmtElevation(Math.abs(change))}` : "—", "estimated from distance × avg grade"],
     ["Avg grade", gradeText(row.grade)],
+    ["Max grade", gradeText(detail?.maximum_grade)],
+    ["Min elevation", detail?.elevation_low != null ? units.fmtElevation(detail.elevation_low) : "—"],
+    ["Max elevation", detail?.elevation_high != null ? units.fmtElevation(detail.elevation_high) : "—"],
     ["Type", row.type ? TYPE_LABELS[row.type] : "—"]
   ] : [];
   const columns = [
@@ -97,8 +113,9 @@ function SegmentDetail({ id }) {
         <p className="hint">Showing cached attempts across all activities, independently of the global filters. Dates use your browser’s local time zone. PR ranks are Strava’s recorded ranks, not ranks within the filtered results. Solo/group classification is not available.</p>
         <div className="grid kpis">
           {metrics.map(([label, value, sub]) => <div key={label}><div className="kpi-label">{label}</div><div className="kpi-value num">{value}</div>{sub && <div className="kpi-sub">{sub}</div>}</div>)}
+          {detail?.polyline && <div><div className="kpi-label">Shape</div><SegmentShape polyline={detail.polyline} name={row.name} size={120} /></div>}
         </div>
-        <p className="small muted">Min/max elevation, max grade and the segment shape are not stored in the cache.</p>
+        {!detail && <p className="small muted">{stored?.missing ? "Strava no longer returns this segment, so its shape and elevation range are unavailable." : <>Max grade, min/max elevation and the segment shape need the segment detail backfill on the <a href="#/admin">Data page</a>.</>}</p>}
         <div className="toolbar segment-filters">
           <label>Bike <select value={bike} onChange={e => setBike(e.target.value)}>
             <option value="all">All bikes</option>
@@ -152,6 +169,7 @@ export default function Segments({ route }) {
   const missing = filtered.activities.filter(a => a.sport_type === "Ride" && !Object.hasOwn(raw.segmentData || {}, a.id)).length;
   const columns = [
     { key: "name", label: "Segment", wrap: true, render: row => <a href={`#/segments/${encodeURIComponent(row.id)}`}>{row.name}</a> },
+    { key: "shape", label: "Shape", sortable: false, render: row => <SegmentShape polyline={raw.segmentDetails?.[row.id]?.polyline} name={row.name} /> },
     { key: "count", label: "Attempts", align: "r", value: row => row.attempts.length, render: row => comma(row.attempts.length) },
     { key: "distance", label: "Distance", align: "r", render: row => row.distance > 0 ? units.fmtDistance(row.distance, 2) : "—" },
     { key: "grade", label: "Avg grade", align: "r", render: row => gradeText(row.grade) },
