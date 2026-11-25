@@ -118,3 +118,20 @@ test("bike bests compare matching efforts, including missing dates, bikes and ti
   assert.deepEqual(bestSegmentAttemptsByBike(filterSegmentAttempts(attempts, { year: "2025" })).map(({ bikeId, attempt }) => [bikeId, attempt.elapsed]), [["b2", 70]]);
   assert.deepEqual(bestSegmentAttemptsByBike(filterSegmentAttempts(attempts, { bike: "none" })).map(({ bikeId, attempt }) => [bikeId, attempt.elapsed]), [[null, 90]]);
 });
+
+test("yearly and bike summaries keep the ten fastest attempts, best first", () => {
+  const activities = [{ id: "1", gear_id: "b1", start_date: "2026-03-01T10:00:00" }, { id: "2", gear_id: "b2", start_date: "2025-03-01T10:00:00" }];
+  const data = {
+    "1": Array.from({ length: 12 }, (_, i) => ({ segment_id: 1, elapsed_time: 120 - i })),
+    "2": [{ segment_id: 1, elapsed_time: 5 }]
+  };
+  const attempts = buildSegmentAttempts(data, activities)[0].attempts;
+  const [y2026, y2025] = bestSegmentAttemptsByYear(attempts);
+  assert.deepEqual(y2026.top.map(a => a.elapsed), [109, 110, 111, 112, 113, 114, 115, 116, 117, 118]);
+  assert.equal(y2026.attempt.elapsed, 109);
+  assert.equal(y2025.top.length, 1);
+  const [b1, b2] = bestSegmentAttemptsByBike(attempts);
+  assert.equal(b1.top.length, 10);
+  assert.equal(b1.attempt.elapsed, 109);
+  assert.deepEqual(b2.top.map(a => a.elapsed), [5]);
+});

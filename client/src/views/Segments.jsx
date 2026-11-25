@@ -10,6 +10,7 @@ function SegmentDetail({ id }) {
   const [bike, setBike] = useState("all");
   const [year, setYear] = useState("all");
   const [weekday, setWeekday] = useState("all");
+  const [openGroups, setOpenGroups] = useState(() => new Set());
   useEffect(() => { document.getElementById("main-content")?.focus(); }, []);
   const row = useMemo(() => buildSegmentAttempts(raw.segmentData, raw.activities, null, { segmentId: id })[0], [raw.segmentData, raw.activities, id]);
   const attempts = row?.attempts || [];
@@ -21,19 +22,38 @@ function SegmentDetail({ id }) {
   const yearlyBests = bestSegmentAttemptsByYear(visible);
   const bikeBests = bestSegmentAttemptsByBike(visible);
   const missing = (raw.activities || []).filter(a => a.sport_type === "Ride" && !Object.hasOwn(raw.segmentData || {}, a.id)).length;
-  const yearlyColumns = [
-    { key: "year", label: "Year" },
-    { key: "elapsed", label: "Best time", align: "r", value: row => row.attempt.elapsed, render: row => formatDurationHms(row.attempt.elapsed) },
-    { key: "bike", label: "Bike", value: row => gearName(row.attempt.activity.gear_id), render: row => gearName(row.attempt.activity.gear_id) },
-    { key: "date", label: "Date", value: row => new Date(row.attempt.date).getTime(), render: row => formatDate(row.attempt.date) },
-    { key: "activity", label: "Activity", wrap: true, value: row => row.attempt.activity.name || "", render: row => <ActivityLink activity={row.attempt.activity} /> }
-  ];
-  const bikeColumns = [
-    { key: "bike", label: "Bike", value: row => row.bikeId ? gearName(row.bikeId) : "No bike recorded", render: row => row.bikeId ? gearName(row.bikeId) : "No bike recorded" },
-    { key: "elapsed", label: "Best time", align: "r", value: row => row.attempt?.elapsed ?? null, render: row => row.attempt ? formatDurationHms(row.attempt.elapsed) : "—" },
+  const bikeLabel = bikeId => bikeId ? gearName(bikeId) : "No bike recorded";
+  const rankColumn = { key: "rank", label: "Rank", align: "r", sortable: false, render: row => `#${row.rank || 1}` };
+  const effortColumns = [
+    { key: "elapsed", label: "Time", align: "r", value: row => row.attempt?.elapsed ?? null, render: row => row.attempt ? formatDurationHms(row.attempt.elapsed) : "—" },
     { key: "date", label: "Date", value: row => row.attempt?.date ? new Date(row.attempt.date).getTime() : null, render: row => row.attempt?.date ? formatDate(row.attempt.date) : "—" },
     { key: "activity", label: "Activity", wrap: true, value: row => row.attempt?.activity.name || "", render: row => row.attempt ? <ActivityLink activity={row.attempt.activity} /> : "—" }
   ];
+  const yearlyColumns = [
+    { key: "year", label: "Year", renderChild: () => "" },
+    rankColumn,
+    effortColumns[0],
+    { key: "bike", label: "Bike", value: row => gearName(row.attempt.activity.gear_id), render: row => gearName(row.attempt.activity.gear_id) },
+    ...effortColumns.slice(1)
+  ];
+  const bikeColumns = [
+    { key: "bike", label: "Bike", value: row => bikeLabel(row.bikeId), render: row => bikeLabel(row.bikeId), renderChild: () => "" },
+    rankColumn,
+    ...effortColumns
+  ];
+  const groupKey = (type, row) => `${type}:${type === "year" ? row.year : row.bikeId ?? "none"}`;
+  const groupExpand = (type, label) => ({
+    isOpen: row => openGroups.has(groupKey(type, row)),
+    toggle: row => setOpenGroups(prev => {
+      const next = new Set(prev);
+      const key = groupKey(type, row);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    }),
+    label: row => `${openGroups.has(groupKey(type, row)) ? "Hide" : "Show"} top ${row.top.length} efforts for ${label(row)}`,
+    disabledReason: row => row.top.length < 2 ? "No additional efforts" : undefined,
+    children: row => row.top.slice(1).map((attempt, index) => ({ key: `${row.top.length}:${index}`, year: row.year, bikeId: row.bikeId, attempt, rank: index + 2 }))
+  });
   const columns = [
     { key: "date", label: "Date", value: attempt => attempt.date ? new Date(attempt.date).getTime() : null, render: attempt => attempt.date ? formatDate(attempt.date) : "—" },
     { key: "activity", label: "Activity", wrap: true, value: attempt => attempt.activity.name || "", render: attempt => <ActivityLink activity={attempt.activity} /> },
@@ -68,12 +88,12 @@ function SegmentDetail({ id }) {
           {(bike !== "all" || year !== "all" || weekday !== "all") && <button type="button" className="btn sm" onClick={() => { setBike("all"); setYear("all"); setWeekday("all"); }}>Reset filters</button>}
         </div>
         <p className="small muted" aria-live="polite">{comma(visible.length)} of {comma(attempts.length)} attempts</p>
-        <h3>Best effort by year</h3>
-        <p className="hint">Fastest elapsed time per year among the matching attempts. Attempts without a valid date or elapsed time are excluded.</p>
-        <DataTable columns={yearlyColumns} rows={yearlyBests} rowKey={row => row.year} initialSort={{ key: "year", dir: "desc" }} caption={`Best efforts by year on ${row.name}`} empty="No matching attempts have a valid date and elapsed time." />
-        <h3>Best effort by bike</h3>
-        <p className="hint">Fastest elapsed time for each bike among the matching attempts. Select all bikes above to compare every bike.</p>
-        <DataTable columns={bikeColumns} rows={bikeBests} rowKey={row => row.bikeId == null ? "missing" : `bike:${row.bikeId}`} initialSort={{ key: "elapsed", dir: "asc" }} caption={`Best efforts by bike on ${row.name}`} empty="No attempts on this segment match the current filters." />
+        <h3>Best efforts by year</h3>
+        <p className="hint">Fastest elapsed time per year among the matching attempts; use the arrow to show up to the top 10. Attempts without a valid date or elapsed time are excluded.</p>
+        <DataTable columns={yearlyColumns} rows={yearlyBests} rowKey={row => row.year} initialSort={{ key: "year", dir: "desc" }} expand={groupExpand("year", row => row.year)} caption={`Best efforts by year on ${row.name}`} empty="No matching attempts have a valid date and elapsed time." />
+        <h3>Best efforts by bike</h3>
+        <p className="hint">Fastest elapsed time for each bike among the matching attempts; use the arrow to show up to the top 10. Select all bikes above to compare every bike.</p>
+        <DataTable columns={bikeColumns} rows={bikeBests} rowKey={row => row.bikeId == null ? "missing" : `bike:${row.bikeId}`} initialSort={{ key: "elapsed", dir: "asc" }} expand={groupExpand("bike", row => bikeLabel(row.bikeId))} caption={`Best efforts by bike on ${row.name}`} empty="No attempts on this segment match the current filters." />
         <h3>All attempts</h3>
         <DataTable columns={columns} rows={visible} rowKey={attempt => attempt.key} initialSort={{ key: "date", dir: "desc" }} pageSize={50} caption={`Attempts on ${row.name}`} empty="No attempts on this segment match the current filters." />
       </Card> : <p className="muted">No cached attempts found for this segment.</p>}
