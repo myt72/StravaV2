@@ -1214,28 +1214,38 @@ export function filterSegmentAttempts(attempts, { bike = "all", year = "all", we
   });
 }
 
-export function bestSegmentAttemptsByYear(attempts) {
-  const best = new Map();
+const SEGMENT_TOP_LIMIT = 10;
+const byFastest = (a, b) => a.elapsed - b.elapsed || (a.date ? new Date(a.date).getTime() : 0) - (b.date ? new Date(b.date).getTime() : 0);
+const validTime = attempt => Number.isFinite(attempt.elapsed) && attempt.elapsed > 0;
+
+/** Fastest attempts per year (newest year first); `attempt` is the best, `top` holds up to `limit` fastest. */
+export function bestSegmentAttemptsByYear(attempts, limit = SEGMENT_TOP_LIMIT) {
+  const groups = new Map();
   for (const attempt of attempts) {
     const date = attempt.date ? new Date(attempt.date) : null;
-    if (!date || !Number.isFinite(date.getTime()) || !Number.isFinite(attempt.elapsed) || attempt.elapsed <= 0) continue;
+    if (!date || !Number.isFinite(date.getTime()) || !validTime(attempt)) continue;
     const year = date.getFullYear();
-    if (!best.has(year) || attempt.elapsed < best.get(year).elapsed) best.set(year, attempt);
+    if (!groups.has(year)) groups.set(year, []);
+    groups.get(year).push(attempt);
   }
-  return [...best].sort(([a], [b]) => b - a).map(([year, attempt]) => ({ year, attempt }));
+  return [...groups].sort(([a], [b]) => b - a).map(([year, list]) => {
+    const top = list.sort(byFastest).slice(0, limit);
+    return { year, attempt: top[0], top };
+  });
 }
 
-export function bestSegmentAttemptsByBike(attempts) {
-  const best = new Map();
+/** Fastest attempts per bike; bikes without a valid time are kept with `attempt: null`. */
+export function bestSegmentAttemptsByBike(attempts, limit = SEGMENT_TOP_LIMIT) {
+  const groups = new Map();
   for (const attempt of attempts) {
     const bikeId = attempt.activity.gear_id ? String(attempt.activity.gear_id) : null;
-    if (!best.has(bikeId)) best.set(bikeId, null);
-    if (Number.isFinite(attempt.elapsed) && attempt.elapsed > 0
-      && (!best.get(bikeId) || attempt.elapsed < best.get(bikeId).elapsed)) {
-      best.set(bikeId, attempt);
-    }
+    if (!groups.has(bikeId)) groups.set(bikeId, []);
+    if (validTime(attempt)) groups.get(bikeId).push(attempt);
   }
-  return [...best].map(([bikeId, attempt]) => ({ bikeId, attempt }));
+  return [...groups].map(([bikeId, list]) => {
+    const top = list.sort(byFastest).slice(0, limit);
+    return { bikeId, attempt: top[0] || null, top };
+  });
 }
 
 /** Top segments by number of distinct rides, from segmentData; respects excluded segments and filtered activities. */
