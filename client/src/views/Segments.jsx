@@ -49,6 +49,7 @@ function SegmentDetail({ id }) {
   };
   const triesColumn = { key: "tries", label: "Tries", align: "r", value: row => row.tries, render: row => comma(row.tries), renderChild: () => "" };
   const rankColumn = { key: "rank", label: "Rank", align: "r", sortable: false, render: row => `#${row.rank || 1}` };
+  const movingColumn = { key: "moving", label: "Moving time", align: "r", value: row => row.attempt?.moving ?? null, render: row => row.attempt?.moving ? formatDurationHms(row.attempt.moving) : "—" };
   const timeColumn = fastest => ({ key: "elapsed", label: "Time", align: "r", value: row => row.attempt?.elapsed ?? null, render: timeCell(fastest) });
   const effortColumns = [
     { key: "date", label: "Date", value: row => row.attempt?.date ? new Date(row.attempt.date).getTime() : null, render: row => row.attempt?.date ? formatDate(row.attempt.date) : "—" },
@@ -59,6 +60,7 @@ function SegmentDetail({ id }) {
     triesColumn,
     rankColumn,
     timeColumn(fastestOf(yearlyBests)),
+    movingColumn,
     { key: "bike", label: "Bike", value: row => gearName(row.attempt.activity.gear_id), render: row => gearName(row.attempt.activity.gear_id) },
     ...effortColumns
   ];
@@ -67,6 +69,7 @@ function SegmentDetail({ id }) {
     triesColumn,
     rankColumn,
     timeColumn(fastestOf(bikeBests)),
+    movingColumn,
     ...effortColumns
   ];
   const groupKey = (type, row) => `${type}:${type === "year" ? row.year : row.bikeId ?? "none"}`;
@@ -102,6 +105,7 @@ function SegmentDetail({ id }) {
     { key: "activity", label: "Activity", wrap: true, value: attempt => attempt.activity.name || "", render: attempt => <ActivityLink activity={attempt.activity} /> },
     { key: "bike", label: "Bike", value: attempt => gearName(attempt.activity.gear_id), render: attempt => gearName(attempt.activity.gear_id) },
     { key: "elapsed", label: "Elapsed time", align: "r", render: attempt => attempt.elapsed == null ? "—" : formatDurationHms(attempt.elapsed) },
+    { key: "moving", label: "Moving time", align: "r", render: attempt => attempt.moving == null ? "—" : formatDurationHms(attempt.moving) },
     { key: "prRank", label: "PR", align: "r", render: attempt => attempt.prRank ? `#${attempt.prRank}` : "—" }
   ];
 
