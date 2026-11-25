@@ -23,22 +23,29 @@ function SegmentDetail({ id }) {
   const bikeBests = bestSegmentAttemptsByBike(visible);
   const missing = (raw.activities || []).filter(a => a.sport_type === "Ride" && !Object.hasOwn(raw.segmentData || {}, a.id)).length;
   const bikeLabel = bikeId => bikeId ? gearName(bikeId) : "No bike recorded";
+  const fastestOf = rows => Math.min(...rows.map(item => item.attempt?.elapsed ?? Infinity));
+  const timeCell = fastest => row => {
+    if (!row.attempt) return "—";
+    const isBest = row.attempt.elapsed === fastest;
+    return isBest ? <strong className="best-time">{formatDurationHms(row.attempt.elapsed)} <span className="best-badge">Best</span></strong> : formatDurationHms(row.attempt.elapsed);
+  };
   const rankColumn = { key: "rank", label: "Rank", align: "r", sortable: false, render: row => `#${row.rank || 1}` };
+  const timeColumn = fastest => ({ key: "elapsed", label: "Time", align: "r", value: row => row.attempt?.elapsed ?? null, render: timeCell(fastest) });
   const effortColumns = [
-    { key: "elapsed", label: "Time", align: "r", value: row => row.attempt?.elapsed ?? null, render: row => row.attempt ? formatDurationHms(row.attempt.elapsed) : "—" },
     { key: "date", label: "Date", value: row => row.attempt?.date ? new Date(row.attempt.date).getTime() : null, render: row => row.attempt?.date ? formatDate(row.attempt.date) : "—" },
     { key: "activity", label: "Activity", wrap: true, value: row => row.attempt?.activity.name || "", render: row => row.attempt ? <ActivityLink activity={row.attempt.activity} /> : "—" }
   ];
   const yearlyColumns = [
     { key: "year", label: "Year", renderChild: () => "" },
     rankColumn,
-    effortColumns[0],
+    timeColumn(fastestOf(yearlyBests)),
     { key: "bike", label: "Bike", value: row => gearName(row.attempt.activity.gear_id), render: row => gearName(row.attempt.activity.gear_id) },
-    ...effortColumns.slice(1)
+    ...effortColumns
   ];
   const bikeColumns = [
     { key: "bike", label: "Bike", value: row => bikeLabel(row.bikeId), render: row => bikeLabel(row.bikeId), renderChild: () => "" },
     rankColumn,
+    timeColumn(fastestOf(bikeBests)),
     ...effortColumns
   ];
   const groupKey = (type, row) => `${type}:${type === "year" ? row.year : row.bikeId ?? "none"}`;

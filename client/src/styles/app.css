@@ -489,3 +489,5 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
 .engagement-top { list-style: none; margin: 0; padding: 0; }
 @media (max-width: 900px) { .grid.engagement-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 480px) { .grid.engagement-kpis { grid-template-columns: minmax(0, 1fr); } }
+.best-time { color: var(--accent-strong); }
+.best-badge { font-size: 0.7rem; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--accent); font-weight: 700; }
