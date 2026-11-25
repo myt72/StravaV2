@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppData } from "../context/AppData.jsx";
 import { useUnits } from "../context/Units.jsx";
-import { buildSegmentAttempts, filterSegmentAttempts, WEEKDAYS } from "../lib/analytics.js";
+import { bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, WEEKDAYS } from "../lib/analytics.js";
 import { comma, formatDate, formatDurationHms, getStravaSegmentUrl } from "../lib/format.js";
 import { ActivityLink, Card, DataTable, PageHead } from "../components/ui.jsx";
 
@@ -18,7 +18,15 @@ function SegmentDetail({ id }) {
     .map(gid => ({ gid, name: gearName(gid) })).sort((a, b) => a.name.localeCompare(b.name));
   const hasNoBike = attempts.some(attempt => !attempt.activity.gear_id);
   const visible = filterSegmentAttempts(attempts, { bike, year, weekday });
+  const yearlyBests = bestSegmentAttemptsByYear(visible);
   const missing = (raw.activities || []).filter(a => a.sport_type === "Ride" && !Object.hasOwn(raw.segmentData || {}, a.id)).length;
+  const yearlyColumns = [
+    { key: "year", label: "Year" },
+    { key: "elapsed", label: "Best time", align: "r", value: row => row.attempt.elapsed, render: row => formatDurationHms(row.attempt.elapsed) },
+    { key: "bike", label: "Bike", value: row => gearName(row.attempt.activity.gear_id), render: row => gearName(row.attempt.activity.gear_id) },
+    { key: "date", label: "Date", value: row => new Date(row.attempt.date).getTime(), render: row => formatDate(row.attempt.date) },
+    { key: "activity", label: "Activity", wrap: true, value: row => row.attempt.activity.name || "", render: row => <ActivityLink activity={row.attempt.activity} /> }
+  ];
   const columns = [
     { key: "date", label: "Date", value: attempt => attempt.date ? new Date(attempt.date).getTime() : null, render: attempt => attempt.date ? formatDate(attempt.date) : "—" },
     { key: "activity", label: "Activity", wrap: true, value: attempt => attempt.activity.name || "", render: attempt => <ActivityLink activity={attempt.activity} /> },
@@ -53,6 +61,10 @@ function SegmentDetail({ id }) {
           {(bike !== "all" || year !== "all" || weekday !== "all") && <button type="button" className="btn sm" onClick={() => { setBike("all"); setYear("all"); setWeekday("all"); }}>Reset filters</button>}
         </div>
         <p className="small muted" aria-live="polite">{comma(visible.length)} of {comma(attempts.length)} attempts</p>
+        <h3>Best effort by year</h3>
+        <p className="hint">Fastest elapsed time per year among the matching attempts. Attempts without a valid date or elapsed time are excluded.</p>
+        <DataTable columns={yearlyColumns} rows={yearlyBests} rowKey={row => row.year} initialSort={{ key: "year", dir: "desc" }} caption={`Best efforts by year on ${row.name}`} empty="No matching attempts have a valid date and elapsed time." />
+        <h3>All attempts</h3>
         <DataTable columns={columns} rows={visible} rowKey={attempt => attempt.key} initialSort={{ key: "date", dir: "desc" }} pageSize={50} caption={`Attempts on ${row.name}`} empty="No attempts on this segment match the current filters." />
       </Card> : <p className="muted">No cached attempts found for this segment.</p>}
     </div>
