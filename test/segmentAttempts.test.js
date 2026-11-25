@@ -135,3 +135,17 @@ test("yearly and bike summaries keep the ten fastest attempts, best first", () =
   assert.equal(b1.attempt.elapsed, 109);
   assert.deepEqual(b2.top.map(a => a.elapsed), [5]);
 });
+
+test("segment type classifies by signed average grade and filters the list", () => {
+  const activities = [{ id: "1", start_date: "2024-01-01T10:00:00" }];
+  const data = { "1": [
+    { segment_id: 1, average_grade: 5 }, { segment_id: 2, average_grade: -2 }, { segment_id: 3, average_grade: 1.9 },
+    { segment_id: 4, average_grade: -1.9 }, { segment_id: 5, average_grade: 2 }, { segment_id: 6 }
+  ] };
+  const ids = type => buildSegmentAttempts(data, activities, null, { type }).map(r => r.id).sort();
+  assert.deepEqual(ids("climb"), ["1", "5"]);
+  assert.deepEqual(ids("descent"), ["2"]);
+  assert.deepEqual(ids("flat"), ["3", "4"]);
+  assert.equal(ids("all").length, 6);
+  assert.equal(buildSegmentAttempts(data, activities)[5].type, null);
+});

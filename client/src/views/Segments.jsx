@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAppData } from "../context/AppData.jsx";
 import { useUnits } from "../context/Units.jsx";
-import { bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, WEEKDAYS } from "../lib/analytics.js";
+import { SEGMENT_TYPE_GRADE, bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, WEEKDAYS } from "../lib/analytics.js";
 import { comma, formatDate, formatDurationHms, getStravaSegmentUrl } from "../lib/format.js";
 import { ActivityLink, Card, DataTable, PageHead } from "../components/ui.jsx";
+
+const TYPE_LABELS = { climb: "Climb", descent: "Descent", flat: "Flat / rolling" };
+const gradeText = grade => typeof grade === "number" ? `${grade > 0 ? "+" : ""}${grade.toFixed(1)}%` : "—";
 
 function SegmentDetail({ id }) {
   const { raw, gearName } = useAppData();
@@ -114,6 +117,7 @@ export default function Segments({ route }) {
   const [year, setYear] = useState("all");
   const [weekday, setWeekday] = useState("all");
   const [search, setSearch] = useState("");
+  const [type, setType] = useState("all");
   const segmentId = route.segments[1];
   const allRows = useMemo(
     () => buildSegmentAttempts(raw.segmentData, filtered.activities, excludedSet),
@@ -124,14 +128,16 @@ export default function Segments({ route }) {
     .map(attempt => new Date(attempt.date).getFullYear())))].sort((a, b) => b - a), [allRows]);
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return buildSegmentAttempts(raw.segmentData, filtered.activities, excludedSet, { year, weekday })
+    return buildSegmentAttempts(raw.segmentData, filtered.activities, excludedSet, { year, weekday, type })
       .filter(row => !query || row.name.toLowerCase().includes(query));
-  }, [raw.segmentData, filtered.activities, excludedSet, year, weekday, search]);
+  }, [raw.segmentData, filtered.activities, excludedSet, year, weekday, type, search]);
   const missing = filtered.activities.filter(a => a.sport_type === "Ride" && !Object.hasOwn(raw.segmentData || {}, a.id)).length;
   const columns = [
     { key: "name", label: "Segment", wrap: true, render: row => <a href={`#/segments/${encodeURIComponent(row.id)}`}>{row.name}</a> },
     { key: "count", label: "Attempts", align: "r", value: row => row.attempts.length, render: row => comma(row.attempts.length) },
     { key: "distance", label: "Distance", align: "r", render: row => row.distance > 0 ? units.fmtDistance(row.distance, 2) : "—" },
+    { key: "grade", label: "Avg grade", align: "r", render: row => gradeText(row.grade) },
+    { key: "type", label: "Type", value: row => row.type ? TYPE_LABELS[row.type] : null, render: row => row.type ? TYPE_LABELS[row.type] : "—" },
     { key: "bestTime", label: "Best time", align: "r", render: row => row.bestTime == null ? "—" : formatDurationHms(row.bestTime) },
     { key: "lastDate", label: "Last attempt", value: row => row.lastDate ? new Date(row.lastDate).getTime() : null, render: row => row.lastDate ? formatDate(row.lastDate) : "—" }
   ];
@@ -154,7 +160,12 @@ export default function Segments({ route }) {
             <option value="all">All days</option>
             {WEEKDAYS.map((day, index) => <option key={day} value={index}>{day}</option>)}
           </select></label>
+          <label>Type <select value={type} onChange={e => setType(e.target.value)}>
+            <option value="all">All types</option>
+            {Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select></label>
         </div>
+        <p className="small muted">Type uses Strava’s average grade: climb at +{SEGMENT_TYPE_GRADE}% or steeper, descent at −{SEGMENT_TYPE_GRADE}% or steeper, otherwise flat / rolling. Segments cached without a grade show “—” and are hidden when a type is selected.</p>
         <DataTable columns={columns} rows={rows} rowKey={row => row.id} initialSort={{ key: "count", dir: "desc" }} pageSize={50} caption="Segments by attempts" empty="No segment attempts match the current filters." />
       </Card>
     </div></div>
