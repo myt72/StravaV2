@@ -10,6 +10,7 @@ const gradeText = grade => typeof grade === "number" ? `${grade > 0 ? "+" : ""}$
 
 function SegmentDetail({ id }) {
   const { raw, gearName } = useAppData();
+  const units = useUnits();
   const [bike, setBike] = useState("all");
   const [year, setYear] = useState("all");
   const [weekday, setWeekday] = useState("all");
@@ -32,6 +33,7 @@ function SegmentDetail({ id }) {
     const isBest = row.attempt.elapsed === fastest;
     return isBest ? <strong className="best-time">{formatDurationHms(row.attempt.elapsed)} <span className="best-badge">Best</span></strong> : formatDurationHms(row.attempt.elapsed);
   };
+  const triesColumn = { key: "tries", label: "Tries", align: "r", value: row => row.tries, render: row => comma(row.tries), renderChild: () => "" };
   const rankColumn = { key: "rank", label: "Rank", align: "r", sortable: false, render: row => `#${row.rank || 1}` };
   const timeColumn = fastest => ({ key: "elapsed", label: "Time", align: "r", value: row => row.attempt?.elapsed ?? null, render: timeCell(fastest) });
   const effortColumns = [
@@ -40,6 +42,7 @@ function SegmentDetail({ id }) {
   ];
   const yearlyColumns = [
     { key: "year", label: "Year", renderChild: () => "" },
+    triesColumn,
     rankColumn,
     timeColumn(fastestOf(yearlyBests)),
     { key: "bike", label: "Bike", value: row => gearName(row.attempt.activity.gear_id), render: row => gearName(row.attempt.activity.gear_id) },
@@ -47,6 +50,7 @@ function SegmentDetail({ id }) {
   ];
   const bikeColumns = [
     { key: "bike", label: "Bike", value: row => bikeLabel(row.bikeId), render: row => bikeLabel(row.bikeId), renderChild: () => "" },
+    triesColumn,
     rankColumn,
     timeColumn(fastestOf(bikeBests)),
     ...effortColumns
@@ -64,6 +68,16 @@ function SegmentDetail({ id }) {
     disabledReason: row => row.top.length < 2 ? "No additional efforts" : undefined,
     children: row => row.top.slice(1).map((attempt, index) => ({ key: `${row.top.length}:${index}`, year: row.year, bikeId: row.bikeId, attempt, rank: index + 2 }))
   });
+  const distance = row?.distance > 0 ? row.distance : null;
+  const gain = row?.elevationGain;
+  const change = distance != null && typeof row.grade === "number" ? distance * row.grade / 100 : null;
+  const metrics = row ? [
+    ["Distance", distance != null ? units.fmtDistance(distance, 2) : "—"],
+    ["Elevation gain", gain != null ? units.fmtElevation(gain) : "—", "high − low point"],
+    ["Elevation change", change != null ? `${change > 0 ? "+" : "−"}${units.fmtElevation(Math.abs(change))}` : "—", "estimated from distance × avg grade"],
+    ["Avg grade", gradeText(row.grade)],
+    ["Type", row.type ? TYPE_LABELS[row.type] : "—"]
+  ] : [];
   const columns = [
     { key: "date", label: "Date", value: attempt => attempt.date ? new Date(attempt.date).getTime() : null, render: attempt => attempt.date ? formatDate(attempt.date) : "—" },
     { key: "activity", label: "Activity", wrap: true, value: attempt => attempt.activity.name || "", render: attempt => <ActivityLink activity={attempt.activity} /> },
@@ -81,6 +95,10 @@ function SegmentDetail({ id }) {
       {missing > 0 && <div className="notice" role="status">{comma(missing)} rides have no cached segment data. Attempts may be incomplete; use the PR backfill on the <a href="#/admin">Data page</a>.</div>}
       {row ? <Card title="Attempts">
         <p className="hint">Showing cached attempts across all activities, independently of the global filters. Dates use your browser’s local time zone. PR ranks are Strava’s recorded ranks, not ranks within the filtered results. Solo/group classification is not available.</p>
+        <div className="grid kpis">
+          {metrics.map(([label, value, sub]) => <div key={label}><div className="kpi-label">{label}</div><div className="kpi-value num">{value}</div>{sub && <div className="kpi-sub">{sub}</div>}</div>)}
+        </div>
+        <p className="small muted">Min/max elevation, max grade and the segment shape are not stored in the cache.</p>
         <div className="toolbar segment-filters">
           <label>Bike <select value={bike} onChange={e => setBike(e.target.value)}>
             <option value="all">All bikes</option>

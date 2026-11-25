@@ -1202,10 +1202,11 @@ export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds
       if (weekday !== "all" && (!validDate || weekdayIndex(parsed) !== Number(weekday))) return;
       let row = rows.get(id);
       if (!row) {
-        row = { id, name: effort.segment_name || `Segment ${id}`, distance: effort.distance, grade: null, attempts: [], bestTime: null, lastDate: null };
+        row = { id, name: effort.segment_name || `Segment ${id}`, distance: effort.distance, grade: null, elevationGain: null, attempts: [], bestTime: null, lastDate: null };
         rows.set(id, row);
       }
       if (row.grade == null && typeof effort.average_grade === "number") row.grade = effort.average_grade;
+      if (row.elevationGain == null && typeof effort.elevation_gain === "number") row.elevationGain = effort.elevation_gain;
       const time = Number(effort.elapsed_time);
       row.attempts.push({ key: `${activity.id}:${index}`, activity, date: validDate ? date : null, elapsed: time > 0 && Number.isFinite(time) ? time : null, prRank: effort.pr_rank });
       if (time > 0 && Number.isFinite(time) && (row.bestTime == null || time < row.bestTime)) row.bestTime = time;
@@ -1237,14 +1238,16 @@ export function bestSegmentAttemptsByYear(attempts, limit = SEGMENT_TOP_LIMIT) {
   const groups = new Map();
   for (const attempt of attempts) {
     const date = attempt.date ? new Date(attempt.date) : null;
-    if (!date || !Number.isFinite(date.getTime()) || !validTime(attempt)) continue;
+    if (!date || !Number.isFinite(date.getTime())) continue;
     const year = date.getFullYear();
-    if (!groups.has(year)) groups.set(year, []);
-    groups.get(year).push(attempt);
+    if (!groups.has(year)) groups.set(year, { tries: 0, timed: [] });
+    const group = groups.get(year);
+    group.tries++;
+    if (validTime(attempt)) group.timed.push(attempt);
   }
-  return [...groups].sort(([a], [b]) => b - a).map(([year, list]) => {
-    const top = list.sort(byFastest).slice(0, limit);
-    return { year, attempt: top[0], top };
+  return [...groups].sort(([a], [b]) => b - a).filter(([, g]) => g.timed.length).map(([year, g]) => {
+    const top = g.timed.sort(byFastest).slice(0, limit);
+    return { year, attempt: top[0], top, tries: g.tries };
   });
 }
 
@@ -1253,12 +1256,14 @@ export function bestSegmentAttemptsByBike(attempts, limit = SEGMENT_TOP_LIMIT) {
   const groups = new Map();
   for (const attempt of attempts) {
     const bikeId = attempt.activity.gear_id ? String(attempt.activity.gear_id) : null;
-    if (!groups.has(bikeId)) groups.set(bikeId, []);
-    if (validTime(attempt)) groups.get(bikeId).push(attempt);
+    if (!groups.has(bikeId)) groups.set(bikeId, { tries: 0, timed: [] });
+    const group = groups.get(bikeId);
+    group.tries++;
+    if (validTime(attempt)) group.timed.push(attempt);
   }
-  return [...groups].map(([bikeId, list]) => {
-    const top = list.sort(byFastest).slice(0, limit);
-    return { bikeId, attempt: top[0] || null, top };
+  return [...groups].map(([bikeId, g]) => {
+    const top = g.timed.sort(byFastest).slice(0, limit);
+    return { bikeId, attempt: top[0] || null, top, tries: g.tries };
   });
 }
 
