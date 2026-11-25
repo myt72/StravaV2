@@ -1,9 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-let buildSegmentAttempts, filterSegmentAttempts, applyGlobalFilters;
+let bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, applyGlobalFilters;
 test.before(async () => {
-  ({ buildSegmentAttempts, filterSegmentAttempts, applyGlobalFilters } = await import("../client/src/lib/analytics.js"));
+  ({ bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, applyGlobalFilters } = await import("../client/src/lib/analytics.js"));
 });
 
 test("segment detail starts with all cached attempts and combines independent filters", () => {
@@ -73,4 +73,48 @@ test("year and weekday apply to effort date, including missing and invalid dates
   assert.equal(monday[0].attempts[0].activity.id, "1");
   assert.equal(monday[0].bestTime, null);
   assert.equal(buildSegmentAttempts(data, activities, null, { year: "2023" }).length, 0);
+});
+
+test("yearly bests choose the fastest matching attempt and preserve its bike and activity", () => {
+  const activities = [
+    { id: "1", gear_id: "b1", start_date: "2026-03-01T10:00:00" },
+    { id: "2", gear_id: "b2", start_date: "2026-04-01T10:00:00" },
+    { id: "3", gear_id: "b1", start_date: "2025-03-01T10:00:00" },
+    { id: "4", start_date: null }
+  ];
+  const data = {
+    "1": [{ segment_id: 1, elapsed_time: 80 }, { segment_id: 1, elapsed_time: 70 }],
+    "2": [{ segment_id: 1, elapsed_time: 60 }],
+    "3": [{ segment_id: 1, elapsed_time: 90 }],
+    "4": [{ segment_id: 1, elapsed_time: 10 }, { segment_id: 1, start_date: "invalid", elapsed_time: 5 }, { segment_id: 1, start_date: "2024-01-01T10:00:00", elapsed_time: 0 }]
+  };
+  const attempts = buildSegmentAttempts(data, activities)[0].attempts;
+  const bests = bestSegmentAttemptsByYear(attempts);
+  assert.deepEqual(bests.map(({ year, attempt }) => [year, attempt.elapsed, attempt.activity.id, attempt.activity.gear_id]), [
+    [2026, 60, "2", "b2"], [2025, 90, "3", "b1"]
+  ]);
+  const bikeBests = bestSegmentAttemptsByYear(filterSegmentAttempts(attempts, { bike: "b1" }));
+  assert.deepEqual(bikeBests.map(({ year, attempt }) => [year, attempt.elapsed]), [[2026, 70], [2025, 90]]);
+  assert.deepEqual(bestSegmentAttemptsByYear(filterSegmentAttempts(attempts, { year: "2024" })), []);
+});
+
+test("bike bests compare matching efforts, including missing dates, bikes and times", () => {
+  const activities = [
+    { id: "1", gear_id: "b1", start_date: "2026-03-01T10:00:00" },
+    { id: "2", gear_id: "b2", start_date: "2025-03-01T10:00:00" },
+    { id: "3", gear_id: "b3" },
+    { id: "4" }
+  ];
+  const data = {
+    "1": [{ segment_id: 1, elapsed_time: 80 }, { segment_id: 1, elapsed_time: 60 }],
+    "2": [{ segment_id: 1, elapsed_time: 70 }, { segment_id: 1, start_date: "invalid", elapsed_time: 50 }],
+    "3": [{ segment_id: 1, elapsed_time: 0 }],
+    "4": [{ segment_id: 1, elapsed_time: 90 }]
+  };
+  const attempts = buildSegmentAttempts(data, activities)[0].attempts;
+  assert.deepEqual(bestSegmentAttemptsByBike(attempts).map(({ bikeId, attempt }) => [bikeId, attempt?.elapsed ?? null, attempt?.activity.id ?? null]), [
+    ["b1", 60, "1"], ["b2", 50, "2"], ["b3", null, null], [null, 90, "4"]
+  ]);
+  assert.deepEqual(bestSegmentAttemptsByBike(filterSegmentAttempts(attempts, { year: "2025" })).map(({ bikeId, attempt }) => [bikeId, attempt.elapsed]), [["b2", 70]]);
+  assert.deepEqual(bestSegmentAttemptsByBike(filterSegmentAttempts(attempts, { bike: "none" })).map(({ bikeId, attempt }) => [bikeId, attempt.elapsed]), [[null, 90]]);
 });
