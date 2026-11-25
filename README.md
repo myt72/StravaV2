@@ -130,7 +130,7 @@ Segments excluded in the Records view (Segment summary / By distance / By elevat
 
 ## Segments
 
-The Segments page ranks cached individual attempts from most to fewest, including multiple attempts on the same ride. Select a segment to see its attempts, elapsed times, bikes and activities. Search by segment name or filter by year and weekday; the global period, activity type and bike filters also apply to both the list and details. Dates use the browser's local time zone, and excluded segments are hidden. The list can be incomplete until the PR backfill on the Data page has fetched segment data for rides. Solo versus group rides cannot be filtered reliably from the cached data.
+The Segments page ranks cached individual attempts from most to fewest, including multiple attempts on the same ride. Search by segment name or filter the list by year and weekday; the global period, activity type and bike filters also apply, and excluded segments are hidden. Select a segment to open its attempts, elapsed times, bikes and activities. The detail view starts with all cached attempts, independently of the list and global filters, and has its own bike (including no recorded bike), year and weekday filters. Dates use the browser's local time zone. Cached data can be incomplete; use the PR backfill on the Data page to fetch missing ride segment data. Solo versus group rides cannot be filtered reliably from the cached data.
 
 ## Records, Patterns and Overview additions
 

@@ -1173,7 +1173,7 @@ export function buildRouteLeaderboard(routeClusters, activities, { year = null, 
 }
 
 /** Individual cached efforts, joined to the filtered activities that contain them. */
-export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds, { year = "all", weekday = "all" } = {}) {
+export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds, { year = "all", weekday = "all", segmentId = null } = {}) {
   const rows = new Map();
   for (const activity of activities || []) {
     const efforts = segmentData?.[activity.id];
@@ -1181,6 +1181,7 @@ export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds
     efforts.forEach((effort, index) => {
       if (!effort?.segment_id) return;
       const id = String(effort.segment_id);
+      if (segmentId != null && id !== String(segmentId)) return;
       if (excludedSegmentIds?.has(id)) return;
       const date = effort.start_date || activity.start_date;
       const parsed = date ? new Date(date) : null;
@@ -1199,6 +1200,18 @@ export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds
     });
   }
   return [...rows.values()].sort((a, b) => b.attempts.length - a.attempts.length || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+}
+
+export function filterSegmentAttempts(attempts, { bike = "all", year = "all", weekday = "all" } = {}) {
+  return attempts.filter(attempt => {
+    if (bike === "none" && attempt.activity.gear_id) return false;
+    if (bike !== "all" && bike !== "none" && String(attempt.activity.gear_id) !== bike) return false;
+    if (year === "all" && weekday === "all") return true;
+    const date = attempt.date ? new Date(attempt.date) : null;
+    if (!date || !Number.isFinite(date.getTime())) return false;
+    return (year === "all" || date.getFullYear() === Number(year))
+      && (weekday === "all" || weekdayIndex(date) === Number(weekday));
+  });
 }
 
 /** Top segments by number of distinct rides, from segmentData; respects excluded segments and filtered activities. */
