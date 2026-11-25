@@ -1172,8 +1172,20 @@ export function buildRouteLeaderboard(routeClusters, activities, { year = null, 
   return rows.sort(compareLeaderRows).slice(0, limit);
 }
 
+/** Average grade (%) at or beyond which a segment counts as a climb (+) or descent (−); change here to retune. */
+export const SEGMENT_TYPE_GRADE = 2;
+export const SEGMENT_TYPES = ["climb", "descent", "flat"];
+
+/** Strava's signed average grade; segments without a numeric grade are unclassified (null). */
+export function classifySegment(grade) {
+  if (typeof grade !== "number" || !Number.isFinite(grade)) return null;
+  if (grade >= SEGMENT_TYPE_GRADE) return "climb";
+  if (grade <= -SEGMENT_TYPE_GRADE) return "descent";
+  return "flat";
+}
+
 /** Individual cached efforts, joined to the filtered activities that contain them. */
-export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds, { year = "all", weekday = "all", segmentId = null } = {}) {
+export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds, { year = "all", weekday = "all", segmentId = null, type = "all" } = {}) {
   const rows = new Map();
   for (const activity of activities || []) {
     const efforts = segmentData?.[activity.id];
@@ -1190,16 +1202,18 @@ export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds
       if (weekday !== "all" && (!validDate || weekdayIndex(parsed) !== Number(weekday))) return;
       let row = rows.get(id);
       if (!row) {
-        row = { id, name: effort.segment_name || `Segment ${id}`, distance: effort.distance, attempts: [], bestTime: null, lastDate: null };
+        row = { id, name: effort.segment_name || `Segment ${id}`, distance: effort.distance, grade: null, attempts: [], bestTime: null, lastDate: null };
         rows.set(id, row);
       }
+      if (row.grade == null && typeof effort.average_grade === "number") row.grade = effort.average_grade;
       const time = Number(effort.elapsed_time);
       row.attempts.push({ key: `${activity.id}:${index}`, activity, date: validDate ? date : null, elapsed: time > 0 && Number.isFinite(time) ? time : null, prRank: effort.pr_rank });
       if (time > 0 && Number.isFinite(time) && (row.bestTime == null || time < row.bestTime)) row.bestTime = time;
       if (validDate && (!row.lastDate || parsed > new Date(row.lastDate))) row.lastDate = date;
     });
   }
-  return [...rows.values()].sort((a, b) => b.attempts.length - a.attempts.length || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  return [...rows.values()].map(row => ({ ...row, type: classifySegment(row.grade) })).filter(row => type === "all" || row.type === type)
+    .sort((a, b) => b.attempts.length - a.attempts.length || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
 export function filterSegmentAttempts(attempts, { bike = "all", year = "all", weekday = "all" } = {}) {
