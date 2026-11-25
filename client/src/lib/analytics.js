@@ -1225,6 +1225,19 @@ export function bestSegmentAttemptsByYear(attempts) {
   return [...best].sort(([a], [b]) => b - a).map(([year, attempt]) => ({ year, attempt }));
 }
 
+export function bestSegmentAttemptsByBike(attempts) {
+  const best = new Map();
+  for (const attempt of attempts) {
+    const bikeId = attempt.activity.gear_id ? String(attempt.activity.gear_id) : null;
+    if (!best.has(bikeId)) best.set(bikeId, null);
+    if (Number.isFinite(attempt.elapsed) && attempt.elapsed > 0
+      && (!best.get(bikeId) || attempt.elapsed < best.get(bikeId).elapsed)) {
+      best.set(bikeId, attempt);
+    }
+  }
+  return [...best].map(([bikeId, attempt]) => ({ bikeId, attempt }));
+}
+
 /** Top segments by number of distinct rides, from segmentData; respects excluded segments and filtered activities. */
 export function buildSegmentLeaderboard(segmentData, activities, excludedSegmentIds, { year = null, month = null, limit = 20 } = {}) {
   const byId = new Map((activities || []).map(a => [String(a.id), a]));
