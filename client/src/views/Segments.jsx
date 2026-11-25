@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppData } from "../context/AppData.jsx";
 import { useUnits } from "../context/Units.jsx";
 import { SEGMENT_TYPE_GRADE, bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, WEEKDAYS } from "../lib/analytics.js";
@@ -160,6 +160,19 @@ export default function Segments({ route }) {
   const [search, setSearch] = useState("");
   const [type, setType] = useState("all");
   const segmentId = route.segments[1];
+  const listRef = useRef(null);
+  const lastOpened = useRef({ id: null, scrollY: 0 });
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (segmentId) { wasOpen.current = true; return; }
+    if (!wasOpen.current) return;
+    wasOpen.current = false;
+    // Back on the list: centre the segment just viewed, else restore the previous scroll position.
+    const { id, scrollY } = lastOpened.current;
+    const link = id != null && [...(listRef.current?.querySelectorAll("a[data-segment-id]") || [])].find(a => a.dataset.segmentId === id);
+    if (link) link.scrollIntoView({ block: "center" });
+    else window.scrollTo(0, scrollY);
+  }, [segmentId]);
   const allRows = useMemo(
     () => buildSegmentAttempts(raw.segmentData, filtered.activities, excludedSet),
     [raw.segmentData, filtered.activities, excludedSet]
@@ -174,7 +187,7 @@ export default function Segments({ route }) {
   }, [raw.segmentData, filtered.activities, excludedSet, year, weekday, type, search]);
   const missing = filtered.activities.filter(a => a.sport_type === "Ride" && !Object.hasOwn(raw.segmentData || {}, a.id)).length;
   const columns = [
-    { key: "name", label: "Segment", wrap: true, render: row => <a href={`#/segments/${encodeURIComponent(row.id)}`}>{row.name}</a> },
+    { key: "name", label: "Segment", wrap: true, render: row => <a href={`#/segments/${encodeURIComponent(row.id)}`} data-segment-id={row.id} onClick={() => { lastOpened.current = { id: row.id, scrollY: window.scrollY }; }}>{row.name}</a> },
     { key: "count", label: "Attempts", align: "r", value: row => row.attempts.length, render: row => comma(row.attempts.length) },
     { key: "distance", label: "Distance", align: "r", render: row => row.distance > 0 ? units.fmtDistance(row.distance, 2) : "—" },
     { key: "grade", label: "Avg grade", align: "r", render: row => gradeText(row.grade) },
@@ -185,7 +198,7 @@ export default function Segments({ route }) {
   return (
     <>
     {segmentId && <SegmentDetail key={segmentId} id={segmentId} />}
-    <div hidden={!!segmentId}><div className="content">
+    <div hidden={!!segmentId} ref={listRef}><div className="content">
       <PageHead title="Segments">Explore cached attempts, ranked from most to fewest. Use the global Bike filter to compare a particular bike.</PageHead>
       {missing > 0 && <div className="notice" role="status">{comma(missing)} filtered rides have no cached segment data. Attempts may be incomplete; use the PR backfill on the <a href="#/admin">Data page</a>.</div>}
       <p className="hint">Cached attempts may be incomplete. Year and weekday use the attempt date in your browser’s local time zone. Excluded segments and the global filters apply. Solo versus group rides cannot be filtered because the cache does not contain a reliable classification.</p>
