@@ -1,9 +1,32 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
-let buildSegmentAttempts, applyGlobalFilters;
+let buildSegmentAttempts, filterSegmentAttempts, applyGlobalFilters;
 test.before(async () => {
-  ({ buildSegmentAttempts, applyGlobalFilters } = await import("../client/src/lib/analytics.js"));
+  ({ buildSegmentAttempts, filterSegmentAttempts, applyGlobalFilters } = await import("../client/src/lib/analytics.js"));
+});
+
+test("segment detail starts with all cached attempts and combines independent filters", () => {
+  const activities = [
+    { id: "1", sport_type: "Ride", gear_id: "b1", start_date: "2024-01-01T10:00:00" },
+    { id: "2", sport_type: "Ride", gear_id: "b2", start_date: "2023-01-02T10:00:00" },
+    { id: "3", sport_type: "Ride", start_date: "2024-01-02T10:00:00" }
+  ];
+  const segmentData = {
+    "1": [{ segment_id: 1, elapsed_time: 60 }, { segment_id: 2 }],
+    "2": [{ segment_id: 1, elapsed_time: 70 }],
+    "3": [{ segment_id: 1, elapsed_time: 80 }]
+  };
+  const filtered = applyGlobalFilters({ activities, segmentData }, { dateRange: "all", activityType: "all", bike: "b1" });
+  assert.equal(buildSegmentAttempts(segmentData, filtered.activities)[0].attempts.length, 1);
+  const rows = buildSegmentAttempts(segmentData, activities, null, { segmentId: "1" });
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].attempts.length, 3);
+  assert.equal(filterSegmentAttempts(rows[0].attempts).length, 3);
+  assert.deepEqual(filterSegmentAttempts(rows[0].attempts, { bike: "b2", year: "2023", weekday: "0" }).map(a => a.activity.id), ["2"]);
+  assert.equal(filterSegmentAttempts(rows[0].attempts, { bike: "b2", year: "2024" }).length, 0);
+  assert.deepEqual(filterSegmentAttempts(rows[0].attempts, { bike: "none", weekday: "1" }).map(a => a.activity.id), ["3"]);
+  assert.deepEqual(buildSegmentAttempts(segmentData, activities, null, { segmentId: "404" }), []);
 });
 
 test("segment attempts count every effort, join filtered bikes, and respect exclusions", () => {

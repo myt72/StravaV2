@@ -71,7 +71,7 @@ export default function App() {
       <a className="skip-link" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById("main-content")?.focus(); }}>Skip to content</a>
       <Sidebar current={viewId} themeState={themeState} collapsed={navCollapsed} onToggleNav={toggleNav} />
       <div className="main">
-        {viewId !== "mdr" && <FilterBar />}
+        {viewId !== "mdr" && !(viewId === "segments" && route.segments[1]) && <FilterBar />}
         <main id="main-content" tabIndex={-1} aria-label={title} style={{ outline: "none" }}>
           <div key={viewId} className="view-enter">
             {viewId === "mdr" ? <View route={route} /> : (
