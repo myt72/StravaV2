@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 
 let bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, applyGlobalFilters;
 test.before(async () => {
-  ({ bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, applyGlobalFilters } = await import("../client/src/lib/analytics.js"));
+  ({ bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, filterSegmentRanges, applyGlobalFilters } = await import("../client/src/lib/analytics.js"));
 });
 
 test("segment detail starts with all cached attempts and combines independent filters", () => {
@@ -160,4 +160,12 @@ test("tries count every dated attempt, including untimed ones, and capture eleva
   assert.deepEqual(row.attempts.map(a => a.moving), [45, null]);
   assert.equal(bestSegmentAttemptsByYear(row.attempts)[0].tries, 2);
   assert.equal(bestSegmentAttemptsByBike(row.attempts)[0].tries, 2);
+});
+
+test("filterSegmentRanges applies optional distance and best-time bounds", () => {
+  const rows = [{ distance: 500, bestTime: 60 }, { distance: 2000, bestTime: 300 }, { distance: 0, bestTime: null }];
+  assert.equal(filterSegmentRanges(rows).length, 3);
+  assert.deepEqual(filterSegmentRanges(rows, { minDistance: 1000 }), [rows[1]]);
+  assert.deepEqual(filterSegmentRanges(rows, { maxDistance: 1000, maxTime: 120 }), [rows[0]]);
+  assert.deepEqual(filterSegmentRanges(rows, { minTime: 100, maxTime: 400 }), [rows[1]]);
 });

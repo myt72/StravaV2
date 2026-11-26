@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppData } from "../context/AppData.jsx";
 import { useUnits } from "../context/Units.jsx";
-import { SEGMENT_TYPE_GRADE, bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, WEEKDAYS } from "../lib/analytics.js";
+import { SEGMENT_TYPE_GRADE, bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, filterSegmentRanges, WEEKDAYS } from "../lib/analytics.js";
 import { comma, formatDate, formatDurationHms, getStravaSegmentUrl } from "../lib/format.js";
+import { M_PER_MI } from "../lib/units.js";
 import { polylineToSvgPath } from "../lib/polyline.js";
 import { ActivityLink, Card, DataTable, PageHead } from "../components/ui.jsx";
 
@@ -163,6 +164,8 @@ export default function Segments({ route }) {
   const [weekday, setWeekday] = useState("all");
   const [search, setSearch] = useState("");
   const [type, setType] = useState("all");
+  const [range, setRange] = useState({ minDist: "", maxDist: "", minMin: "", maxMin: "" });
+  const setBound = key => e => setRange(prev => ({ ...prev, [key]: e.target.value }));
   const segmentId = route.segments[1];
   const listRef = useRef(null);
   const lastOpened = useRef({ id: null, scrollY: 0 });
@@ -186,9 +189,13 @@ export default function Segments({ route }) {
     .map(attempt => new Date(attempt.date).getFullYear())))].sort((a, b) => b - a), [allRows]);
   const rows = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return buildSegmentAttempts(raw.segmentData, filtered.activities, excludedSet, { year, weekday, type })
-      .filter(row => !query || row.name.toLowerCase().includes(query));
-  }, [raw.segmentData, filtered.activities, excludedSet, year, weekday, type, search]);
+    const bound = (text, scale) => { const n = text.trim() === "" ? NaN : Number(text); return Number.isFinite(n) ? n * scale : null; };
+    const distScale = units.metric ? 1000 : M_PER_MI;
+    return filterSegmentRanges(buildSegmentAttempts(raw.segmentData, filtered.activities, excludedSet, { year, weekday, type }), {
+      minDistance: bound(range.minDist, distScale), maxDistance: bound(range.maxDist, distScale),
+      minTime: bound(range.minMin, 60), maxTime: bound(range.maxMin, 60)
+    }).filter(row => !query || row.name.toLowerCase().includes(query));
+  }, [raw.segmentData, filtered.activities, excludedSet, year, weekday, type, search, range, units.metric]);
   const missing = filtered.activities.filter(a => a.sport_type === "Ride" && !Object.hasOwn(raw.segmentData || {}, a.id)).length;
   const columns = [
     { key: "name", label: "Segment", wrap: true, render: row => <a href={`#/segments/${encodeURIComponent(row.id)}`} data-segment-id={row.id} onClick={() => { lastOpened.current = { id: row.id, scrollY: window.scrollY }; }}>{row.name}</a> },
@@ -222,8 +229,18 @@ export default function Segments({ route }) {
             <option value="all">All types</option>
             {Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select></label>
+          <label>Distance ({units.distUnit}) <span className="range-inputs">
+            <input type="number" min="0" step="any" inputMode="decimal" value={range.minDist} onChange={setBound("minDist")} placeholder="Min" aria-label={`Minimum distance (${units.distUnit})`} />
+            <span aria-hidden="true">–</span>
+            <input type="number" min="0" step="any" inputMode="decimal" value={range.maxDist} onChange={setBound("maxDist")} placeholder="Max" aria-label={`Maximum distance (${units.distUnit})`} />
+          </span></label>
+          <label>Best time (min) <span className="range-inputs">
+            <input type="number" min="0" step="any" inputMode="decimal" value={range.minMin} onChange={setBound("minMin")} placeholder="Min" aria-label="Minimum best time (minutes)" />
+            <span aria-hidden="true">–</span>
+            <input type="number" min="0" step="any" inputMode="decimal" value={range.maxMin} onChange={setBound("maxMin")} placeholder="Max" aria-label="Maximum best time (minutes)" />
+          </span></label>
         </div>
-        <p className="small muted">Type uses Strava’s average grade: climb at +{SEGMENT_TYPE_GRADE}% or steeper, descent at −{SEGMENT_TYPE_GRADE}% or steeper, otherwise flat / rolling. Segments cached without a grade show “—” and are hidden when a type is selected.</p>
+        <p className="small muted">Distance and best time accept a min and/or max; leave blank for no limit. Best time is the segment’s fastest elapsed time. Type uses Strava’s average grade: climb at +{SEGMENT_TYPE_GRADE}% or steeper, descent at −{SEGMENT_TYPE_GRADE}% or steeper, otherwise flat / rolling. Segments cached without a grade show “—” and are hidden when a type is selected.</p>
         <DataTable columns={columns} rows={rows} rowKey={row => row.id} initialSort={{ key: "count", dir: "desc" }} pageSize={50} caption="Segments by attempts" empty="No segment attempts match the current filters." />
       </Card>
     </div></div>

@@ -1217,6 +1217,12 @@ export function buildSegmentAttempts(segmentData, activities, excludedSegmentIds
     .sort((a, b) => b.attempts.length - a.attempts.length || a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
 
+/** Range filter for segment rows; bounds are optional numbers (meters / seconds). Duration uses the segment's best elapsed time. */
+export function filterSegmentRanges(rows, { minDistance = null, maxDistance = null, minTime = null, maxTime = null } = {}) {
+  const within = (value, min, max) => (min == null || (value != null && value >= min)) && (max == null || (value != null && value <= max));
+  return rows.filter(row => within(row.distance > 0 ? row.distance : null, minDistance, maxDistance) && within(row.bestTime, minTime, maxTime));
+}
+
 export function filterSegmentAttempts(attempts, { bike = "all", year = "all", weekday = "all" } = {}) {
   return attempts.filter(attempt => {
     if (bike === "none" && attempt.activity.gear_id) return false;
