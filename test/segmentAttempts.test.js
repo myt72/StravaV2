@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 
 let bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, applyGlobalFilters;
 test.before(async () => {
-  ({ bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, filterSegmentRanges, applyGlobalFilters } = await import("../client/src/lib/analytics.js"));
+  ({ bestSegmentAttemptsByBike, bestSegmentAttemptsByYear, buildSegmentAttempts, filterSegmentAttempts, filterSegmentRanges, buildYearComparison, applyGlobalFilters } = await import("../client/src/lib/analytics.js"));
 });
 
 test("segment detail starts with all cached attempts and combines independent filters", () => {
@@ -168,4 +168,20 @@ test("filterSegmentRanges applies optional distance and best-time bounds", () =>
   assert.deepEqual(filterSegmentRanges(rows, { minDistance: 1000 }), [rows[1]]);
   assert.deepEqual(filterSegmentRanges(rows, { maxDistance: 1000, maxTime: 120 }), [rows[0]]);
   assert.deepEqual(filterSegmentRanges(rows, { minTime: 100, maxTime: 400 }), [rows[1]]);
+});
+
+test("buildYearComparison counts bike, swim and walk activities per period", () => {
+  const now = new Date(2026, 5, 15);
+  const acts = [
+    { start_date: new Date(2026, 1, 1).toISOString(), sport_type: "Ride" },
+    { start_date: new Date(2026, 1, 2).toISOString(), sport_type: "Swim" },
+    { start_date: new Date(2025, 1, 1).toISOString(), sport_type: "Walk" },
+    { start_date: new Date(2025, 1, 2).toISOString(), sport_type: "Walk" }
+  ];
+  const { sports } = buildYearComparison(acts, now);
+  assert.deepEqual(sports, [
+    { sport: "Ride", current: 1, previous: 0 },
+    { sport: "Swim", current: 1, previous: 0 },
+    { sport: "Walk", current: 0, previous: 2 }
+  ]);
 });

@@ -3096,6 +3096,28 @@ app.get("/api/settings/excluded-segments", (req, res) => {
   res.json({ excludedSegments: list });
 });
 
+app.get("/api/settings/watched-segments", (req, res) => {
+  const stored = loadSettings().watchedSegments;
+  res.json({ watchedSegments: Array.isArray(stored) ? stored.filter(id => typeof id === "string" && SEGMENT_ID_RE.test(id)) : [] });
+});
+
+app.put("/api/settings/watched-segments", (req, res) => {
+  const list = req.body && req.body.watchedSegments;
+  if (!Array.isArray(list) || list.length > MAX_EXCLUDED_SEGMENTS ||
+      !list.every(id => typeof id === "string" && SEGMENT_ID_RE.test(id))) {
+    return res.status(400).json({ error: "watchedSegments must be an array of up to 5000 numeric segment ID strings" });
+  }
+  try {
+    const settings = loadSettings();
+    settings.watchedSegments = [...new Set(list)];
+    saveSettings(settings);
+    res.json({ watchedSegments: settings.watchedSegments });
+  } catch (err) {
+    console.error("Failed to save settings:", err);
+    res.status(500).json({ error: "Failed to save settings" });
+  }
+});
+
 app.put("/api/settings/excluded-segments", (req, res) => {
   const list = req.body && req.body.excludedSegments;
   if (!Array.isArray(list) || list.length > MAX_EXCLUDED_SEGMENTS ||

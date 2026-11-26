@@ -35,6 +35,8 @@ export function AppDataProvider({ children }) {
   const [primaryMetric, setPrimaryMetric] = usePersistentState("primaryMetric", "distance");
   const [excludedSegments, setExcludedSegmentsState] = useState([]);
   const excludedRef = useRef([]);
+  const [watchedSegments, setWatchedSegmentsState] = useState([]);
+  const watchedRef = useRef([]);
   const [minEfforts, setMinEfforts] = usePersistentState("segmentMinEfforts", 10);
 
   const [prBackfill, setPrBackfill] = useState(null);
@@ -111,6 +113,11 @@ export function AppDataProvider({ children }) {
       if (!mounted.current) return;
       prefsRef.current = p;
       setBikePhotoPrefsState(p);
+    });
+    api.fetchWatchedSegments().then(list => {
+      if (!mounted.current) return;
+      watchedRef.current = list;
+      setWatchedSegmentsState(list);
     });
     api.fetchExcludedSegments().then(async serverList => {
       if (!mounted.current) return;
@@ -545,6 +552,22 @@ export function AppDataProvider({ children }) {
       setNotice({ type: "error", text: `Could not save excluded segments: ${err.message}` });
     }
   }, []);
+  const toggleWatchSegment = useCallback(async id => {
+    const previous = watchedRef.current;
+    const key = String(id);
+    const next = previous.includes(key) ? previous.filter(x => x !== key) : [...previous, key];
+    watchedRef.current = next;
+    setWatchedSegmentsState(next);
+    try {
+      await api.saveWatchedSegments(next);
+    } catch (err) {
+      if (!mounted.current) return;
+      watchedRef.current = previous;
+      setWatchedSegmentsState(previous);
+      setNotice({ type: "error", text: `Could not save watched segments: ${err.message}` });
+    }
+  }, []);
+  const watchedSet = useMemo(() => new Set(watchedSegments), [watchedSegments]);
   const excludeSegment = useCallback(id => updateExcluded(prev => (prev.includes(String(id)) ? prev : [...prev, String(id)])), [updateExcluded]);
   const restoreSegment = useCallback(id => updateExcluded(prev => (prev.includes(String(id)) ? prev.filter(x => x !== String(id)) : prev)), [updateExcluded]);
 
@@ -561,7 +584,7 @@ export function AppDataProvider({ children }) {
     filters, setDateRange, setActivityType, setBike, filtersActive, resetFilters, activityTypes, bikes,
     primaryMetric, setPrimaryMetric,
     excludedSegments, excludedSet, minEfforts, setMinEfforts,
-    excludeSegment, restoreSegment,
+    excludeSegment, restoreSegment, watchedSegments, watchedSet, toggleWatchSegment,
     prBackfill, backfillActive: active, busy, notice, setNotice, pull, startBackfill, stopBackfill, unlockAdmin,
     geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes,
     elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill,

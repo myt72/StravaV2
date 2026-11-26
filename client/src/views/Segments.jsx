@@ -7,6 +7,7 @@ import { M_PER_MI } from "../lib/units.js";
 import { polylineToSvgPath } from "../lib/polyline.js";
 import { ActivityLink, Card, DataTable, PageHead } from "../components/ui.jsx";
 
+const TRIES_OPTIONS = [["1", "All"], ["2", ">1"], ["10", "10+"], ["25", "25+"], ["50", "50+"], ["100", "100+"], ["250", "250+"], ["500", "500+"]];
 const TYPE_LABELS = { climb: "Climb", descent: "Descent", flat: "Flat / rolling" };
 const gradeText = grade => typeof grade === "number" ? `${grade > 0 ? "+" : ""}${grade.toFixed(1)}%` : "—";
 
@@ -158,8 +159,10 @@ function SegmentDetail({ id }) {
 }
 
 export default function Segments({ route }) {
-  const { raw, filtered, excludedSet } = useAppData();
+  const { raw, filtered, excludedSet, watchedSet, toggleWatchSegment } = useAppData();
   const units = useUnits();
+  const [watch, setWatch] = useState("all");
+  const [tries, setTries] = useState("2");
   const [year, setYear] = useState("all");
   const [weekday, setWeekday] = useState("all");
   const [search, setSearch] = useState("");
@@ -194,8 +197,10 @@ export default function Segments({ route }) {
     return filterSegmentRanges(buildSegmentAttempts(raw.segmentData, filtered.activities, excludedSet, { year, weekday, type }), {
       minDistance: bound(range.minDist, distScale), maxDistance: bound(range.maxDist, distScale),
       minTime: bound(range.minMin, 60), maxTime: bound(range.maxMin, 60)
-    }).filter(row => !query || row.name.toLowerCase().includes(query));
-  }, [raw.segmentData, filtered.activities, excludedSet, year, weekday, type, search, range, units.metric]);
+    }).filter(row => (!query || row.name.toLowerCase().includes(query))
+      && row.attempts.length >= Number(tries)
+      && (watch === "all" || (watch === "watching") === watchedSet.has(row.id)));
+  }, [raw.segmentData, filtered.activities, excludedSet, year, weekday, type, search, range, units.metric, tries, watch, watchedSet]);
   const missing = filtered.activities.filter(a => a.sport_type === "Ride" && !Object.hasOwn(raw.segmentData || {}, a.id)).length;
   const columns = [
     { key: "name", label: "Segment", wrap: true, render: row => <a href={`#/segments/${encodeURIComponent(row.id)}`} data-segment-id={row.id} onClick={() => { lastOpened.current = { id: row.id, scrollY: window.scrollY }; }}>{row.name}</a> },
@@ -204,7 +209,11 @@ export default function Segments({ route }) {
     { key: "grade", label: "Avg grade", align: "r", render: row => gradeText(row.grade) },
     { key: "type", label: "Type", value: row => row.type ? TYPE_LABELS[row.type] : null, render: row => row.type ? TYPE_LABELS[row.type] : "—" },
     { key: "bestTime", label: "Best time", align: "r", render: row => row.bestTime == null ? "—" : formatDurationHms(row.bestTime) },
-    { key: "lastDate", label: "Last attempt", value: row => row.lastDate ? new Date(row.lastDate).getTime() : null, render: row => row.lastDate ? formatDate(row.lastDate) : "—" }
+    { key: "lastDate", label: "Last attempt", value: row => row.lastDate ? new Date(row.lastDate).getTime() : null, render: row => row.lastDate ? formatDate(row.lastDate) : "—" },
+    { key: "watch", label: "Watching", align: "c", value: row => watchedSet.has(row.id) ? 1 : 0, render: row => {
+      const on = watchedSet.has(row.id);
+      return <button type="button" className="watch-toggle" aria-pressed={on} aria-label={`${on ? "Stop watching" : "Watch"} ${row.name}`} title={on ? "Watching" : "Watch this segment"} onClick={() => toggleWatchSegment(row.id)}>{on ? "★" : "☆"}</button>;
+    } }
   ];
   return (
     <>
@@ -228,6 +237,14 @@ export default function Segments({ route }) {
           <label>Type <select value={type} onChange={e => setType(e.target.value)}>
             <option value="all">All types</option>
             {Object.entries(TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select></label>
+          <label>Tries <select value={tries} onChange={e => setTries(e.target.value)}>
+            {TRIES_OPTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select></label>
+          <label>Watching <select value={watch} onChange={e => setWatch(e.target.value)}>
+            <option value="all">All</option>
+            <option value="watching">Watching</option>
+            <option value="not">Not watching</option>
           </select></label>
           <label>Distance ({units.distUnit}) <span className="range-inputs">
             <input type="number" min="0" step="any" inputMode="decimal" value={range.minDist} onChange={setBound("minDist")} placeholder="Min" aria-label={`Minimum distance (${units.distUnit})`} />

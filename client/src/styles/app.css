@@ -498,3 +498,4 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
 
 .range-inputs { display: inline-flex; align-items: center; gap: 4px; }
 .range-inputs input { width: 5.5em; }
+.watch-toggle { background: none; border: 0; cursor: pointer; font-size: 1.15rem; line-height: 1; color: var(--accent, currentColor); }
