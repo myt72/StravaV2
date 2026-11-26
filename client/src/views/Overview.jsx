@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { Fragment, useMemo } from "react";
 import { useAppData } from "../context/AppData.jsx";
 import { getMetrics, buildHeadline, buildKpis, buildRecentPeriodStats, buildYearComparison } from "../lib/analytics.js";
 import { comma, formatDate, formatDateRange, formatDuration, formatDurationGrouped } from "../lib/format.js";
@@ -24,6 +24,7 @@ const GRANULARITY_OPTIONS = [
   { value: "year", label: "Year" }
 ];
 
+const SPORT_LABELS = { Ride: "Bike", Swim: "Swim", Walk: "Walk" };
 const COMPARISON_METRICS = ["distance", "elevation", "moving_time", "count"];
 
 const Delta = ({ value }) => (
@@ -91,10 +92,18 @@ export default function Overview() {
       <div className="grid three">
         <Card title={`${yoy.thisYear} vs ${yoy.lastYear} (same period)`}>
           {yoy.rows.map(r => (
-            <div className="stat-row" key={r.metric}>
-              <span>{METRICS[r.metric].label}</span>
-              <span className="num"><strong>{METRICS[r.metric].fmt(r.current)}</strong> <span className="muted small">vs {METRICS[r.metric].fmt(r.previous)}</span> <Delta value={r.delta} /></span>
-            </div>
+            <Fragment key={r.metric}>
+              <div className="stat-row">
+                <span>{METRICS[r.metric].label}</span>
+                <span className="num"><strong>{METRICS[r.metric].fmt(r.current)}</strong> <span className="muted small">vs {METRICS[r.metric].fmt(r.previous)}</span> <Delta value={r.delta} /></span>
+              </div>
+              {r.metric === "count" && yoy.sports.map(s => (
+                <div className="stat-row small" key={s.sport} style={{ paddingLeft: 16 }}>
+                  <span className="muted">{SPORT_LABELS[s.sport]}</span>
+                  <span className="num"><strong>{comma(s.current)}</strong> <span className="muted small">vs {comma(s.previous)}</span></span>
+                </div>
+              ))}
+            </Fragment>
           ))}
         </Card>
         <Card title="Last 30 days">

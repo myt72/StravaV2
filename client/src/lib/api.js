@@ -272,3 +272,27 @@ export async function saveExcludedSegments(list) {
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }
+
+export const WATCHED_SEGMENTS_API = "/api/settings/watched-segments";
+
+export async function fetchWatchedSegments() {
+  try {
+    const res = await fetch(WATCHED_SEGMENTS_API);
+    const data = res.ok ? await res.json() : {};
+    return Array.isArray(data.watchedSegments) ? data.watchedSegments : [];
+  } catch (err) {
+    console.warn("Could not load watched segments", err);
+    return [];
+  }
+}
+
+export async function saveWatchedSegments(list) {
+  const res = await fetch(WATCHED_SEGMENTS_API, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ watchedSegments: list })
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}

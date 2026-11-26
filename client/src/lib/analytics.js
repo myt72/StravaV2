@@ -686,7 +686,9 @@ export function buildYearComparison(activities, now = new Date(), units = IMPERI
     const p = sumMetric(prev, metric, units);
     return { metric, current: c, previous: p, delta: p > 0 ? ((c - p) / p) * 100 : null };
   });
-  return { thisYear, lastYear: thisYear - 1, rows };
+  const countOf = (list, sport) => list.filter(a => a.sport_type === sport).length;
+  const sports = ["Ride", "Swim", "Walk"].map(sport => ({ sport, current: countOf(cur, sport), previous: countOf(prev, sport) }));
+  return { thisYear, lastYear: thisYear - 1, rows, sports };
 }
 
 /** Last 30 days vs prior 30 days (V1 hero). */
