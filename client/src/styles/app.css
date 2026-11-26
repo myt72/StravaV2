@@ -495,3 +495,6 @@ dialog.gallery.dragging { outline: 3px dashed var(--accent); }
 .shape-placeholder { display: grid; place-items: center; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-sm); }
 .about-data { margin: 0 0 12px; }
 .about-data summary { cursor: pointer; color: var(--accent-strong); font-size: 0.85rem; }
+
+.range-inputs { display: inline-flex; align-items: center; gap: 4px; }
+.range-inputs input { width: 5.5em; }
