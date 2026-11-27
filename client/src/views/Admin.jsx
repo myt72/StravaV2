@@ -256,9 +256,6 @@ export default function Admin() {
             <button type="button" className="btn" disabled={working || !detailActive} onClick={stopSegmentDetails}>Stop</button>
           </div>
         </Card>
-      </div>
-
-      <div className="grid two">
         <Card title="Segment efforts (missing attempts backfill)" right={effortActive && <span className="nav-badge pulse">Running</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>
             Strava’s activity detail can omit some segment efforts, so attempt counts may be lower than on Strava. This asks Strava
