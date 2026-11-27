@@ -296,3 +296,23 @@ export async function saveWatchedSegments(list) {
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }
+
+export async function fetchSegmentEffortStatus() {
+  const { data } = await request("/api/segment-efforts/status", undefined, adminFetch);
+  return data.segmentEfforts;
+}
+
+export async function startSegmentEfforts({ refresh = false, minTries } = {}) {
+  const params = new URLSearchParams();
+  if (refresh) params.set("refresh", "1");
+  if (minTries) params.set("minTries", String(minTries));
+  const query = params.toString();
+  const { data } = await request(`/api/segment-efforts/start${query ? `?${query}` : ""}`, { method: "POST" }, adminFetch);
+  if (data.error) throw new ApiError(data.error);
+  return data;
+}
+
+export async function stopSegmentEfforts() {
+  const { data } = await request("/api/segment-efforts/stop", { method: "POST" }, adminFetch);
+  return data;
+}

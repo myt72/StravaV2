@@ -7,6 +7,7 @@ const { client_id, client_secret, admin_password, redirect_uri, port, bike_types
 const routeMatching = require("./lib/routeMatching");
 const segmentRanks = require("./lib/segmentRanks");
 const segmentDetails = require("./lib/segmentDetails");
+const segmentEfforts = require("./lib/segmentEfforts");
 const elapsedBackfill = require("./lib/elapsedBackfill");
 const engagementBackfill = require("./lib/engagementBackfill");
 const photoBackfill = require("./lib/photoBackfill");
@@ -142,6 +143,24 @@ let segmentDetailJob = {
   reserve: 25
 };
 
+/* Background per-segment effort backfill job state (GET /segment_efforts, fills efforts the activity detail omitted) */
+let segmentEffortJob = {
+  running: false,
+  stopRequested: false,
+  startedAt: null,
+  lastRunAt: null,
+  nextRetryAt: null,
+  mode: "idle",
+  message: "Idle",
+  lastError: null,
+  refresh: false,
+  minTries: segmentEfforts.DEFAULT_MIN_TRIES,
+  checkedThisRun: 0,
+  addedThisRun: 0,
+  batchSize: 10,
+  reserve: 25
+};
+
 /* ----------------- ADMIN PASSWORD PROTECTION ----------------- */
 const ADMIN_FAIL_LIMIT = 10;
 const ADMIN_FAIL_WINDOW_MS = 15 * 60 * 1000;
@@ -261,6 +280,12 @@ function ensureCacheShape(cache) {
   }
   if (!base.segmentDetailMeta || typeof base.segmentDetailMeta !== "object") {
     base.segmentDetailMeta = { lastRunAt: null, lastError: null };
+  }
+  if (!base.segmentEffortSync || typeof base.segmentEffortSync !== "object" || Array.isArray(base.segmentEffortSync)) {
+    base.segmentEffortSync = {};
+  }
+  if (!base.segmentEffortMeta || typeof base.segmentEffortMeta !== "object") {
+    base.segmentEffortMeta = { lastRunAt: null, lastError: null, totalAdded: 0 };
   }
   if (!base.segmentBackfill || typeof base.segmentBackfill !== "object") {
     base.segmentBackfill = {
@@ -676,7 +701,7 @@ async function fetchSegmentEffortsForActivities(activities, existingSegmentData,
     }
 
     try {
-      const res = await stravaFetch(`https://www.strava.com/api/v3/activities/${a.id}`);
+      const res = await stravaFetch(`https://www.strava.com/api/v3/activities/${a.id}?include_all_efforts=true`);
 
       if (res.status === 429) {
         console.warn("[Segment Fetch] Hit 429. Stopping segment fetch.");
@@ -749,7 +774,7 @@ async function backfillSegmentEffortsResumable(cache, options = {}) {
     }
 
     try {
-      const res = await stravaFetch(`https://www.strava.com/api/v3/activities/${activity.id}`);
+      const res = await stravaFetch(`https://www.strava.com/api/v3/activities/${activity.id}?include_all_efforts=true`);
 
       if (res.status === 429) {
         stoppedForRateLimit = true;
@@ -2009,6 +2034,169 @@ async function runSegmentDetailJobLoop() {
   }
 }
 
+/* SEGMENT EFFORT BACKFILL (GET /segment_efforts per segment: efforts the activity detail omitted) */
+
+function loadWatchedSegments() {
+  const stored = loadSettings().watchedSegments;
+  return Array.isArray(stored) ? stored : [];
+}
+
+function effortCandidates(cache) {
+  return segmentEfforts.buildEffortCandidates(cache.segmentData, cache.activities, {
+    watched: loadWatchedSegments(),
+    minTries: segmentEffortJob.minTries
+  });
+}
+
+function getSegmentEffortStatus() {
+  const cache = ensureCacheShape(loadCache());
+  const candidates = effortCandidates(cache);
+  const pending = segmentEfforts.selectEffortsToCheck(candidates, cache.segmentEffortSync);
+  const meta = cache.segmentEffortMeta;
+  return {
+    running: segmentEffortJob.running,
+    stopRequested: segmentEffortJob.stopRequested,
+    startedAt: segmentEffortJob.startedAt,
+    lastRunAt: segmentEffortJob.lastRunAt || meta.lastRunAt || null,
+    nextRetryAt: segmentEffortJob.nextRetryAt,
+    mode: segmentEffortJob.mode,
+    message: segmentEffortJob.message,
+    lastError: segmentEffortJob.lastError || meta.lastError || null,
+    refresh: segmentEffortJob.refresh,
+    minTries: segmentEffortJob.minTries,
+    totalCandidates: candidates.length,
+    checked: candidates.length - pending.length,
+    remaining: pending.length,
+    totalAdded: meta.totalAdded || 0,
+    addedThisRun: segmentEffortJob.addedThisRun,
+    completed: candidates.length > 0 && pending.length === 0,
+    reserve: segmentEffortJob.reserve
+  };
+}
+
+function setSegmentEffortError(message) {
+  segmentEffortJob.lastError = message;
+  const cache = ensureCacheShape(loadCache());
+  cache.segmentEffortMeta.lastError = message;
+  saveCache(cache, { skipClusters: true });
+}
+
+async function fetchSegmentEffortPage(segmentId, page) {
+  const url = `https://www.strava.com/api/v3/segment_efforts?segment_id=${encodeURIComponent(segmentId)}&per_page=${segmentEfforts.PER_PAGE}&page=${page}`;
+  const res = await stravaFetch(url);
+  let json = null;
+  if (res.ok) {
+    try { json = await res.json(); } catch (err) { json = null; }
+  }
+  return { status: res.status, ok: res.ok, json };
+}
+
+async function runSegmentEffortJobLoop() {
+  if (segmentEffortJob.running) return;
+
+  const job = segmentEffortJob;
+  job.running = true;
+  job.stopRequested = false;
+  job.mode = "running";
+  job.message = "Segment effort backfill running";
+  job.lastError = null;
+  job.checkedThisRun = 0;
+  job.addedThisRun = 0;
+  // A refresh re-checks every segment once; later loop passes only check what is still pending.
+  const refresh = job.refresh;
+  const refreshedAt = new Date().toISOString();
+
+  try {
+    const first = ensureCacheShape(loadCache());
+    first.segmentEffortMeta.lastError = null;
+    saveCache(first, { skipClusters: true });
+
+    while (!job.stopRequested) {
+      if (job.nextRetryAt) {
+        const retryAt = new Date(job.nextRetryAt).getTime();
+        if (retryAt > Date.now()) {
+          job.mode = "waiting";
+          job.message = `Waiting until ${new Date(job.nextRetryAt).toLocaleString()} to retry`;
+          await sleep(Math.min(retryAt - Date.now(), 60000));
+          continue;
+        }
+        job.nextRetryAt = null;
+        job.mode = "running";
+      }
+
+      if (!access_token) {
+        job.mode = "error";
+        job.message = "Not authenticated";
+        break;
+      }
+
+      if (rateLimitRemaining <= job.reserve || rateLimitShortRemaining <= 5) {
+        const nextRetry = getNextRetryTime();
+        job.nextRetryAt = nextRetry.toISOString();
+        job.mode = "waiting";
+        job.message = `Rate limit reserve reached. Waiting until ${nextRetry.toLocaleString()}`;
+        rateLimitRemaining = Math.max(rateLimitRemaining, job.reserve + 1);
+        rateLimitShortRemaining = Math.max(rateLimitShortRemaining, 6);
+        continue;
+      }
+
+      const cache = ensureCacheShape(loadCache());
+      const candidates = effortCandidates(cache);
+      let queue = segmentEfforts.selectEffortsToCheck(candidates, cache.segmentEffortSync);
+      if (refresh) queue = candidates.filter(c => !cache.segmentEffortSync[c.id] || !(cache.segmentEffortSync[c.id].checkedAt >= refreshedAt));
+      if (!queue.length) {
+        job.mode = "complete";
+        job.message = candidates.length ? "Segment effort backfill complete" : "No candidate segments (no cached segment efforts on rides)";
+        return;
+      }
+
+      const result = await segmentEfforts.runEffortBatch({
+        queue: queue.slice(0, job.batchSize),
+        segmentData: cache.segmentData,
+        synced: cache.segmentEffortSync,
+        fetchPage: fetchSegmentEffortPage,
+        normalize: normalizeSegmentEffort,
+        canContinue: () => !job.stopRequested && rateLimitRemaining > job.reserve && rateLimitShortRemaining > 5
+      });
+
+      const now = new Date().toISOString();
+      cache.segmentEffortMeta.lastRunAt = now;
+      cache.segmentEffortMeta.totalAdded = (cache.segmentEffortMeta.totalAdded || 0) + result.added;
+      job.lastRunAt = now;
+      job.checkedThisRun += result.checked;
+      job.addedThisRun += result.added;
+      saveCache(cache, { skipClusters: true });
+
+      if (result.stopped === "rate_limited") {
+        const nextRetry = getNextRetryTime();
+        job.nextRetryAt = nextRetry.toISOString();
+        job.mode = "waiting";
+        job.message = `Rate limited (429). Waiting until ${nextRetry.toLocaleString()}`;
+        continue;
+      }
+      if (result.stopped === "forbidden" || result.stopped === "error") {
+        job.mode = "error";
+        job.message = result.error;
+        setSegmentEffortError(result.error);
+        return;
+      }
+      job.message = `Checked ${job.checkedThisRun} segments, added ${job.addedThisRun} missing efforts this run`;
+      await sleep(500);
+    }
+  } catch (err) {
+    console.error("[Segment Effort Job] Error:", err);
+    job.mode = "error";
+    job.message = `Error: ${err.message}`;
+    try { setSegmentEffortError(job.message); } catch (e) { /* ignore */ }
+  } finally {
+    job.running = false;
+    if (job.stopRequested) {
+      job.mode = "stopped";
+      job.message = "Segment effort backfill stopped";
+    }
+  }
+}
+
 /* API */
 
 // Resolve bike types at response time so existing caches and every analytics response carry them.
@@ -2036,6 +2224,7 @@ app.get("/api/analytics/auto", async (req, res) => {
       photoBackfillStatus: getPhotoBackfillStatus(),
       segmentRankStatus: getSegmentRankStatus(),
       segmentDetailStatus: getSegmentDetailStatus(),
+      segmentEffortStatus: getSegmentEffortStatus(),
       message: "Loaded from local cache.json"
     });
   }
@@ -2202,6 +2391,9 @@ app.post("/api/segment-ranks/start", requireAdmin, async (req, res) => {
   if (segmentDetailJob.running) {
     return res.status(409).json({ error: "Segment detail backfill is running. Stop it before starting the segment rank backfill." });
   }
+  if (segmentEffortJob.running) {
+    return res.status(409).json({ error: "Segment effort backfill is running. Stop it before starting the segment rank backfill." });
+  }
 
   const body = req.body || {};
   const refresh = req.query.refresh === "1" || body.refresh === true;
@@ -2251,7 +2443,8 @@ app.post("/api/segment-details/start", requireAdmin, async (req, res) => {
     [elapsedBackfillJob, "Elapsed time backfill"],
     [engagementBackfillJob, "Engagement backfill"],
     [photoBackfillJob, "Photo backfill"],
-    [segmentRankJob, "Segment rank backfill"]
+    [segmentRankJob, "Segment rank backfill"],
+    [segmentEffortJob, "Segment effort backfill"]
   ];
   for (const [job, label] of others) {
     if (job.running) return res.status(409).json({ error: `${label} is running. Stop it before starting the segment detail backfill.` });
@@ -2285,6 +2478,61 @@ app.post("/api/segment-details/stop", requireAdmin, async (req, res) => {
 
 app.get("/api/segment-details/status", requireAdmin, async (req, res) => {
   return res.json({ ok: true, segmentDetails: getSegmentDetailStatus() });
+});
+
+app.post("/api/segment-efforts/start", requireAdmin, async (req, res) => {
+  if (!access_token) return res.status(401).json({ error: "Not authenticated" });
+
+  const cache = ensureCacheShape(loadCache());
+  if (!cache.activities.length) {
+    return res.status(400).json({ error: "No cache available. Run a full data pull first." });
+  }
+  if (segmentEffortJob.running) {
+    return res.json({ ok: true, alreadyRunning: true, segmentEfforts: getSegmentEffortStatus(), message: "Segment effort backfill already running" });
+  }
+  const others = [
+    [prBackfillJob, "PR backfill"],
+    [geoBackfillJob, "Geo backfill"],
+    [elapsedBackfillJob, "Elapsed time backfill"],
+    [engagementBackfillJob, "Engagement backfill"],
+    [photoBackfillJob, "Photo backfill"],
+    [segmentRankJob, "Segment rank backfill"],
+    [segmentDetailJob, "Segment detail backfill"]
+  ];
+  for (const [job, label] of others) {
+    if (job.running) return res.status(409).json({ error: `${label} is running. Stop it before starting the segment effort backfill.` });
+  }
+
+  const body = req.body || {};
+  const refresh = req.query.refresh === "1" || body.refresh === true;
+  const reserve = Number(req.query.reserve || body.reserve || 25);
+  const minTries = Math.floor(Number(req.query.minTries || body.minTries || segmentEfforts.DEFAULT_MIN_TRIES));
+  segmentEffortJob = {
+    ...segmentEffortJob,
+    running: false,
+    stopRequested: false,
+    startedAt: new Date().toISOString(),
+    nextRetryAt: null,
+    mode: "starting",
+    message: refresh ? "Segment effort re-check starting" : "Segment effort backfill starting",
+    lastError: null,
+    refresh,
+    minTries: Number.isFinite(minTries) && minTries >= 1 ? minTries : segmentEfforts.DEFAULT_MIN_TRIES,
+    reserve: Number.isFinite(reserve) && reserve >= 0 ? reserve : 25
+  };
+
+  runSegmentEffortJobLoop();
+
+  return res.json({ ok: true, segmentEfforts: getSegmentEffortStatus(), message: refresh ? "Segment effort re-check started" : "Segment effort backfill started" });
+});
+
+app.post("/api/segment-efforts/stop", requireAdmin, async (req, res) => {
+  segmentEffortJob.stopRequested = true;
+  return res.json({ ok: true, segmentEfforts: getSegmentEffortStatus(), message: "Segment effort backfill stop requested" });
+});
+
+app.get("/api/segment-efforts/status", requireAdmin, async (req, res) => {
+  return res.json({ ok: true, segmentEfforts: getSegmentEffortStatus() });
 });
 
 /* MATCHED RIDES */
@@ -2349,6 +2597,9 @@ app.post("/api/elapsed-backfill/start", requireAdmin, async (req, res) => {
   }
   if (segmentDetailJob.running) {
     return res.status(409).json({ error: "Segment detail backfill is running. Stop it before starting the elapsed time backfill." });
+  }
+  if (segmentEffortJob.running) {
+    return res.status(409).json({ error: "Segment effort backfill is running. Stop it before starting the elapsed time backfill." });
   }
   if (engagementBackfillJob.running) {
     return res.status(409).json({ error: "Engagement backfill is running. Stop it before starting the elapsed time backfill." });
@@ -2419,6 +2670,9 @@ app.post("/api/engagement-backfill/start", requireAdmin, async (req, res) => {
   if (segmentDetailJob.running) {
     return res.status(409).json({ error: "Segment detail backfill is running. Stop it before starting the engagement backfill." });
   }
+  if (segmentEffortJob.running) {
+    return res.status(409).json({ error: "Segment effort backfill is running. Stop it before starting the engagement backfill." });
+  }
   if (photoBackfillJob.running) {
     return res.status(409).json({ error: "Photo backfill is running. Stop it before starting the engagement backfill." });
   }
@@ -2484,7 +2738,8 @@ app.post("/api/photo-backfill/start", requireAdmin, async (req, res) => {
     [elapsedBackfillJob, "Elapsed time backfill"],
     [engagementBackfillJob, "Engagement backfill"],
     [segmentRankJob, "Segment rank backfill"],
-    [segmentDetailJob, "Segment detail backfill"]
+    [segmentDetailJob, "Segment detail backfill"],
+    [segmentEffortJob, "Segment effort backfill"]
   ];
   for (const [job, label] of others) {
     if (job.running) return res.status(409).json({ error: `${label} is running. Stop it before starting the photo backfill.` });
@@ -2599,6 +2854,8 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
       segmentRankMeta: cache.segmentRankMeta,
       segmentDetails: cache.segmentDetails,
       segmentDetailMeta: cache.segmentDetailMeta,
+      segmentEffortSync: cache.segmentEffortSync,
+      segmentEffortMeta: cache.segmentEffortMeta,
       elapsedBackfill: cache.elapsedBackfill,
       engagementBackfill: cache.engagementBackfill,
       photoBackfill: cache.photoBackfill,
@@ -2713,6 +2970,8 @@ app.get("/api/analytics", requireAdmin, async (req, res) => {
       segmentRankMeta: cache.segmentRankMeta,
       segmentDetails: cache.segmentDetails,
       segmentDetailMeta: cache.segmentDetailMeta,
+      segmentEffortSync: cache.segmentEffortSync,
+      segmentEffortMeta: cache.segmentEffortMeta,
       elapsedBackfill: cache.elapsedBackfill,
       engagementBackfill: cache.engagementBackfill,
       photoBackfill: cache.photoBackfill,

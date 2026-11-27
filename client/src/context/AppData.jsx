@@ -46,6 +46,7 @@ export function AppDataProvider({ children }) {
   const [photoBackfill, setPhotoBackfill] = useState(null);
   const [segmentRank, setSegmentRank] = useState(null);
   const [segmentDetail, setSegmentDetail] = useState(null);
+  const [segmentEffort, setSegmentEffort] = useState(null);
   const [busy, setBusy] = useState(null);
   const [notice, setNotice] = useState(null);
   const [bikeImages, setBikeImages] = useState({});
@@ -59,9 +60,11 @@ export function AppDataProvider({ children }) {
   const photoPollTimer = useRef(null);
   const rankPollTimer = useRef(null);
   const detailPollTimer = useRef(null);
+  const effortPollTimer = useRef(null);
   const wasPhotoActive = useRef(false);
   const wasRankActive = useRef(false);
   const wasDetailActive = useRef(false);
+  const wasEffortActive = useRef(false);
   const wasGeoActive = useRef(false);
   const wasElapsedActive = useRef(false);
   const wasEngagementActive = useRef(false);
@@ -77,6 +80,7 @@ export function AppDataProvider({ children }) {
     if (data.photoBackfillStatus) setPhotoBackfill(data.photoBackfillStatus);
     if (SEGMENT_RANKINGS_ENABLED && data.segmentRankStatus) setSegmentRank(data.segmentRankStatus);
     if (data.segmentDetailStatus) setSegmentDetail(data.segmentDetailStatus);
+    if (data.segmentEffortStatus) setSegmentEffort(data.segmentEffortStatus);
     setServerMessage(data.message || "");
     if (Array.isArray(data.activities)) {
       setRaw(data);
@@ -150,6 +154,7 @@ export function AppDataProvider({ children }) {
       clearTimeout(photoPollTimer.current);
       clearTimeout(rankPollTimer.current);
       clearTimeout(detailPollTimer.current);
+      clearTimeout(effortPollTimer.current);
     };
   }, [load]);
 
@@ -225,6 +230,17 @@ export function AppDataProvider({ children }) {
       console.error(err);
     }
   }, []);
+  const pollSegmentEffort = useCallback(async () => {
+    clearTimeout(effortPollTimer.current);
+    try {
+      const s = await api.fetchSegmentEffortStatus();
+      if (!mounted.current) return;
+      setSegmentEffort(s);
+      if (isBackfillActive(s)) effortPollTimer.current = setTimeout(pollSegmentEffort, POLL_MS);
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
   const pollSegmentRank = useCallback(async () => {
     clearTimeout(rankPollTimer.current);
     try {
@@ -291,6 +307,13 @@ export function AppDataProvider({ children }) {
     if (!detailActive && wasDetailActive.current) load({ quiet: true });
     wasDetailActive.current = detailActive;
   }, [detailActive, pollSegmentDetail, load]);
+
+  const effortActive = isBackfillActive(segmentEffort);
+  useEffect(() => {
+    if (effortActive && !wasEffortActive.current) pollSegmentEffort();
+    if (!effortActive && wasEffortActive.current) load({ quiet: true });
+    wasEffortActive.current = effortActive;
+  }, [effortActive, pollSegmentEffort, load]);
 
   /* ----- admin actions ----- */
   const pull = useCallback(async kind => {
@@ -472,6 +495,28 @@ export function AppDataProvider({ children }) {
     () => runDetailAction(api.stopSegmentDetails, "Stopping segment detail backfill…", "Segment detail backfill stop requested.", "Failed to stop segment detail backfill."),
     [runDetailAction]
   );
+  const runEffortAction = useCallback(async (start, pending, done, fail) => {
+    setBusy("segmentEfforts");
+    setNotice({ type: "info", text: pending });
+    try {
+      const data = await start();
+      if (data.segmentEfforts) setSegmentEffort(data.segmentEfforts);
+      setNotice({ type: "success", text: data.message || done });
+      pollSegmentEffort();
+    } catch (err) {
+      setNotice({ type: "error", text: err.message || fail });
+    } finally {
+      setBusy(null);
+    }
+  }, [pollSegmentEffort]);
+  const startSegmentEfforts = useCallback(
+    (refresh, minTries) => runEffortAction(() => api.startSegmentEfforts({ refresh, minTries }), refresh ? "Starting segment effort re-check…" : "Starting segment effort backfill…", "Segment effort backfill started.", "Failed to start segment effort backfill."),
+    [runEffortAction]
+  );
+  const stopSegmentEfforts = useCallback(
+    () => runEffortAction(api.stopSegmentEfforts, "Stopping segment effort backfill…", "Segment effort backfill stop requested.", "Failed to stop segment effort backfill."),
+    [runEffortAction]
+  );
   const recomputeRoutes = useCallback(async () => {
     setBusy("routes");
     setNotice({ type: "info", text: "Recomputing route clusters…" });
@@ -592,6 +637,7 @@ export function AppDataProvider({ children }) {
     photoBackfill, photoActive, startPhotoBackfill, stopPhotoBackfill,
     segmentRank, rankActive, startSegmentRanks, stopSegmentRanks,
     segmentDetail, detailActive, startSegmentDetails, stopSegmentDetails,
+    segmentEffort, effortActive, startSegmentEfforts, stopSegmentEfforts,
     bikeImages, setBikeImages, bikePhotoPrefs, setBikePhotoPrefs, getCoverPhoto,
     gearName: gid => getGearName(raw?.gearDetails, gid)
   };

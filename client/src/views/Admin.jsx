@@ -9,7 +9,7 @@ function Row({ label, children }) {
 }
 
 export default function Admin() {
-  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill, engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill, photoBackfill, photoActive, startPhotoBackfill, stopPhotoBackfill, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks, segmentDetail, detailActive, startSegmentDetails, stopSegmentDetails } = useAppData();
+  const { raw, serverMessage, lastSync, prBackfill, busy, notice, pull, startBackfill, stopBackfill, unlockAdmin, geoBackfill, geoActive, startGeoBackfill, stopGeoBackfill, recomputeRoutes, elapsedBackfill, elapsedActive, startElapsedBackfill, stopElapsedBackfill, engagementBackfill, engagementActive, startEngagementBackfill, stopEngagementBackfill, photoBackfill, photoActive, startPhotoBackfill, stopPhotoBackfill, segmentRank, rankActive, startSegmentRanks, stopSegmentRanks, segmentDetail, detailActive, startSegmentDetails, stopSegmentDetails, segmentEffort, effortActive, startSegmentEfforts, stopSegmentEfforts } = useAppData();
   const [confirmFull, setConfirmFull] = useState(false);
   const [auth, setAuth] = useState({ state: "checking", message: "" });
 
@@ -73,6 +73,11 @@ export default function Admin() {
   const detailDone = segmentDetail?.checked || 0;
   const detailPct = detailTotal > 0 ? Math.min(100, (detailDone / detailTotal) * 100) : 0;
   const detailState = !segmentDetail ? "Idle" : segmentDetail.mode && segmentDetail.mode !== "idle" ? segmentDetail.mode : segmentDetail.completed ? "Complete" : "Idle";
+
+  const effortTotal = segmentEffort?.totalCandidates || 0;
+  const effortDone = segmentEffort?.checked || 0;
+  const effortPct = effortTotal > 0 ? Math.min(100, (effortDone / effortTotal) * 100) : 0;
+  const effortState = !segmentEffort ? "Idle" : segmentEffort.mode && segmentEffort.mode !== "idle" ? segmentEffort.mode : segmentEffort.completed ? "Complete" : "Idle";
 
   return (
     <div className="content">
@@ -249,6 +254,34 @@ export default function Admin() {
             </button>
             <button type="button" className="btn" disabled={working || detailActive || !segmentDetail?.checked} onClick={() => startSegmentDetails(true)}>Refresh all</button>
             <button type="button" className="btn" disabled={working || !detailActive} onClick={stopSegmentDetails}>Stop</button>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid two">
+        <Card title="Segment efforts (missing attempts backfill)" right={effortActive && <span className="nav-badge pulse">Running</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Strava’s activity detail can omit some segment efforts, so attempt counts may be lower than on Strava. This asks Strava
+            for every effort you have on a segment and adds the missing ones to rides already in the cache. It covers segments you
+            are watching plus segments with at least 2 cached attempts ({comma(effortTotal)} here), at one or more API requests per
+            segment. “Re-check all” repeats every segment. Strava may require a subscription for this endpoint.
+          </p>
+          <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={effortTotal} aria-valuenow={effortDone} aria-label="Segment effort backfill progress"><div style={{ width: `${effortPct}%` }} /></div>
+          <div style={{ marginTop: 8 }}>
+            <Row label="Status">{effortState}</Row>
+            <Row label="Segments checked">{comma(effortDone)} / {comma(effortTotal)}</Row>
+            <Row label="Missing efforts added">{comma(segmentEffort?.totalAdded || 0)}</Row>
+            <Row label="Last run">{segmentEffort?.lastRunAt ? formatDateTime(segmentEffort.lastRunAt) : "—"}</Row>
+            <Row label="Next retry">{segmentEffort?.nextRetryAt ? formatDateTime(segmentEffort.nextRetryAt) : "—"}</Row>
+          </div>
+          <p className="hint">{segmentEffort?.message || "Idle"}</p>
+          {segmentEffort?.lastError && <div className="notice error" role="alert">{segmentEffort.lastError}</div>}
+          <div className="toolbar" style={{ marginTop: 12 }}>
+            <button type="button" className="btn primary" disabled={working || effortActive || segmentEffort?.completed} onClick={() => startSegmentEfforts(false)}>
+              {segmentEffort?.checked ? "Resume segment efforts" : "Start segment efforts"}
+            </button>
+            <button type="button" className="btn" disabled={working || effortActive || !segmentEffort?.checked} onClick={() => startSegmentEfforts(true)}>Re-check all</button>
+            <button type="button" className="btn" disabled={working || !effortActive} onClick={stopSegmentEfforts}>Stop</button>
           </div>
         </Card>
       </div>
