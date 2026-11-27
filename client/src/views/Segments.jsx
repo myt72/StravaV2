@@ -5,6 +5,7 @@ import { SEGMENT_TYPE_GRADE, bestSegmentAttemptsByBike, bestSegmentAttemptsByYea
 import { comma, formatDate, formatDurationHms, getStravaSegmentUrl } from "../lib/format.js";
 import { M_PER_MI } from "../lib/units.js";
 import { polylineToSvgPath } from "../lib/polyline.js";
+import { useSessionState } from "../lib/storage.js";
 import { ActivityLink, Card, DataTable, PageHead } from "../components/ui.jsx";
 
 const TRIES_OPTIONS = [["1", "All"], ["2", ">1"], ["10", "10+"], ["25", "25+"], ["50", "50+"], ["100", "100+"], ["250", "250+"], ["500", "500+"]];
@@ -24,9 +25,9 @@ function SegmentShape({ polyline, name, size = 48, placeholder = "—" }) {
 function SegmentDetail({ id }) {
   const { raw, gearName } = useAppData();
   const units = useUnits();
-  const [bike, setBike] = useState("all");
-  const [year, setYear] = useState("all");
-  const [weekday, setWeekday] = useState("all");
+  const [bike, setBike] = useSessionState(`segment:${id}:bike`, "all");
+  const [year, setYear] = useSessionState(`segment:${id}:year`, "all");
+  const [weekday, setWeekday] = useSessionState(`segment:${id}:weekday`, "all");
   const [openGroups, setOpenGroups] = useState(() => new Set());
   useEffect(() => {
     document.getElementById("main-content")?.focus({ preventScroll: true });
@@ -131,11 +132,13 @@ function SegmentDetail({ id }) {
         <div className="toolbar segment-filters">
           <label>Bike <select value={bike} onChange={e => setBike(e.target.value)}>
             <option value="all">All bikes</option>
+            {bike !== "all" && !bikes.some(item => item.gid === bike) && !(bike === "none" && hasNoBike) && <option value={bike}>{bike === "none" ? "No bike recorded" : gearName(bike)}</option>}
             {bikes.map(item => <option key={item.gid} value={item.gid}>{item.name}</option>)}
             {hasNoBike && <option value="none">No bike recorded</option>}
           </select></label>
           <label>Year <select value={year} onChange={e => setYear(e.target.value)}>
             <option value="all">All years</option>
+            {year !== "all" && !years.includes(Number(year)) && <option value={year}>{year}</option>}
             {years.map(value => <option key={value} value={value}>{value}</option>)}
           </select></label>
           <label>Day of week <select value={weekday} onChange={e => setWeekday(e.target.value)}>
@@ -161,13 +164,13 @@ function SegmentDetail({ id }) {
 export default function Segments({ route }) {
   const { raw, filtered, excludedSet, watchedSet, toggleWatchSegment } = useAppData();
   const units = useUnits();
-  const [watch, setWatch] = useState("all");
-  const [tries, setTries] = useState("2");
-  const [year, setYear] = useState("all");
-  const [weekday, setWeekday] = useState("all");
-  const [search, setSearch] = useState("");
-  const [type, setType] = useState("all");
-  const [range, setRange] = useState({ minDist: "", maxDist: "", minMin: "", maxMin: "" });
+  const [watch, setWatch] = useSessionState("segments:watch", "all");
+  const [tries, setTries] = useSessionState("segments:tries", "2");
+  const [year, setYear] = useSessionState("segments:year", "all");
+  const [weekday, setWeekday] = useSessionState("segments:weekday", "all");
+  const [search, setSearch] = useSessionState("segments:search", "");
+  const [type, setType] = useSessionState("segments:type", "all");
+  const [range, setRange] = useSessionState("segments:range", { minDist: "", maxDist: "", minMin: "", maxMin: "" });
   const setBound = key => e => setRange(prev => ({ ...prev, [key]: e.target.value }));
   const segmentId = route.segments[1];
   const listRef = useRef(null);
